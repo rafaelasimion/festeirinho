@@ -20,5 +20,8 @@ Projeto desenvolvido como Trabalho de Conclusão de Curso do curso de Análise e
  
 - Rafaela Maniero Simion
 - Fabio Tostes Fernandes
+
+---
+
 **Orientador:** Prof. Leonardo Raiz
 **Instituição:** Fatec Franca — Análise e Desenvolvimento de Sistemas
