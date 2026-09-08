@@ -25,6 +25,40 @@ export function validarCPF(entrada) {
   return true;
 }
 
+// Deixa o CNPJ no formato de armazenamento: sem pontuação e em maiúsculas.
+// Desde 31/07/2026 o CNPJ pode conter letras nas 12 primeiras posições,
+// então NÃO se pode usar somenteDigitos aqui.
+export function normalizarCNPJ(entrada) {
+  return String(entrada ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+}
+
+// RN037 — validação formal de CNPJ, nos dois formatos.
+// Estrutura: 12 caracteres alfanuméricos + 2 dígitos verificadores numéricos.
+// Cálculo: módulo 11, com cada caractere convertido por (código ASCII - 48).
+// Os CNPJs antigos, totalmente numéricos, passam pelo mesmo cálculo.
+export function validarCNPJ(entrada) {
+  const cnpj = normalizarCNPJ(entrada);
+  if (!/^[A-Z0-9]{12}\d{2}$/.test(cnpj)) return false;
+  if (/^(.)\1{13}$/.test(cnpj)) return false; // 00000000000000, AAAAAAAAAAAA00...
+
+  const valor = (caractere) => caractere.charCodeAt(0) - 48;
+
+  const calcularDigito = (base) => {
+    let peso = 2;
+    let soma = 0;
+    for (let i = base.length - 1; i >= 0; i--) {
+      soma += valor(base[i]) * peso;
+      peso = peso === 9 ? 2 : peso + 1;
+    }
+    const resto = soma % 11;
+    return resto < 2 ? 0 : 11 - resto;
+  };
+
+  if (calcularDigito(cnpj.slice(0, 12)) !== Number(cnpj[12])) return false;
+  if (calcularDigito(cnpj.slice(0, 13)) !== Number(cnpj[13])) return false;
+  return true;
+}
+
 export function validarEmail(valor) {
   const email = String(valor ?? '').trim();
   return email.length <= 255 && /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email);
@@ -34,6 +68,19 @@ export function validarEmail(valor) {
 export function validarTelefone(valor) {
   const digitos = somenteDigitos(valor);
   return digitos.length === 10 || digitos.length === 11;
+}
+
+// URL opcional: se veio preenchida, precisa ser http(s) e caber na coluna.
+export function validarURL(valor) {
+  const texto = String(valor ?? '').trim();
+  if (texto === '') return true;
+  if (texto.length > 500) return false;
+  try {
+    const url = new URL(texto);
+    return url.protocol === 'http:' || url.protocol === 'https:';
+  } catch {
+    return false;
+  }
 }
 
 export const UFS = [
