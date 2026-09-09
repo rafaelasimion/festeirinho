@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { pool } from '@/lib/db';
 import { formatarPreco } from '@/lib/solicitacao';
+import { lerSessao } from '@/lib/sessao';
 
 // Esta página só LÊ e mostra. Por isso ela consulta o banco direto, sem
 // passar por uma rota de API: componente de servidor já roda no servidor.
@@ -8,6 +9,9 @@ import { formatarPreco } from '@/lib/solicitacao';
 // vem do navegador e tem que haver um endereço para recebê-lo.
 
 export default async function Vitrine() {
+  const sessao = await lerSessao();
+  const podeSolicitar = sessao?.tipoUsuario === 'cliente';
+
   // RN020 — só aparece o que está ativo e aprovado, de fornecedor ativo.
   const [servicos] = await pool.query(
     `SELECT s.id, s.nome, s.descricao, s.preco_base, s.capacidade_max,
@@ -57,10 +61,17 @@ export default async function Vitrine() {
                   </p>
                 </div>
 
-                <Link href={`/servicos/${servico.id}/solicitar`}
-                  className="shrink-0 rounded bg-gray-900 px-3 py-1.5 text-sm text-white">
-                  Solicitar
-                </Link>
+                {podeSolicitar ? (
+                  <Link href={`/servicos/${servico.id}/solicitar`}
+                    className="shrink-0 rounded bg-gray-900 px-3 py-1.5 text-sm text-white">
+                    Solicitar
+                  </Link>
+                ) : !sessao ? (
+                  <Link href="/login"
+                    className="shrink-0 rounded border border-gray-400 px-3 py-1.5 text-sm">
+                    Entrar para solicitar
+                  </Link>
+                ) : null}
               </div>
             </li>
           ))}

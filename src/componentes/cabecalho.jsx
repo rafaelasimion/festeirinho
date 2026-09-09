@@ -47,9 +47,17 @@ export default async function Cabecalho() {
                   <Link href="/fornecedor/servicos" className="hover:underline">
                     Meus serviços
                   </Link>
+                  <Link href="/fornecedor/solicitacoes" className="hover:underline">
+                    Solicitações recebidas
+                  </Link>
                   <Link href="/fornecedor/perfil" className="hover:underline">
                     Meu perfil
                   </Link>
+                </>
+              )}
+
+              {!ehFornecedor && (
+                <>
                   <Link href="/servicos" className="hover:underline">
                     Serviços
                   </Link>

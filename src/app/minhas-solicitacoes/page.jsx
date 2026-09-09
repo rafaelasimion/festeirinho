@@ -2,6 +2,8 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { pool } from '@/lib/db';
 import { lerSessao } from '@/lib/sessao';
+import { expirarSolicitacoesVencidas } from '@/lib/solicitacao-servidor';
+import { expirarPagamentosVencidos } from '@/lib/pagamento-servidor';
 import {
   formatarPreco,
   ROTULO_STATUS_SOLICITACAO,
@@ -20,17 +22,23 @@ export default async function MinhasSolicitacoes() {
   if (!sessao) redirect('/login');
   if (sessao.tipoUsuario !== 'cliente') redirect('/minha-conta');
 
+  // RN035 e RN025 — fecha o que venceu antes de mostrar a lista.
+  await expirarSolicitacoesVencidas();
+  await expirarPagamentosVencidos();
+
   const [solicitacoes] = await pool.execute(
     `SELECT so.id, so.data_hora_evento, so.duracao, so.numero_convidados,
             so.valor_final, so.status, so.motivo_recusa,
             so.data_solicitacao, so.data_limite_resposta_fornecedor,
             s.nome AS servico, f.nome_exibicao AS fornecedor,
-            e.cidade, e.estado
+            e.cidade, e.estado,
+            p.id AS id_pagamento, p.status AS status_pagamento, p.data_limite
        FROM solicitacao so
-       JOIN cliente c    ON c.id  = so.id_cliente
-       JOIN servico s    ON s.id  = so.id_servico
-       JOIN fornecedor f ON f.id  = s.id_fornecedor
-       JOIN endereco e   ON e.id  = so.id_endereco
+       JOIN cliente c     ON c.id  = so.id_cliente
+       JOIN servico s     ON s.id  = so.id_servico
+       JOIN fornecedor f  ON f.id  = s.id_fornecedor
+       JOIN endereco e    ON e.id  = so.id_endereco
+       LEFT JOIN pagamento p ON p.id_solicitacao = so.id
       WHERE c.id_usuario = ?
       ORDER BY so.data_solicitacao DESC`,
     [sessao.id]
@@ -81,6 +89,27 @@ export default async function MinhasSolicitacoes() {
                   O fornecedor tem até{' '}
                   {formatarDataHora(solicitacao.data_limite_resposta_fornecedor)} para responder.
                 </p>
+              )}
+
+              {solicitacao.status === 'aguardando_pagamento' && solicitacao.id_pagamento && (
+                <div className="mt-4 flex items-center justify-between gap-4 border-t border-gray-200 pt-4">
+                  <p className="text-sm text-gray-600">
+                    Pague até {formatarDataHora(solicitacao.data_limite)} para confirmar.
+                  </p>
+                  <Link href={`/pagamento/${solicitacao.id_pagamento}`}
+                    className="shrink-0 rounded bg-gray-900 px-3 py-1.5 text-sm text-white">
+                    Pagar
+                  </Link>
+                </div>
+              )}
+
+              {solicitacao.status === 'confirmado' && solicitacao.id_pagamento && (
+                <div className="mt-4 border-t border-gray-200 pt-4">
+                  <Link href={`/pagamento/${solicitacao.id_pagamento}`}
+                    className="text-sm underline">
+                    Ver comprovante
+                  </Link>
+                </div>
               )}
 
               {solicitacao.status === 'recusado' && solicitacao.motivo_recusa && (
