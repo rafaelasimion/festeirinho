@@ -11,11 +11,14 @@ import {
   validarURL,
   validarUF,
   validarNomeUsuario,
+  validarMaioridade,
+  IDADE_MINIMA,
 } from '@/lib/validacao';
 
 // RF002 — Cadastro de fornecedor.
 // Mesma estrutura do cadastro de cliente: transação gravando em usuario +
-// fornecedor. A diferença é a RN001 (PF e PJ se excluem).
+// fornecedor. A diferença é a RN001 (PF e PJ se excluem), que agora também
+// alcança a data de nascimento.
 
 export async function POST(request) {
   let corpo;
@@ -44,11 +47,13 @@ export async function POST(request) {
   const instagramUrl = String(corpo.instagramUrl ?? '').trim();
   const whatsappUrl = String(corpo.whatsappUrl ?? '').trim();
   const site = String(corpo.site ?? '').trim();
-  const raioAtendimentoKm = Number(corpo.raioAtendimentoKm ?? 30);
+  const raioAtendimentoKm = Number(corpo.raioAtendimentoKm);
 
-  // RN001 — PF preenche CPF; PJ preenche CNPJ e razão social.
+  // RN001 — PF preenche CPF e data de nascimento; PJ preenche CNPJ e razão
+  // social. Pessoa jurídica não tem data de nascimento, então o campo é nulo.
   const ehPF = tipoPessoa === 'PF';
   const cpf = ehPF ? somenteDigitos(corpo.cpf) : null;
+  const dataNascimento = ehPF ? String(corpo.dataNascimento ?? '').trim() : null;
   const cnpj = ehPF ? null : normalizarCNPJ(corpo.cnpj);
   const razaoSocial = ehPF ? null : String(corpo.razaoSocial ?? '').trim();
 
@@ -72,9 +77,14 @@ export async function POST(request) {
   if (tipoPessoa !== 'PF' && tipoPessoa !== 'PJ') {
     erros.tipoPessoa = 'Selecione pessoa física ou jurídica.';
   } else if (ehPF) {
-    // RN001 — o banco só garante que o lado oposto está nulo; a
-    // obrigatoriedade do lado preenchido é responsabilidade daqui.
+    // O banco garante o que deve ser nulo; a obrigatoriedade do lado
+    // preenchido é responsabilidade daqui.
     if (!validarCPF(cpf)) erros.cpf = 'CPF inválido.';
+    // RF002 — capacidade civil para contratar e receber valores.
+    if (!validarMaioridade(dataNascimento)) {
+      erros.dataNascimento =
+        `É necessário ter ao menos ${IDADE_MINIMA} anos completos para se cadastrar como fornecedor.`;
+    }
   } else {
     if (!validarCNPJ(cnpj)) erros.cnpj = 'CNPJ inválido.';
     if (razaoSocial.length < 2 || razaoSocial.length > 200)
@@ -135,14 +145,15 @@ export async function POST(request) {
     // aparece na vitrine depois da aprovação da administração.
     await conexao.execute(
       `INSERT INTO fornecedor
-         (id_usuario, tipo_usuario, tipo_pessoa, cpf, cnpj, razao_social,
-          nome_exibicao, descricao, instagram_url, whatsapp_url, site,
-          raio_atendimento_km)
-       VALUES (?, 'fornecedor', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         (id_usuario, tipo_usuario, tipo_pessoa, cpf, data_nascimento,
+          cnpj, razao_social, nome_exibicao, descricao,
+          instagram_url, whatsapp_url, site, raio_atendimento_km)
+       VALUES (?, 'fornecedor', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         idUsuario,
         tipoPessoa,
         cpf,
+        dataNascimento,
         cnpj,
         razaoSocial,
         nomeExibicao,

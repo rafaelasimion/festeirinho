@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { UFS } from '@/lib/validacao';
+import { UFS, dataMaximaNascimento, IDADE_MINIMA } from '@/lib/validacao';
 
 const CAMPOS_INICIAIS = {
   nome: '',
@@ -32,7 +32,6 @@ export default function FormularioCadastroCliente() {
     setErros((anterior) => ({ ...anterior, [name]: undefined }));
   }
 
-  // RF001/RN068 — captura opcional das coordenadas, mediante autorização.
   function capturarLocalizacao() {
     if (!navigator.geolocation) {
       setErroGeral('Seu navegador não permite capturar a localização.');
@@ -114,7 +113,9 @@ export default function FormularioCadastroCliente() {
           onChange={aoDigitar} erro={erros.cpf} placeholder="Somente números" />
 
         <Campo label="Data de nascimento" name="dataNascimento" type="date"
-          value={campos.dataNascimento} onChange={aoDigitar} erro={erros.dataNascimento} />
+          max={dataMaximaNascimento()}
+          value={campos.dataNascimento} onChange={aoDigitar} erro={erros.dataNascimento}
+          dica={`É necessário ter ao menos ${IDADE_MINIMA} anos completos.`} />
 
         <div>
           <label htmlFor="estado" className="mb-1 block text-sm font-medium">Estado</label>
@@ -130,7 +131,8 @@ export default function FormularioCadastroCliente() {
           onChange={aoDigitar} erro={erros.cidade} />
 
         <Campo label="Senha" name="senha" type="password" value={campos.senha}
-          onChange={aoDigitar} erro={erros.senha} />
+          onChange={aoDigitar} erro={erros.senha}
+          dica="Mínimo de 8 caracteres." />
 
         <Campo label="Confirmar senha" name="confirmacaoSenha" type="password"
           value={campos.confirmacaoSenha} onChange={aoDigitar} erro={erros.confirmacaoSenha} />
@@ -172,12 +174,13 @@ export default function FormularioCadastroCliente() {
   );
 }
 
-function Campo({ label, name, erro, ...resto }) {
+function Campo({ label, name, erro, dica, ...resto }) {
   return (
     <div>
       <label htmlFor={name} className="mb-1 block text-sm font-medium">{label}</label>
       <input id={name} name={name} {...resto}
         className="w-full rounded border border-gray-300 px-3 py-2" />
+      {dica && <p className="mt-1 text-xs text-gray-500">{dica}</p>}
       {erro && <p className="mt-1 text-sm text-red-600">{erro}</p>}
     </div>
   );

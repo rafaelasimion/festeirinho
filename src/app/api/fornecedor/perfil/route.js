@@ -9,6 +9,8 @@ import {
   validarTelefone,
   validarURL,
   validarUF,
+  validarMaioridade,
+  IDADE_MINIMA,
 } from '@/lib/validacao';
 
 // RF004 — o fornecedor consulta e edita o próprio perfil.
@@ -22,7 +24,7 @@ export async function GET() {
 
   const [linhas] = await pool.execute(
     `SELECT u.nome, u.telefone, u.cidade, u.estado,
-            f.tipo_pessoa, f.cpf, f.cnpj, f.razao_social,
+            f.tipo_pessoa, f.cpf, f.data_nascimento, f.cnpj, f.razao_social,
             f.nome_exibicao, f.descricao,
             f.instagram_url, f.whatsapp_url, f.site,
             f.raio_atendimento_km,
@@ -34,7 +36,16 @@ export async function GET() {
     [idUsuario]
   );
 
-  return NextResponse.json(linhas[0]);
+  const perfil = linhas[0];
+
+  // O driver devolve DATE como objeto Date. A tela precisa de 'aaaa-mm-dd'
+  // para preencher um input type="date".
+  return NextResponse.json({
+    ...perfil,
+    data_nascimento: perfil.data_nascimento
+      ? perfil.data_nascimento.toISOString().slice(0, 10)
+      : null,
+  });
 }
 
 export async function PUT(request) {
@@ -84,17 +95,22 @@ export async function PUT(request) {
   if (!ehPF && (razaoSocial.length < 2 || razaoSocial.length > 200))
     erros.razaoSocial = 'Informe a razão social.';
 
-  // CPF e CNPJ só admitem correção enquanto a verificação não foi aprovada.
-  // Depois da aprovação tornam-se imutáveis: trocar o documento exige
-  // novo cadastro.
+  // Documento e data de nascimento só admitem correção enquanto a verificação
+  // não foi aprovada. Depois da aprovação tornam-se imutáveis: os dois foram
+  // conferidos pela administração, e trocá-los exigiria nova análise.
   const documentoEditavel = fornecedor.status_verificacao !== 'aprovado';
   let cpf = null;
   let cnpj = null;
+  let dataNascimento = null;
 
   if (documentoEditavel) {
     if (ehPF) {
       cpf = somenteDigitos(corpo.cpf);
+      dataNascimento = String(corpo.dataNascimento ?? '').trim();
       if (!validarCPF(cpf)) erros.cpf = 'CPF inválido.';
+      if (!validarMaioridade(dataNascimento)) {
+        erros.dataNascimento = `É necessário ter ao menos ${IDADE_MINIMA} anos completos.`;
+      }
     } else {
       cnpj = normalizarCNPJ(corpo.cnpj);
       if (!validarCNPJ(cnpj)) erros.cnpj = 'CNPJ inválido.';
@@ -141,20 +157,21 @@ export async function PUT(request) {
       [nome, telefone, cidade, estado, idUsuario]
     );
 
-    // O documento só entra no UPDATE quando ainda é editável.
+    // Documento e data de nascimento só entram no UPDATE quando ainda
+    // são editáveis.
     if (documentoEditavel) {
       await conexao.execute(
         `UPDATE fornecedor
             SET nome_exibicao = ?, descricao = ?, razao_social = ?,
                 instagram_url = ?, whatsapp_url = ?, site = ?,
                 raio_atendimento_km = ?, status_verificacao = ?,
-                cpf = ?, cnpj = ?
+                cpf = ?, data_nascimento = ?, cnpj = ?
           WHERE id_usuario = ?`,
         [
           nomeExibicao, descricao, razaoSocial,
           instagramUrl || null, whatsappUrl || null, site || null,
           raioAtendimentoKm, novoStatusVerificacao,
-          cpf, cnpj,
+          cpf, dataNascimento, cnpj,
           idUsuario,
         ]
       );

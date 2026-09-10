@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { UFS } from '@/lib/validacao';
+import { UFS, dataMaximaNascimento, IDADE_MINIMA } from '@/lib/validacao';
 
 const ROTULO_VERIFICACAO = {
   pendente: 'Verificação pendente',
@@ -39,6 +39,7 @@ export default function PerfilFornecedor() {
           cidade: dados.cidade ?? '',
           estado: dados.estado ?? '',
           cpf: dados.cpf ?? '',
+          dataNascimento: dados.data_nascimento ?? '',
           cnpj: dados.cnpj ?? '',
           razaoSocial: dados.razao_social ?? '',
           nomeExibicao: dados.nome_exibicao ?? '',
@@ -139,6 +140,7 @@ export default function PerfilFornecedor() {
 
   const ehPF = status.tipoPessoa === 'PF';
   const documentoEditavel = status.verificacao !== 'aprovado';
+  const avisoImutavel = 'Imutável após a aprovação da verificação.';
 
   return (
     <main className="mx-auto max-w-xl p-6">
@@ -173,14 +175,23 @@ export default function PerfilFornecedor() {
         </div>
 
         {ehPF ? (
-          <Campo label="CPF" name="cpf" value={campos.cpf} onChange={aoDigitar}
-            erro={erros.cpf} disabled={!documentoEditavel}
-            dica={documentoEditavel ? null : 'Imutável após a aprovação da verificação.'} />
+          <>
+            <Campo label="CPF" name="cpf" value={campos.cpf} onChange={aoDigitar}
+              erro={erros.cpf} disabled={!documentoEditavel}
+              dica={documentoEditavel ? null : avisoImutavel} />
+            <Campo label="Data de nascimento" name="dataNascimento" type="date"
+              max={dataMaximaNascimento()}
+              value={campos.dataNascimento} onChange={aoDigitar}
+              erro={erros.dataNascimento} disabled={!documentoEditavel}
+              dica={documentoEditavel
+                ? `É necessário ter ao menos ${IDADE_MINIMA} anos completos.`
+                : avisoImutavel} />
+          </>
         ) : (
           <>
             <Campo label="CNPJ" name="cnpj" value={campos.cnpj} onChange={aoDigitar}
               erro={erros.cnpj} disabled={!documentoEditavel}
-              dica={documentoEditavel ? null : 'Imutável após a aprovação da verificação.'} />
+              dica={documentoEditavel ? null : avisoImutavel} />
             <Campo label="Razão social" name="razaoSocial" value={campos.razaoSocial}
               onChange={aoDigitar} erro={erros.razaoSocial} />
           </>

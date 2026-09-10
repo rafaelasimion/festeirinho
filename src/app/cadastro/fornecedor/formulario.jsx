@@ -2,31 +2,35 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { UFS } from '@/lib/validacao';
+import { UFS, dataMaximaNascimento, IDADE_MINIMA } from '@/lib/validacao';
 
-const CAMPOS_INICIAIS = {
-  nome: '',
-  nomeUsuario: '',
-  email: '',
-  telefone: '',
-  senha: '',
-  confirmacaoSenha: '',
-  estado: '',
-  cidade: '',
-  tipoPessoa: 'PF',
-  cpf: '',
-  cnpj: '',
-  razaoSocial: '',
-  nomeExibicao: '',
-  descricao: '',
-  instagramUrl: '',
-  whatsappUrl: '',
-  site: '',
-  raioAtendimentoKm: '30',
-};
-
-export default function FormularioCadastroFornecedor() {
+// raioPadrao chega da página de servidor, que o leu da tabela configuracao
+// (RN068). O formulário não decide esse número.
+export default function FormularioCadastroFornecedor({ raioPadrao }) {
   const router = useRouter();
+
+  const CAMPOS_INICIAIS = {
+    nome: '',
+    nomeUsuario: '',
+    email: '',
+    telefone: '',
+    senha: '',
+    confirmacaoSenha: '',
+    estado: '',
+    cidade: '',
+    tipoPessoa: 'PF',
+    cpf: '',
+    dataNascimento: '',
+    cnpj: '',
+    razaoSocial: '',
+    nomeExibicao: '',
+    descricao: '',
+    instagramUrl: '',
+    whatsappUrl: '',
+    site: '',
+    raioAtendimentoKm: String(raioPadrao),
+  };
+
   const [campos, setCampos] = useState(CAMPOS_INICIAIS);
   const [coordenadas, setCoordenadas] = useState(null);
   const [erros, setErros] = useState({});
@@ -123,7 +127,7 @@ export default function FormularioCadastroFornecedor() {
           onChange={aoDigitar} erro={erros.telefone} placeholder="16999998888" />
 
         <Campo label="Senha" name="senha" type="password" value={campos.senha}
-          onChange={aoDigitar} erro={erros.senha} />
+          onChange={aoDigitar} erro={erros.senha} dica="Mínimo de 8 caracteres." />
 
         <Campo label="Confirmar senha" name="confirmacaoSenha" type="password"
           value={campos.confirmacaoSenha} onChange={aoDigitar} erro={erros.confirmacaoSenha} />
@@ -151,8 +155,14 @@ export default function FormularioCadastroFornecedor() {
         </div>
 
         {ehPF ? (
-          <Campo label="CPF" name="cpf" value={campos.cpf}
-            onChange={aoDigitar} erro={erros.cpf} placeholder="Somente números" />
+          <>
+            <Campo label="CPF" name="cpf" value={campos.cpf}
+              onChange={aoDigitar} erro={erros.cpf} placeholder="Somente números" />
+            <Campo label="Data de nascimento" name="dataNascimento" type="date"
+              max={dataMaximaNascimento()}
+              value={campos.dataNascimento} onChange={aoDigitar} erro={erros.dataNascimento}
+              dica={`É necessário ter ao menos ${IDADE_MINIMA} anos completos.`} />
+          </>
         ) : (
           <>
             <Campo label="CNPJ" name="cnpj" value={campos.cnpj}
@@ -203,7 +213,8 @@ export default function FormularioCadastroFornecedor() {
 
         <Campo label="Raio de atendimento (km)" name="raioAtendimentoKm" type="number"
           min="1" max="200" value={campos.raioAtendimentoKm}
-          onChange={aoDigitar} erro={erros.raioAtendimentoKm} />
+          onChange={aoDigitar} erro={erros.raioAtendimentoKm}
+          dica={`Sugestão da plataforma: ${raioPadrao} km. Você pode ajustar.`} />
 
         <div className="rounded border border-gray-200 p-3">
           <p className="text-sm">
@@ -247,12 +258,13 @@ export default function FormularioCadastroFornecedor() {
   );
 }
 
-function Campo({ label, name, erro, ...resto }) {
+function Campo({ label, name, erro, dica, ...resto }) {
   return (
     <div>
       <label htmlFor={name} className="mb-1 block text-sm font-medium">{label}</label>
       <input id={name} name={name} {...resto}
         className="w-full rounded border border-gray-300 px-3 py-2" />
+      {dica && <p className="mt-1 text-xs text-gray-500">{dica}</p>}
       {erro && <p className="mt-1 text-sm text-red-600">{erro}</p>}
     </div>
   );

@@ -3,6 +3,11 @@
 // retorno rápido ao usuário). Validação de front é conveniência; validação
 // de back é a que vale.
 
+// RF001/RF002 — idade mínima para cadastro. Vale para cliente e para
+// fornecedor pessoa física: nos dois casos há contratação e movimentação
+// de valores, que exigem capacidade civil.
+export const IDADE_MINIMA = 18;
+
 export function somenteDigitos(valor) {
   return String(valor ?? '').replace(/\D/g, '');
 }
@@ -35,11 +40,10 @@ export function normalizarCNPJ(entrada) {
 // RN037 — validação formal de CNPJ, nos dois formatos.
 // Estrutura: 12 caracteres alfanuméricos + 2 dígitos verificadores numéricos.
 // Cálculo: módulo 11, com cada caractere convertido por (código ASCII - 48).
-// Os CNPJs antigos, totalmente numéricos, passam pelo mesmo cálculo.
 export function validarCNPJ(entrada) {
   const cnpj = normalizarCNPJ(entrada);
   if (!/^[A-Z0-9]{12}\d{2}$/.test(cnpj)) return false;
-  if (/^(.)\1{13}$/.test(cnpj)) return false; // 00000000000000, AAAAAAAAAAAA00...
+  if (/^(.)\1{13}$/.test(cnpj)) return false;
 
   const valor = (caractere) => caractere.charCodeAt(0) - 48;
 
@@ -99,6 +103,33 @@ export function validarDataNascimento(valor) {
   const data = new Date(`${valor}T00:00:00Z`);
   if (Number.isNaN(data.getTime())) return false;
   return data < new Date();
+}
+
+// Idade completa na data de hoje.
+export function calcularIdade(dataNascimento) {
+  const nascimento = new Date(`${dataNascimento}T00:00:00`);
+  const hoje = new Date();
+  let idade = hoje.getFullYear() - nascimento.getFullYear();
+  const mes = hoje.getMonth() - nascimento.getMonth();
+  // Ainda não fez aniversário este ano: desconta um.
+  if (mes < 0 || (mes === 0 && hoje.getDate() < nascimento.getDate())) {
+    idade -= 1;
+  }
+  return idade;
+}
+
+export function validarMaioridade(valor, idadeMinima = IDADE_MINIMA) {
+  if (!validarDataNascimento(valor)) return false;
+  return calcularIdade(valor) >= idadeMinima;
+}
+
+// Data de nascimento mais recente que ainda satisfaz a idade mínima.
+// Serve para limitar o calendário da tela (atributo max do input).
+export function dataMaximaNascimento(idadeMinima = IDADE_MINIMA) {
+  const data = new Date();
+  data.setFullYear(data.getFullYear() - idadeMinima);
+  const doisDigitos = (n) => String(n).padStart(2, '0');
+  return `${data.getFullYear()}-${doisDigitos(data.getMonth() + 1)}-${doisDigitos(data.getDate())}`;
 }
 
 // Nome de usuário: 3 a 50 caracteres, letras, números, ponto e underscore.

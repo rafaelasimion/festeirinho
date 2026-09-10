@@ -7,8 +7,9 @@ import {
   validarEmail,
   validarTelefone,
   validarUF,
-  validarDataNascimento,
+  validarMaioridade,
   validarNomeUsuario,
+  IDADE_MINIMA,
 } from '@/lib/validacao';
 
 // RF001 — Cadastro de cliente.
@@ -36,8 +37,7 @@ export async function POST(request) {
   const cpf = somenteDigitos(corpo.cpf);
   const dataNascimento = String(corpo.dataNascimento ?? '').trim();
 
-  // RN068 — a coordenada é opcional, mas nunca pela metade:
-  // ou as duas vêm preenchidas, ou as duas ficam nulas.
+  // RN068 — a coordenada é opcional, mas nunca pela metade.
   const temCoordenadas =
     corpo.latitude !== undefined && corpo.latitude !== null &&
     corpo.longitude !== undefined && corpo.longitude !== null;
@@ -55,8 +55,14 @@ export async function POST(request) {
   if (!validarUF(estado)) erros.estado = 'Selecione o estado.';
   if (cidade.length < 2 || cidade.length > 100) erros.cidade = 'Informe a cidade.';
   if (!validarCPF(cpf)) erros.cpf = 'CPF inválido.'; // RN037
-  if (!validarDataNascimento(dataNascimento))
-    erros.dataNascimento = 'Informe uma data de nascimento válida.';
+
+  // RF001 — idade mínima. A contratação envolve pagamento e obrigação
+  // contratual, por isso o cadastro exige maioridade.
+  if (!validarMaioridade(dataNascimento)) {
+    erros.dataNascimento =
+      `É necessário ter ao menos ${IDADE_MINIMA} anos completos para criar uma conta.`;
+  }
+
   if (temCoordenadas && (Number.isNaN(latitude) || Number.isNaN(longitude)))
     erros.localizacao = 'Coordenadas inválidas.';
 
@@ -108,7 +114,6 @@ export async function POST(request) {
 
     await conexao.commit();
 
-    // Nunca devolva senha_hash nem dados que a tela não vá usar.
     return NextResponse.json(
       { id: idUsuario, nome, nomeUsuario },
       { status: 201 }
@@ -116,9 +121,7 @@ export async function POST(request) {
   } catch (erro) {
     await conexao.rollback();
 
-    // RN002 — unicidade. O banco é a última linha de defesa: mesmo com a
-    // checagem prévia, dois cadastros simultâneos podem passar. Traduzimos
-    // o erro do MySQL para uma mensagem que a tela sabe exibir.
+    // RN002 — unicidade. O banco é a última linha de defesa.
     if (erro.code === 'ER_DUP_ENTRY') {
       const mensagem = String(erro.message);
       if (mensagem.includes('uk_usuario_email'))
