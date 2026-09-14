@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { UFS, dataMaximaNascimento, IDADE_MINIMA } from '@/lib/validacao';
+import Campo from '@/componentes/campo';
 
 const CAMPOS_INICIAIS = {
   nome: '',
@@ -120,7 +121,7 @@ export default function FormularioCadastroCliente() {
         <div>
           <label htmlFor="estado" className="mb-1 block text-sm font-medium">Estado</label>
           <select id="estado" name="estado" value={campos.estado} onChange={aoDigitar}
-            className="w-full rounded border border-gray-300 px-3 py-2">
+            className="w-full rounded-lg border border-gray-300 px-3 py-2">
             <option value="">Selecione</option>
             {UFS.map((uf) => <option key={uf} value={uf}>{uf}</option>)}
           </select>
@@ -137,26 +138,26 @@ export default function FormularioCadastroCliente() {
         <Campo label="Confirmar senha" name="confirmacaoSenha" type="password"
           value={campos.confirmacaoSenha} onChange={aoDigitar} erro={erros.confirmacaoSenha} />
 
-        <div className="rounded border border-gray-200 p-3">
+        <div className="rounded-lg border border-gray-200 p-3">
           <p className="text-sm">
             Informar sua localização ajuda a mostrar fornecedores perto de você. É opcional.
           </p>
           <button type="button" onClick={capturarLocalizacao}
-            className="mt-2 rounded border border-gray-400 px-3 py-1.5 text-sm">
+            className="mt-2 rounded-lg border rounded-lg border border-festa-600 text-festa-700 hover:bg-festa-50 px-3 py-1.5 text-sm px-3 py-1.5 text-sm">
             {coordenadas ? 'Localização registrada' : 'Usar minha localização'}
           </button>
         </div>
 
         {avisoCpf && (
-          <div className="rounded border border-amber-400 bg-amber-50 p-3">
+          <div className="rounded-lg border border-amber-400 bg-amber-50 p-3">
             <p className="text-sm">{avisoCpf}</p>
             <div className="mt-2 flex gap-2">
               <button type="button" onClick={() => enviar(true)} disabled={enviando}
-                className="rounded bg-gray-900 px-3 py-1.5 text-sm text-white">
+                className="rounded-lg bg-festa-600 hover:bg-festa-700 px-3 py-1.5 text-sm text-white">
                 Continuar mesmo assim
               </button>
               <button type="button" onClick={() => setAvisoCpf('')}
-                className="rounded border border-gray-400 px-3 py-1.5 text-sm">
+                className="rounded-lg border rounded-lg border border-festa-600 text-festa-700 hover:bg-festa-50 px-3 py-1.5 text-sm px-3 py-1.5 text-sm">
                 Revisar o CPF
               </button>
             </div>
@@ -166,22 +167,10 @@ export default function FormularioCadastroCliente() {
         {erroGeral && <p className="text-sm text-red-600">{erroGeral}</p>}
 
         <button type="button" onClick={() => enviar(false)} disabled={enviando || Boolean(avisoCpf)}
-          className="w-full rounded bg-gray-900 px-4 py-2.5 text-white disabled:opacity-50">
+          className="w-full rounded-lg bg-festa-600 hover:bg-festa-700 px-4 py-2.5 text-white disabled:opacity-50">
           {enviando ? 'Criando conta...' : 'Criar conta'}
         </button>
       </div>
     </main>
-  );
-}
-
-function Campo({ label, name, erro, dica, ...resto }) {
-  return (
-    <div>
-      <label htmlFor={name} className="mb-1 block text-sm font-medium">{label}</label>
-      <input id={name} name={name} {...resto}
-        className="w-full rounded border border-gray-300 px-3 py-2" />
-      {dica && <p className="mt-1 text-xs text-gray-500">{dica}</p>}
-      {erro && <p className="mt-1 text-sm text-red-600">{erro}</p>}
-    </div>
   );
 }

@@ -1,1 +1,49 @@
 @import "tailwindcss";
+
+@theme {
+  /* Roxo — identidade e ações principais. Derivado de #534AB7. */
+  --color-festa-50:  #F6F6FB;
+  --color-festa-100: #EAE9F6;
+  --color-festa-200: #D4D2ED;
+  --color-festa-300: #B7B3E1;
+  --color-festa-400: #8A84CE;
+  --color-festa-500: #6860C0;
+  --color-festa-600: #534AB7;
+  --color-festa-700: #443D96;
+  --color-festa-800: #352F75;
+  --color-festa-900: #252152;
+
+  /* Laranja — atenção, espera, análise pendente. Derivado de #D85A30. */
+  --color-atencao-50:  #FCF3F1;
+  --color-atencao-100: #F9E6E0;
+  --color-atencao-200: #F3CEC1;
+  --color-atencao-600: #D85A30;
+  --color-atencao-700: #B14A27;
+  --color-atencao-800: #8A3A1F;
+
+  /* Verde — confirmação, conclusão, desfecho positivo. Derivado de #0F6E56. */
+  --color-sucesso-50:  #EEF5F3;
+  --color-sucesso-100: #DBE9E6;
+  --color-sucesso-200: #B7D4CC;
+  --color-sucesso-600: #0F6E56;
+  --color-sucesso-700: #0C5A47;
+  --color-sucesso-800: #0A4637;
+
+  /* Vermelho — recusa, cancelamento, exclusão. */
+  --color-perigo-50:  #FBE9E9;
+  --color-perigo-100: #F7D4D4;
+  --color-perigo-200: #F0A8A8;
+  --color-perigo-600: #D92626;
+  --color-perigo-700: #821717;
+  --color-perigo-800: #570F0F;
+}
+
+@theme inline {
+  --font-sans: var(--font-poppins);
+}
+
+body {
+  background: #ffffff;
+  color: #0F172A;
+  font-family: var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
+}

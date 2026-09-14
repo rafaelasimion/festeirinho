@@ -18,11 +18,11 @@ export default async function Inicio() {
       {!sessao && (
         <div className="mt-8 flex flex-wrap gap-3">
           <Link href="/cadastro/cliente"
-            className="rounded bg-gray-900 px-4 py-2.5 text-sm text-white">
+            className="inline-flex items-center rounded-lg bg-festa-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-festa-700">
             Quero contratar serviços
           </Link>
           <Link href="/cadastro/fornecedor"
-            className="rounded border border-gray-400 px-4 py-2.5 text-sm">
+            className="inline-flex items-center rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50">
             Quero oferecer meus serviços
           </Link>
         </div>
@@ -31,11 +31,11 @@ export default async function Inicio() {
       {sessao?.tipoUsuario === 'fornecedor' && (
         <div className="mt-8 flex flex-wrap gap-3">
           <Link href="/fornecedor/servicos"
-            className="rounded bg-gray-900 px-4 py-2.5 text-sm text-white">
+            className="inline-flex items-center rounded-lg bg-festa-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-festa-700">
             Gerenciar meus serviços
           </Link>
           <Link href="/fornecedor/perfil"
-            className="rounded border border-gray-400 px-4 py-2.5 text-sm">
+            className="inline-flex items-center rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50">
             Meu perfil
           </Link>
         </div>
@@ -44,7 +44,7 @@ export default async function Inicio() {
       {sessao?.tipoUsuario === 'cliente' && (
         <div className="mt-8">
           <Link href="/minha-conta"
-            className="rounded bg-gray-900 px-4 py-2.5 text-sm text-white">
+            className="inline-flex items-center rounded-lg bg-festa-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-festa-700">
             Minha conta
           </Link>
         </div>

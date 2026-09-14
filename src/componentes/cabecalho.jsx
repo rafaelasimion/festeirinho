@@ -30,11 +30,11 @@ export default async function Cabecalho() {
         <div className="flex items-center gap-4 text-sm">
           {!sessao && (
             <>
-              <Link href="/cadastro/cliente" className="hover:underline">
+              <Link href="/cadastro" className="hover:text-festa-700">
                 Criar conta
               </Link>
               <Link href="/login"
-                className="rounded bg-gray-900 px-3 py-1.5 text-white">
+                className="inline-flex items-center rounded-lg bg-festa-600 px-3 py-1.5 font-medium text-white transition-colors hover:bg-festa-700">
                 Entrar
               </Link>
             </>
@@ -44,13 +44,13 @@ export default async function Cabecalho() {
             <>
               {ehFornecedor && (
                 <>
-                  <Link href="/fornecedor/servicos" className="hover:underline">
+                  <Link href="/fornecedor/servicos" className="hover:text-festa-700">
                     Meus serviços
                   </Link>
-                  <Link href="/fornecedor/solicitacoes" className="hover:underline">
+                  <Link href="/fornecedor/solicitacoes" className="hover:text-festa-700">
                     Solicitações recebidas
                   </Link>
-                  <Link href="/fornecedor/perfil" className="hover:underline">
+                  <Link href="/fornecedor/perfil" className="hover:text-festa-700">
                     Meu perfil
                   </Link>
                 </>
@@ -58,22 +58,22 @@ export default async function Cabecalho() {
 
               {!ehFornecedor && (
                 <>
-                  <Link href="/servicos" className="hover:underline">
+                  <Link href="/servicos" className="hover:text-festa-700">
                     Serviços
                   </Link>
-                  <Link href="/minhas-solicitacoes" className="hover:underline">
+                  <Link href="/minhas-solicitacoes" className="hover:text-festa-700">
                     Minhas solicitações
                   </Link>
                 </>
               )}
 
-              <Link href="/minha-conta" className="hover:underline">
+              <Link href="/minha-conta" className="hover:text-festa-700">
                 {nome ?? 'Minha conta'}
               </Link>
 
               <form action="/api/logout" method="post">
                 <button type="submit"
-                  className="rounded border border-gray-400 px-3 py-1.5">
+                  className="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-1.5 font-medium text-slate-700 transition-colors hover:bg-slate-50">
                   Sair
                 </button>
               </form>

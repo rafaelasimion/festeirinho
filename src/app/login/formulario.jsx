@@ -62,7 +62,7 @@ export default function FormularioLogin() {
     return (
       <main className="mx-auto max-w-md p-6">
         <h1 className="mb-4 text-2xl font-semibold">Conta suspensa</h1>
-        <div className="space-y-3 rounded border border-amber-400 bg-amber-50 p-4 text-sm">
+        <div className="space-y-3 rounded-lg border border-amber-400 bg-amber-50 p-4 text-sm">
           <p><span className="font-medium">Motivo:</span> {bloqueio.motivo}</p>
           <p><span className="font-medium">Data:</span> {formatarData(bloqueio.dataSuspensao)}</p>
 
@@ -85,7 +85,7 @@ export default function FormularioLogin() {
           )}
         </div>
         <button type="button" onClick={() => setBloqueio(null)}
-          className="mt-4 rounded border border-gray-400 px-3 py-1.5 text-sm">
+          className="mt-4 rounded-lg border rounded-lg border border-festa-600 text-festa-700 hover:bg-festa-50 px-3 py-1.5 text-sm px-3 py-1.5 text-sm">
           Voltar
         </button>
       </main>
@@ -103,7 +103,7 @@ export default function FormularioLogin() {
           </label>
           <input id="identificador" name="identificador" value={identificador}
             onChange={(e) => setIdentificador(e.target.value)}
-            className="w-full rounded border border-gray-300 px-3 py-2" />
+            className="w-full rounded-lg border border-gray-300 px-3 py-2" />
         </div>
 
         <div>
@@ -111,16 +111,18 @@ export default function FormularioLogin() {
           <input id="senha" name="senha" type="password" value={senha}
             onChange={(e) => setSenha(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') entrar(); }}
-            className="w-full rounded border border-gray-300 px-3 py-2" />
+            className="w-full rounded-lg border border-gray-300 px-3 py-2" />
         </div>
 
         {erro && <p className="text-sm text-red-600">{erro}</p>}
 
         <button type="button" onClick={entrar} disabled={entrando}
-          className="w-full rounded bg-gray-900 px-4 py-2.5 text-white disabled:opacity-50">
+          className="w-full rounded-lg bg-festa-600 hover:bg-festa-700 px-4 py-2.5 text-white disabled:opacity-50">
           {entrando ? 'Entrando...' : 'Entrar'}
         </button>
+        
       </div>
+      
     </main>
   );
 }

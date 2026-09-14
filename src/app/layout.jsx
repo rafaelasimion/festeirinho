@@ -1,15 +1,15 @@
-import { Geist, Geist_Mono } from "next/font/google";
-import "./globals.css";
+import { Poppins } from 'next/font/google';
+import './globals.css';
 import Cabecalho from '@/componentes/cabecalho';
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+// A variável precisa ficar no <html>, e não no <body>: o Tailwind aplica a
+// família de fonte no elemento html, que está acima do body e não enxergaria
+// uma variável declarada lá dentro.
+const poppins = Poppins({
+  subsets: ['latin'],
+  weight: ['400', '500', '600'],
+  variable: '--font-poppins',
+  display: 'swap',
 });
 
 export const metadata = {
@@ -19,14 +19,11 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html
-      lang="pt-BR"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
-      <body className="min-h-full flex flex-col">
+    <html lang="pt-BR" className={poppins.variable}>
+      <body className="antialiased">
         <Cabecalho />
         {children}
-        </body>
+      </body>
     </html>
   );
 }

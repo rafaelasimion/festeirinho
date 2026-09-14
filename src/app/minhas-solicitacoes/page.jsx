@@ -4,9 +4,11 @@ import { pool } from '@/lib/db';
 import { lerSessao } from '@/lib/sessao';
 import { expirarSolicitacoesVencidas } from '@/lib/solicitacao-servidor';
 import { expirarPagamentosVencidos } from '@/lib/pagamento-servidor';
+import Etiqueta from '@/componentes/etiqueta';
 import {
   formatarPreco,
   ROTULO_STATUS_SOLICITACAO,
+  TOM_STATUS_SOLICITACAO,
   ROTULO_MOTIVO_RECUSA,
 } from '@/lib/solicitacao';
 
@@ -48,7 +50,7 @@ export default async function MinhasSolicitacoes() {
     <main className="mx-auto max-w-3xl px-6 py-10">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Minhas solicitações</h1>
-        <Link href="/servicos" className="text-sm hover:underline">
+        <Link href="/servicos" className="text-sm hover:text-festa-700">
           Buscar serviços
         </Link>
       </div>
@@ -61,7 +63,7 @@ export default async function MinhasSolicitacoes() {
       ) : (
         <ul className="space-y-4">
           {solicitacoes.map((solicitacao) => (
-            <li key={solicitacao.id} className="rounded border border-gray-300 p-4">
+            <li key={solicitacao.id} className="rounded-lg border border-gray-300 p-4">
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <h2 className="font-medium">{solicitacao.servico}</h2>
@@ -78,9 +80,11 @@ export default async function MinhasSolicitacoes() {
 
                 <div className="shrink-0 text-right">
                   <p className="font-semibold">{formatarPreco(solicitacao.valor_final)}</p>
-                  <p className="mt-1 text-xs text-gray-600">
-                    {ROTULO_STATUS_SOLICITACAO[solicitacao.status]}
-                  </p>
+                  <div className="mt-1.5">
+                    <Etiqueta tom={TOM_STATUS_SOLICITACAO[solicitacao.status]}>
+                      {ROTULO_STATUS_SOLICITACAO[solicitacao.status]}
+                    </Etiqueta>
+                  </div>
                 </div>
               </div>
 
@@ -97,7 +101,7 @@ export default async function MinhasSolicitacoes() {
                     Pague até {formatarDataHora(solicitacao.data_limite)} para confirmar.
                   </p>
                   <Link href={`/pagamento/${solicitacao.id_pagamento}`}
-                    className="shrink-0 rounded bg-gray-900 px-3 py-1.5 text-sm text-white">
+                    className="inline-flex shrink-0 items-center rounded-lg bg-festa-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-festa-700">
                     Pagar
                   </Link>
                 </div>
@@ -113,7 +117,7 @@ export default async function MinhasSolicitacoes() {
               )}
 
               {solicitacao.status === 'recusado' && solicitacao.motivo_recusa && (
-                <p className="mt-3 rounded border border-gray-300 bg-gray-50 p-2 text-sm">
+                <p className="mt-3 rounded-lg border border-gray-300 bg-gray-50 p-2 text-sm">
                   <span className="font-medium">Motivo da recusa: </span>
                   {ROTULO_MOTIVO_RECUSA[solicitacao.motivo_recusa]}
                 </p>

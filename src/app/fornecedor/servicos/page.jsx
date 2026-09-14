@@ -2,6 +2,15 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Campo from '@/componentes/campo';
+import Etiqueta from '@/componentes/etiqueta';
+import {
+  formatarPreco,
+  ROTULO_COBRANCA,
+  SUFIXO_PRECO,
+  ROTULO_VERIFICACAO,
+  TOM_VERIFICACAO,
+} from '@/lib/solicitacao';
 
 const CAMPOS_VAZIOS = {
   nome: '',
@@ -12,16 +21,6 @@ const CAMPOS_VAZIOS = {
   capacidadeMax: '',
   diasAntecedencia: '',
 };
-
-const ROTULO_VERIFICACAO = {
-  pendente: 'Em verificação',
-  aprovado: 'Aprovado',
-  rejeitado: 'Rejeitado',
-};
-
-function formatarPreco(valor) {
-  return Number(valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-}
 
 export default function MeusServicos() {
   const router = useRouter();
@@ -173,7 +172,7 @@ export default function MeusServicos() {
         <h1 className="text-2xl font-semibold">Meus serviços</h1>
         {editando === null && (
           <button type="button" onClick={abrirNovo}
-            className="rounded bg-gray-900 px-3 py-1.5 text-sm text-white">
+            className="rounded-lg bg-festa-600 hover:bg-festa-700 px-3 py-1.5 text-sm text-white">
             Novo serviço
           </button>
         )}
@@ -183,7 +182,7 @@ export default function MeusServicos() {
       {erroGeral && <p className="mb-4 text-sm text-red-600">{erroGeral}</p>}
 
       {editando !== null && (
-        <div className="mb-8 space-y-4 rounded border border-gray-300 p-4">
+        <div className="mb-8 space-y-4 rounded-lg border border-gray-300 p-4">
           <h2 className="font-medium">
             {editando === 'novo' ? 'Novo serviço' : 'Editar serviço'}
           </h2>
@@ -195,14 +194,14 @@ export default function MeusServicos() {
             <label htmlFor="descricao" className="mb-1 block text-sm font-medium">Descrição</label>
             <textarea id="descricao" name="descricao" rows={4} value={campos.descricao}
               onChange={aoDigitar}
-              className="w-full rounded border border-gray-300 px-3 py-2" />
+              className="w-full rounded-lg border border-gray-300 px-3 py-2" />
             {erros.descricao && <p className="mt-1 text-sm text-red-600">{erros.descricao}</p>}
           </div>
 
           <div>
             <label htmlFor="idCategoria" className="mb-1 block text-sm font-medium">Categoria</label>
             <select id="idCategoria" name="idCategoria" value={campos.idCategoria}
-              onChange={aoDigitar} className="w-full rounded border border-gray-300 px-3 py-2">
+              onChange={aoDigitar} className="w-full rounded-lg border border-gray-300 px-3 py-2">
               <option value="">Selecione</option>
               {opcoes?.categorias.map((categoria) => (
                 <option key={categoria.id} value={categoria.id}>{categoria.nome}</option>
@@ -216,11 +215,11 @@ export default function MeusServicos() {
               Forma de cobrança
             </label>
             <select id="idCobranca" name="idCobranca" value={campos.idCobranca}
-              onChange={aoDigitar} className="w-full rounded border border-gray-300 px-3 py-2">
+              onChange={aoDigitar} className="w-full rounded-lg border border-gray-300 px-3 py-2">
               <option value="">Selecione</option>
               {opcoes?.cobrancas.map((cobranca) => (
                 <option key={cobranca.id} value={cobranca.id}>
-                  {cobranca.descricao === 'hora' ? 'Por hora' : 'Por pessoa'}
+                  {ROTULO_COBRANCA[cobranca.descricao]}
                 </option>
               ))}
             </select>
@@ -241,11 +240,11 @@ export default function MeusServicos() {
 
           <div className="flex gap-2">
             <button type="button" onClick={salvar} disabled={salvando}
-              className="rounded bg-gray-900 px-4 py-2 text-sm text-white disabled:opacity-50">
+              className="rounded-lg bg-festa-600 hover:bg-festa-700 px-4 py-2 text-sm text-white disabled:opacity-50">
               {salvando ? 'Salvando...' : 'Salvar'}
             </button>
             <button type="button" onClick={() => setEditando(null)}
-              className="rounded border border-gray-400 px-4 py-2 text-sm">
+              className="rounded-lg border rounded-lg border border-festa-600 text-festa-700 hover:bg-festa-50 px-3 py-1.5 text-sm px-4 py-2 text-sm">
               Cancelar
             </button>
           </div>
@@ -259,35 +258,42 @@ export default function MeusServicos() {
       ) : (
         <ul className="space-y-4">
           {servicos.map((servico) => (
-            <li key={servico.id} className="rounded border border-gray-300 p-4">
+            <li key={servico.id} className="rounded-lg border border-gray-300 p-4">
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <h3 className="font-medium">{servico.nome}</h3>
                   <p className="text-sm text-gray-600">
                     {servico.categoria} · {formatarPreco(servico.preco_base)}
-                    {servico.cobranca === 'hora' ? ' por hora' : ' por pessoa'}
+                    {SUFIXO_PRECO[servico.cobranca]}
                   </p>
-                  <p className="mt-1 text-xs text-gray-500">
-                    {ROTULO_VERIFICACAO[servico.status_verificacao]}
-                    {servico.status_servico === 'inativo' && ' · Inativo'}
-                    {' · '}antecedência de {servico.dias_antecedencia} dias
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <Etiqueta tom={TOM_VERIFICACAO[servico.status_verificacao]} contorno>
+                      {ROTULO_VERIFICACAO[servico.status_verificacao]}
+                    </Etiqueta>
+                    {servico.status_servico === 'inativo' && (
+                      <Etiqueta tom="neutro" contorno>inativo</Etiqueta>
+                    )}
+                  </div>
+
+                  <p className="mt-2 text-xs text-slate-500">
+                    antecedência de {servico.dias_antecedencia} dias
                     {servico.capacidade_max !== null && ` · até ${servico.capacidade_max} convidados`}
                   </p>
                 </div>
                 <div className="flex shrink-0 gap-2">
                   <button type="button" onClick={() => abrirEdicao(servico)}
-                    className="rounded border border-gray-400 px-3 py-1 text-sm">
+                    className="rounded-lg border rounded-lg border border-festa-600 text-festa-700 hover:bg-festa-50 px-3 py-1.5 text-sm px-3 py-1 text-sm">
                     Editar
                   </button>
                   <button type="button" onClick={() => alterarStatus(servico)}
-                    className="rounded border border-gray-400 px-3 py-1 text-sm">
+                    className="rounded-lg border rounded-lg border border-festa-600 text-festa-700 hover:bg-festa-50 px-3 py-1.5 text-sm px-3 py-1 text-sm">
                     {servico.status_servico === 'ativo' ? 'Inativar' : 'Reativar'}
                   </button>
                 </div>
               </div>
 
               {servico.motivo_rejeicao && servico.status_verificacao !== 'aprovado' && (
-                <p className="mt-3 rounded border border-amber-400 bg-amber-50 p-2 text-sm">
+                <p className="mt-3 rounded-lg border border-amber-400 bg-amber-50 p-2 text-sm">
                   <span className="font-medium">Motivo da rejeição: </span>
                   {servico.motivo_rejeicao}
                 </p>
@@ -297,17 +303,5 @@ export default function MeusServicos() {
         </ul>
       )}
     </main>
-  );
-}
-
-function Campo({ label, name, erro, dica, ...resto }) {
-  return (
-    <div>
-      <label htmlFor={name} className="mb-1 block text-sm font-medium">{label}</label>
-      <input id={name} name={name} {...resto}
-        className="w-full rounded border border-gray-300 px-3 py-2" />
-      {dica && <p className="mt-1 text-xs text-gray-500">{dica}</p>}
-      {erro && <p className="mt-1 text-sm text-red-600">{erro}</p>}
-    </div>
   );
 }

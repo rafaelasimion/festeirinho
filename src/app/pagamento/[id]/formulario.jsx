@@ -30,7 +30,7 @@ export default function FormularioPagamento({
         <p className="mb-6 text-sm text-gray-600">
           Sua contratação de {pagamento.servico} com {pagamento.fornecedor} está confirmada.
         </p>
-        <dl className="space-y-2 rounded border border-gray-300 p-4 text-sm">
+        <dl className="space-y-2 rounded-lg border border-gray-300 p-4 text-sm">
           <div><dt className="inline font-medium">Valor: </dt>
             <dd className="inline">{formatarPreco(pagamento.valorBruto)}</dd></div>
           <div><dt className="inline font-medium">Forma: </dt>
@@ -39,7 +39,7 @@ export default function FormularioPagamento({
             <dd className="inline">{pagamento.idTransacao}</dd></div>
         </dl>
         <Link href="/minhas-solicitacoes"
-          className="mt-6 inline-block rounded bg-gray-900 px-4 py-2 text-sm text-white">
+          className="mt-6 inline-flex items-center rounded-lg bg-festa-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-festa-700">
           Ver minhas solicitações
         </Link>
       </main>
@@ -56,7 +56,7 @@ export default function FormularioPagamento({
             : 'Este pagamento foi encerrado após o limite de tentativas recusadas.'}
         </p>
         <Link href="/minhas-solicitacoes"
-          className="mt-6 inline-block rounded border border-gray-400 px-4 py-2 text-sm">
+          className="mt-6 inline-flex items-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50">
           Voltar
         </Link>
       </main>
@@ -106,7 +106,7 @@ export default function FormularioPagamento({
         {pagamento.servico} · {pagamento.fornecedor}
       </p>
 
-      <div className="mb-6 rounded border border-gray-300 p-4">
+      <div className="mb-6 rounded-lg border border-gray-300 p-4">
         <p className="text-sm text-gray-600">Valor total</p>
         <p className="text-2xl font-semibold">{formatarPreco(pagamento.valorBruto)}</p>
         <p className="mt-2 text-sm">
@@ -152,7 +152,7 @@ export default function FormularioPagamento({
       {aviso && <p className="mt-4 text-sm text-amber-700">{aviso}</p>}
       {erro && <p className="mt-4 text-sm text-red-600">{erro}</p>}
 
-      <div className="mt-8 rounded border border-dashed border-gray-400 p-4">
+      <div className="mt-8 rounded-lg border border-dashed rounded-lg border border-festa-600 text-festa-700 hover:bg-festa-50 px-3 py-1.5 text-sm p-4">
         <p className="text-sm font-medium">Simulação do gateway de pagamento</p>
         <p className="mt-1 text-xs text-gray-600">
           A plataforma não processa pagamentos diretamente: quem aprova ou recusa é
@@ -163,17 +163,17 @@ export default function FormularioPagamento({
         <div className="mt-4 flex flex-wrap gap-2">
           <button type="button" disabled={processando}
             onClick={() => pagar('sucesso')}
-            className="rounded bg-gray-900 px-4 py-2 text-sm text-white disabled:opacity-50">
+            className="rounded-lg bg-festa-600 hover:bg-festa-700 px-4 py-2 text-sm text-white disabled:opacity-50">
             Pagamento aprovado
           </button>
           <button type="button" disabled={processando}
             onClick={() => pagar('recusa')}
-            className="rounded border border-gray-400 px-4 py-2 text-sm disabled:opacity-50">
+            className="rounded-lg border rounded-lg border border-festa-600 text-festa-700 hover:bg-festa-50 px-3 py-1.5 text-sm px-4 py-2 text-sm disabled:opacity-50">
             Pagamento recusado
           </button>
           <button type="button" disabled={processando}
             onClick={() => pagar('erro_tecnico')}
-            className="rounded border border-gray-400 px-4 py-2 text-sm disabled:opacity-50">
+            className="rounded-lg border rounded-lg border border-festa-600 text-festa-700 hover:bg-festa-50 px-3 py-1.5 text-sm px-4 py-2 text-sm disabled:opacity-50">
             Falha técnica
           </button>
         </div>

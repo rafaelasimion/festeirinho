@@ -3,7 +3,13 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { UFS } from '@/lib/validacao';
-import { calcularValorFinal, formatarPreco } from '@/lib/solicitacao';
+import {
+  calcularValorFinal,
+  formatarPreco,
+  SUFIXO_PRECO,
+  EXPLICACAO_COBRANCA,
+} from '@/lib/solicitacao';
+import Campo from '@/componentes/campo';
 
 const CAMPOS_INICIAIS = {
   dataHoraEvento: '',
@@ -45,19 +51,19 @@ export default function FormularioSolicitacao({ servico, tiposLocal }) {
   }
 
   // RF028 — o cliente vê o total antes de enviar. Mesma conta do servidor.
-  const cobrancaPorHora = servico.cobranca === 'hora';
-  const multiplicador = cobrancaPorHora
-    ? Number(campos.duracao)
-    : Number(campos.numeroConvidados);
+  const multiplicador =
+    servico.cobranca === 'fixo' ? 1
+      : servico.cobranca === 'hora' ? Number(campos.duracao)
+        : Number(campos.numeroConvidados);
 
   const valorFinal =
     multiplicador > 0
       ? calcularValorFinal({
-          precoBase: servico.precoBase,
-          cobranca: servico.cobranca,
-          duracao: Number(campos.duracao),
-          numeroConvidados: Number(campos.numeroConvidados),
-        })
+        precoBase: servico.precoBase,
+        cobranca: servico.cobranca,
+        duracao: Number(campos.duracao),
+        numeroConvidados: Number(campos.numeroConvidados),
+      })
       : null;
 
   async function enviar() {
@@ -94,7 +100,7 @@ export default function FormularioSolicitacao({ servico, tiposLocal }) {
       <h1 className="text-2xl font-semibold">{servico.nome}</h1>
       <p className="mb-6 text-sm text-gray-600">
         {servico.fornecedor} · {formatarPreco(servico.precoBase)}
-        {cobrancaPorHora ? ' por hora' : ' por pessoa'}
+        {SUFIXO_PRECO[servico.cobranca]}
       </p>
 
       <div className="space-y-4">
@@ -119,7 +125,7 @@ export default function FormularioSolicitacao({ servico, tiposLocal }) {
             Tipo de local
           </label>
           <select id="idTipoLocal" name="idTipoLocal" value={campos.idTipoLocal}
-            onChange={aoDigitar} className="w-full rounded border border-gray-300 px-3 py-2">
+            onChange={aoDigitar} className="w-full rounded-lg border border-gray-300 px-3 py-2">
             <option value="">Selecione</option>
             {tiposLocal.map((tipo) => (
               <option key={tipo.id} value={tipo.id}>{tipo.descricao}</option>
@@ -151,7 +157,7 @@ export default function FormularioSolicitacao({ servico, tiposLocal }) {
           <div>
             <label htmlFor="estado" className="mb-1 block text-sm font-medium">Estado</label>
             <select id="estado" name="estado" value={campos.estado} onChange={aoDigitar}
-              className="w-full rounded border border-gray-300 px-3 py-2">
+              className="w-full rounded-lg border border-gray-300 px-3 py-2">
               <option value="">UF</option>
               {UFS.map((uf) => <option key={uf} value={uf}>{uf}</option>)}
             </select>
@@ -176,18 +182,16 @@ export default function FormularioSolicitacao({ servico, tiposLocal }) {
             Observações
           </label>
           <textarea id="observacoes" name="observacoes" rows={3} value={campos.observacoes}
-            onChange={aoDigitar} className="w-full rounded border border-gray-300 px-3 py-2" />
+            onChange={aoDigitar} className="w-full rounded-lg border border-gray-300 px-3 py-2" />
         </div>
 
-        <div className="rounded border border-gray-300 bg-gray-50 p-4">
+        <div className="rounded-lg border border-gray-300 bg-gray-50 p-4">
           <p className="text-sm text-gray-600">Valor total</p>
           <p className="text-xl font-semibold">
             {valorFinal === null ? '—' : formatarPreco(valorFinal)}
           </p>
           <p className="mt-1 text-xs text-gray-500">
-            {cobrancaPorHora
-              ? 'Preço por hora multiplicado pela duração informada.'
-              : 'Preço por pessoa multiplicado pelo número de convidados.'}
+            {EXPLICACAO_COBRANCA[servico.cobranca]}
             {' '}O envio da solicitação confirma este valor; não há negociação depois.
           </p>
         </div>
@@ -195,7 +199,7 @@ export default function FormularioSolicitacao({ servico, tiposLocal }) {
         {erroGeral && <p className="text-sm text-red-600">{erroGeral}</p>}
 
         <button type="button" onClick={enviar} disabled={enviando}
-          className="w-full rounded bg-gray-900 px-4 py-2.5 text-white disabled:opacity-50">
+          className="w-full rounded-lg bg-festa-600 hover:bg-festa-700 px-4 py-2.5 text-white disabled:opacity-50">
           {enviando ? 'Enviando...' : 'Enviar solicitação'}
         </button>
 
@@ -205,17 +209,5 @@ export default function FormularioSolicitacao({ servico, tiposLocal }) {
         </p>
       </div>
     </main>
-  );
-}
-
-function Campo({ label, name, erro, dica, ...resto }) {
-  return (
-    <div>
-      <label htmlFor={name} className="mb-1 block text-sm font-medium">{label}</label>
-      <input id={name} name={name} {...resto}
-        className="w-full rounded border border-gray-300 px-3 py-2" />
-      {dica && <p className="mt-1 text-xs text-gray-500">{dica}</p>}
-      {erro && <p className="mt-1 text-sm text-red-600">{erro}</p>}
-    </div>
   );
 }

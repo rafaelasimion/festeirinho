@@ -33,7 +33,7 @@ export default async function MinhaConta() {
 
       <form action="/api/logout" method="post" className="mt-8">
         <button type="submit"
-          className="rounded border border-gray-400 px-3 py-1.5 text-sm">
+          className="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50">
           Sair
         </button>
       </form>

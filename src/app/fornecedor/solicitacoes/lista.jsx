@@ -2,9 +2,11 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Etiqueta from '@/componentes/etiqueta';
 import {
   formatarPreco,
   ROTULO_STATUS_SOLICITACAO,
+  TOM_STATUS_SOLICITACAO,
   ROTULO_MOTIVO_RECUSA,
 } from '@/lib/solicitacao';
 
@@ -78,7 +80,7 @@ export default function ListaSolicitacoesRecebidas({ solicitacoes }) {
               && solicitacao.status !== 'expirado';
 
             return (
-              <li key={solicitacao.id} className="rounded border border-gray-300 p-4">
+              <li key={solicitacao.id} className="rounded-lg border border-gray-300 p-4">
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <h2 className="font-medium">{solicitacao.servico}</h2>
@@ -97,9 +99,11 @@ export default function ListaSolicitacoesRecebidas({ solicitacoes }) {
 
                   <div className="shrink-0 text-right">
                     <p className="font-semibold">{formatarPreco(solicitacao.valor_final)}</p>
-                    <p className="mt-1 text-xs text-gray-600">
-                      {ROTULO_STATUS_SOLICITACAO[solicitacao.status]}
-                    </p>
+                    <div className="mt-1.5">
+                      <Etiqueta tom={TOM_STATUS_SOLICITACAO[solicitacao.status]}>
+                        {ROTULO_STATUS_SOLICITACAO[solicitacao.status]}
+                      </Etiqueta>
+                    </div>
                   </div>
                 </div>
 
@@ -121,7 +125,7 @@ export default function ListaSolicitacoesRecebidas({ solicitacoes }) {
                 )}
 
                 {mostrarEnderecoCompleto && (
-                  <p className="mt-3 rounded border border-gray-200 bg-gray-50 p-2 text-sm">
+                  <p className="mt-3 rounded-lg border border-gray-200 bg-gray-50 p-2 text-sm">
                     <span className="font-medium">Endereço: </span>
                     {solicitacao.rua}, {solicitacao.numero}
                     {solicitacao.complemento && ` — ${solicitacao.complemento}`}
@@ -151,7 +155,7 @@ export default function ListaSolicitacoesRecebidas({ solicitacoes }) {
                           </label>
                           <select id={`motivo-${solicitacao.id}`} value={motivo}
                             onChange={(e) => setMotivo(e.target.value)}
-                            className="w-full rounded border border-gray-300 px-3 py-2">
+                            className="w-full rounded-lg border border-gray-300 px-3 py-2">
                             <option value="">Selecione</option>
                             <option value="agenda_indisponivel">Agenda indisponível</option>
                             <option value="fora_da_area">Fora da área de atendimento</option>
@@ -162,12 +166,12 @@ export default function ListaSolicitacoesRecebidas({ solicitacoes }) {
                         <div className="flex gap-2">
                           <button type="button" disabled={processando || motivo === ''}
                             onClick={() => responder(solicitacao.id, 'recusar', motivo)}
-                            className="rounded bg-gray-900 px-3 py-1.5 text-sm text-white disabled:opacity-50">
+                            className="rounded-lg bg-festa-600 hover:bg-festa-700 px-3 py-1.5 text-sm text-white disabled:opacity-50">
                             Confirmar recusa
                           </button>
                           <button type="button"
                             onClick={() => { setRecusando(null); setMotivo(''); }}
-                            className="rounded border border-gray-400 px-3 py-1.5 text-sm">
+                            className="rounded-lg border rounded-lg border border-festa-600 text-festa-700 hover:bg-festa-50 px-3 py-1.5 text-sm px-3 py-1.5 text-sm">
                             Voltar
                           </button>
                         </div>
@@ -176,12 +180,12 @@ export default function ListaSolicitacoesRecebidas({ solicitacoes }) {
                       <div className="flex gap-2">
                         <button type="button" disabled={processando}
                           onClick={() => responder(solicitacao.id, 'aprovar')}
-                          className="rounded bg-gray-900 px-3 py-1.5 text-sm text-white disabled:opacity-50">
+                          className="rounded-lg bg-festa-600 hover:bg-festa-700 px-3 py-1.5 text-sm text-white disabled:opacity-50">
                           Aprovar
                         </button>
                         <button type="button" disabled={processando}
                           onClick={() => setRecusando(solicitacao.id)}
-                          className="rounded border border-gray-400 px-3 py-1.5 text-sm">
+                          className="rounded-lg border rounded-lg border border-festa-600 text-festa-700 hover:bg-festa-50 px-3 py-1.5 text-sm px-3 py-1.5 text-sm">
                           Recusar
                         </button>
                       </div>
