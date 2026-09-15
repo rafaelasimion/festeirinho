@@ -29,6 +29,10 @@ const CAMPOS_INICIAIS = {
   complemento: '',
 };
 
+const CLASSE_SELECT =
+  'w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 text-slate-900 ' +
+  'focus:border-festa-600 focus:outline-none focus:ring-2 focus:ring-festa-600/30';
+
 // Data mínima que o calendário aceita, conforme a antecedência do serviço.
 function dataMinima(dias) {
   const data = new Date();
@@ -66,6 +70,27 @@ export default function FormularioSolicitacao({ servico, tiposLocal }) {
       })
       : null;
 
+  // RN016/RN042 — a data precisa respeitar a antecedência mínima do serviço.
+  function validarDataEvento(valor) {
+    if (!valor) return 'Informe a data e a hora do evento.';
+    const evento = new Date(valor);
+    const minimo = new Date();
+    minimo.setDate(minimo.getDate() + servico.diasAntecedencia);
+    if (Number.isNaN(evento.getTime())) return 'Data inválida.';
+    if (evento < minimo)
+      return `Este serviço exige ao menos ${servico.diasAntecedencia} dias de antecedência.`;
+    return null;
+  }
+
+  // RN017 — capacidade máxima do serviço, quando houver.
+  function validarConvidados(valor) {
+    const n = Number(valor);
+    if (!(n > 0)) return 'Informe o número de convidados.';
+    if (servico.capacidadeMax !== null && n > servico.capacidadeMax)
+      return `Este serviço atende no máximo ${servico.capacidadeMax} convidados.`;
+    return null;
+  }
+
   async function enviar() {
     setErros({});
     setErroGeral('');
@@ -97,35 +122,38 @@ export default function FormularioSolicitacao({ servico, tiposLocal }) {
 
   return (
     <main className="mx-auto max-w-xl px-6 py-10">
-      <h1 className="text-2xl font-semibold">{servico.nome}</h1>
-      <p className="mb-6 text-sm text-gray-600">
+      <h1 className="text-2xl font-semibold text-slate-900">{servico.nome}</h1>
+      <p className="mb-6 text-sm text-slate-600">
         {servico.fornecedor} · {formatarPreco(servico.precoBase)}
         {SUFIXO_PRECO[servico.cobranca]}
       </p>
 
       <div className="space-y-4">
-        <p className="text-sm font-medium text-gray-700">Sobre o evento</p>
+        <p className="text-sm font-medium text-slate-700">Sobre o evento</p>
 
         <Campo label="Data e hora do evento" name="dataHoraEvento" type="datetime-local"
           min={dataMinima(servico.diasAntecedencia)}
           value={campos.dataHoraEvento} onChange={aoDigitar} erro={erros.dataHoraEvento}
-          dica={`Este serviço exige ao menos ${servico.diasAntecedencia} dias de antecedência.`} />
+          dica={`Este serviço exige ao menos ${servico.diasAntecedencia} dias de antecedência.`}
+          validar={validarDataEvento} />
 
         <Campo label="Duração (horas)" name="duracao" type="number" step="0.5" min="0.5"
-          value={campos.duracao} onChange={aoDigitar} erro={erros.duracao} />
+          value={campos.duracao} onChange={aoDigitar} erro={erros.duracao}
+          validar={(v) => Number(v) > 0 ? null : 'Informe a duração em horas.'} />
 
         <Campo label="Número de convidados" name="numeroConvidados" type="number" min="1"
           value={campos.numeroConvidados} onChange={aoDigitar} erro={erros.numeroConvidados}
           dica={servico.capacidadeMax !== null
             ? `Capacidade máxima deste serviço: ${servico.capacidadeMax} convidados.`
-            : null} />
+            : null}
+          validar={validarConvidados} />
 
         <div>
-          <label htmlFor="idTipoLocal" className="mb-1 block text-sm font-medium">
+          <label htmlFor="idTipoLocal" className="mb-1.5 block text-sm font-medium text-slate-700">
             Tipo de local
           </label>
           <select id="idTipoLocal" name="idTipoLocal" value={campos.idTipoLocal}
-            onChange={aoDigitar} className="w-full rounded-lg border border-gray-300 px-3 py-2">
+            onChange={aoDigitar} className={CLASSE_SELECT}>
             <option value="">Selecione</option>
             {tiposLocal.map((tipo) => (
               <option key={tipo.id} value={tipo.id}>{tipo.descricao}</option>
@@ -134,30 +162,39 @@ export default function FormularioSolicitacao({ servico, tiposLocal }) {
           {erros.idTipoLocal && <p className="mt-1 text-sm text-red-600">{erros.idTipoLocal}</p>}
         </div>
 
-        <p className="pt-2 text-sm font-medium text-gray-700">Endereço do evento</p>
+        <p className="pt-2 text-sm font-medium text-slate-700">Endereço do evento</p>
 
         <Campo label="CEP" name="cep" value={campos.cep} onChange={aoDigitar}
-          erro={erros.cep} placeholder="Somente números" />
+          erro={erros.cep} placeholder="Somente números"
+          validar={(v) => v.replace(/\D/g, '').length === 8
+            ? null
+            : 'Informe um CEP com 8 dígitos.'} />
 
-        <Campo label="Rua" name="rua" value={campos.rua} onChange={aoDigitar} erro={erros.rua} />
+        <Campo label="Rua" name="rua" value={campos.rua} onChange={aoDigitar} erro={erros.rua}
+          validar={(v) => v.trim().length >= 2 ? null : 'Informe a rua.'} />
 
         <div className="grid grid-cols-2 gap-4">
           <Campo label="Número" name="numero" value={campos.numero}
-            onChange={aoDigitar} erro={erros.numero} />
+            onChange={aoDigitar} erro={erros.numero}
+            validar={(v) => v.trim().length >= 1 ? null : 'Informe o número.'} />
           <Campo label="Complemento" name="complemento" value={campos.complemento}
             onChange={aoDigitar} erro={erros.complemento} />
         </div>
 
         <Campo label="Bairro" name="bairro" value={campos.bairro}
-          onChange={aoDigitar} erro={erros.bairro} />
+          onChange={aoDigitar} erro={erros.bairro}
+          validar={(v) => v.trim().length >= 2 ? null : 'Informe o bairro.'} />
 
         <div className="grid grid-cols-2 gap-4">
           <Campo label="Cidade" name="cidade" value={campos.cidade}
-            onChange={aoDigitar} erro={erros.cidade} />
+            onChange={aoDigitar} erro={erros.cidade}
+            validar={(v) => v.trim().length >= 2 ? null : 'Informe a cidade.'} />
           <div>
-            <label htmlFor="estado" className="mb-1 block text-sm font-medium">Estado</label>
-            <select id="estado" name="estado" value={campos.estado} onChange={aoDigitar}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2">
+            <label htmlFor="estado" className="mb-1.5 block text-sm font-medium text-slate-700">
+              Estado
+            </label>
+            <select id="estado" name="estado" value={campos.estado}
+              onChange={aoDigitar} className={CLASSE_SELECT}>
               <option value="">UF</option>
               {UFS.map((uf) => <option key={uf} value={uf}>{uf}</option>)}
             </select>
@@ -165,7 +202,7 @@ export default function FormularioSolicitacao({ servico, tiposLocal }) {
           </div>
         </div>
 
-        <p className="pt-2 text-sm font-medium text-gray-700">Detalhes da festa (opcional)</p>
+        <p className="pt-2 text-sm font-medium text-slate-700">Detalhes da festa (opcional)</p>
 
         <Campo label="Tema" name="tema" value={campos.tema}
           onChange={aoDigitar} erro={erros.tema} />
@@ -178,19 +215,20 @@ export default function FormularioSolicitacao({ servico, tiposLocal }) {
         </div>
 
         <div>
-          <label htmlFor="observacoes" className="mb-1 block text-sm font-medium">
+          <label htmlFor="observacoes" className="mb-1.5 block text-sm font-medium text-slate-700">
             Observações
           </label>
           <textarea id="observacoes" name="observacoes" rows={3} value={campos.observacoes}
-            onChange={aoDigitar} className="w-full rounded-lg border border-gray-300 px-3 py-2" />
+            onChange={aoDigitar}
+            className="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 text-slate-900 focus:border-festa-600 focus:outline-none focus:ring-2 focus:ring-festa-600/30" />
         </div>
 
-        <div className="rounded-lg border border-gray-300 bg-gray-50 p-4">
-          <p className="text-sm text-gray-600">Valor total</p>
-          <p className="text-xl font-semibold">
+        <div className="rounded-lg border border-festa-200 bg-festa-50 p-4">
+          <p className="text-sm text-slate-600">Valor total</p>
+          <p className="text-2xl font-semibold text-festa-800">
             {valorFinal === null ? '—' : formatarPreco(valorFinal)}
           </p>
-          <p className="mt-1 text-xs text-gray-500">
+          <p className="mt-1 text-xs text-slate-600">
             {EXPLICACAO_COBRANCA[servico.cobranca]}
             {' '}O envio da solicitação confirma este valor; não há negociação depois.
           </p>
@@ -199,11 +237,11 @@ export default function FormularioSolicitacao({ servico, tiposLocal }) {
         {erroGeral && <p className="text-sm text-red-600">{erroGeral}</p>}
 
         <button type="button" onClick={enviar} disabled={enviando}
-          className="w-full rounded-lg bg-festa-600 hover:bg-festa-700 px-4 py-2.5 text-white disabled:opacity-50">
+          className="w-full rounded-lg bg-festa-600 px-4 py-2.5 font-medium text-white transition-colors hover:bg-festa-700 disabled:opacity-50">
           {enviando ? 'Enviando...' : 'Enviar solicitação'}
         </button>
 
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-slate-500">
           Os dados informados não podem ser alterados depois do envio. Se precisar
           mudar algo, será necessário enviar uma nova solicitação.
         </p>
