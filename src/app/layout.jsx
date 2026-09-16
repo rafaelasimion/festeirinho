@@ -1,6 +1,7 @@
 import { Poppins } from 'next/font/google';
 import './globals.css';
 import Cabecalho from '@/componentes/cabecalho';
+import CabecalhoVisibilidade from '@/componentes/cabecalho-visibilidade';
 
 // A variável precisa ficar no <html>, e não no <body>: o Tailwind aplica a
 // família de fonte no elemento html, que está acima do body e não enxergaria
@@ -21,7 +22,9 @@ export default function RootLayout({ children }) {
   return (
     <html lang="pt-BR" className={poppins.variable}>
       <body className="antialiased">
-        <Cabecalho />
+        <CabecalhoVisibilidade>
+          <Cabecalho />
+        </CabecalhoVisibilidade>
         {children}
       </body>
     </html>
