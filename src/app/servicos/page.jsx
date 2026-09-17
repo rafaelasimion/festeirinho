@@ -4,6 +4,7 @@ import { pool } from '@/lib/db';
 import { formatarPreco, SUFIXO_PRECO } from '@/lib/solicitacao';
 import { lerSessao } from '@/lib/sessao';
 import Etiqueta from '@/componentes/etiqueta';
+import DescricaoExpansivel from '@/componentes/descricao-expansivel';
 
 // Esta página só LÊ e mostra. Por isso ela consulta o banco direto, sem
 // passar por uma rota de API: componente de servidor já roda no servidor.
@@ -73,6 +74,7 @@ export default async function Vitrine() {
                 <div>
                   <h2 className="font-medium text-slate-900">{servico.nome}</h2>
                   <Estrelas media={servico.media_nota} total={servico.total_avaliacoes} />
+                  <DescricaoExpansivel texto={servico.descricao} />
                 </div>
 
                 <div className="flex items-end justify-between gap-4">

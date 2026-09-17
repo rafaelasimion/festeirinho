@@ -115,7 +115,7 @@ export default function PainelVerificacao({ nomeAdministrador, fornecedores, ser
                     : `Pessoa jurídica · CNPJ ${f.cnpj ?? '—'} · ${f.razao_social ?? '—'}`}
                 </Linha>
                 <Linha rotulo="Contato">{f.email} · {f.telefone}</Linha>
-                <Linha rotulo="Descrição">{f.descricao}</Linha>
+                <Linha rotulo="Descrição" quebraLinha>{f.descricao}</Linha>
                 {(f.instagram_url || f.whatsapp_url || f.site) && (
                   <Linha rotulo="Links">
                     {[f.instagram_url, f.whatsapp_url, f.site].filter(Boolean).join(' · ')}
@@ -151,7 +151,7 @@ export default function PainelVerificacao({ nomeAdministrador, fornecedores, ser
                   antecedência de {s.dias_antecedencia} dias
                   {s.capacidade_max !== null && ` · até ${s.capacidade_max} convidados`}
                 </Linha>
-                <Linha rotulo="Descrição">{s.descricao}</Linha>
+                <Linha rotulo="Descrição" quebraLinha>{s.descricao}</Linha>
               </dl>
             </Item>
           ))}
@@ -164,14 +164,12 @@ export default function PainelVerificacao({ nomeAdministrador, fornecedores, ser
 function Aba({ ativa, aoClicar, rotulo, pendentes }) {
   return (
     <button type="button" role="tab" aria-selected={ativa} onClick={aoClicar}
-      className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-        ativa ? 'bg-festa-600 text-white' : 'border border-slate-300 text-slate-700 hover:bg-slate-50'
-      }`}>
+      className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${ativa ? 'bg-festa-600 text-white' : 'border border-slate-300 text-slate-700 hover:bg-slate-50'
+        }`}>
       {rotulo}
       {pendentes > 0 && (
-        <span className={`rounded-full px-2 py-0.5 text-xs ${
-          ativa ? 'bg-white/20 text-white' : 'bg-atencao-100 text-atencao-800'
-        }`}>
+        <span className={`rounded-full px-2 py-0.5 text-xs ${ativa ? 'bg-white/20 text-white' : 'bg-atencao-100 text-atencao-800'
+          }`}>
           {pendentes}
         </span>
       )}
@@ -187,11 +185,11 @@ function Lista({ children, vazio }) {
   return <ul className="space-y-4">{children}</ul>;
 }
 
-function Linha({ rotulo, children }) {
+function Linha({ rotulo, children, quebraLinha = false }) {
   return (
     <div>
       <dt className="inline font-medium text-slate-700">{rotulo}: </dt>
-      <dd className="inline">{children}</dd>
+      <dd className={quebraLinha ? 'inline whitespace-pre-line' : 'inline'}>{children}</dd>
     </div>
   );
 }
