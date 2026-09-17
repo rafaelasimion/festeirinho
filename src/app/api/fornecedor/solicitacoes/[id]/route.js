@@ -4,8 +4,10 @@ import { obterFornecedorLogado } from '@/lib/autorizacao';
 import { gerarPagamento } from '@/lib/pagamento-servidor';
 
 // RF022/RF023 — resposta do fornecedor à solicitação.
+// UC 019 — registro da conclusão do serviço.
 
 const MOTIVOS_RECUSA = ['agenda_indisponivel', 'fora_da_area', 'inviabilidade', 'outro'];
+const ACOES = ['aprovar', 'recusar', 'registrar_conclusao'];
 
 export async function PATCH(request, { params }) {
   const { erro, fornecedor } = await obterFornecedorLogado();
@@ -25,21 +27,18 @@ export async function PATCH(request, { params }) {
   }
 
   const acao = String(corpo.acao ?? '');
-  if (acao !== 'aprovar' && acao !== 'recusar') {
+  if (!ACOES.includes(acao)) {
     return NextResponse.json({ erro: 'Ação inválida.' }, { status: 400 });
-  }
-
-  // RN021 — a recusa exige um motivo da lista padronizada.
-  const motivoRecusa = String(corpo.motivoRecusa ?? '');
-  if (acao === 'recusar' && !MOTIVOS_RECUSA.includes(motivoRecusa)) {
-    return NextResponse.json({ erro: 'Selecione o motivo da recusa.' }, { status: 400 });
   }
 
   // A solicitação precisa ser de um serviço DESTE fornecedor. O JOIN com
   // servico é o que garante isso — sem ele, bastaria trocar o número na URL
   // para responder solicitação alheia.
+  // O término previsto é a data do evento mais a duração contratada (RN066).
   const [linhas] = await pool.execute(
-    `SELECT so.id, so.status, so.data_limite_resposta_fornecedor
+    `SELECT so.id, so.status, so.data_limite_resposta_fornecedor,
+            so.data_registro_conclusao_fornecedor,
+            DATE_ADD(so.data_hora_evento, INTERVAL so.duracao * 60 MINUTE) AS termino_previsto
        FROM solicitacao so
        JOIN servico s ON s.id = so.id_servico
       WHERE so.id = ? AND s.id_fornecedor = ?
@@ -52,6 +51,57 @@ export async function PATCH(request, { params }) {
   }
 
   const solicitacao = linhas[0];
+
+  // ---------------- UC 019: registrar conclusão ----------------
+  if (acao === 'registrar_conclusao') {
+    if (solicitacao.status !== 'confirmado') {
+      return NextResponse.json(
+        { erro: 'Só é possível registrar a conclusão de uma solicitação confirmada.' },
+        { status: 409 }
+      );
+    }
+
+    if (solicitacao.data_registro_conclusao_fornecedor !== null) {
+      return NextResponse.json(
+        { erro: 'A conclusão desta solicitação já foi registrada.' },
+        { status: 409 }
+      );
+    }
+
+    // UC 019, pré-condição: o evento já deve ter ocorrido. Registrar
+    // conclusão antes do término previsto seria declarar como prestado um
+    // serviço que ainda está acontecendo.
+    if (new Date(solicitacao.termino_previsto) > new Date()) {
+      return NextResponse.json(
+        { erro: 'A conclusão só pode ser registrada após o término previsto do evento.' },
+        { status: 409 }
+      );
+    }
+
+    try {
+      await pool.execute(
+        `UPDATE solicitacao
+            SET data_registro_conclusao_fornecedor = NOW()
+          WHERE id = ?
+            AND status = 'confirmado'
+            AND data_registro_conclusao_fornecedor IS NULL`,
+        [idSolicitacao]
+      );
+      return NextResponse.json({ conclusaoRegistrada: true });
+    } catch (erroConclusao) {
+      console.error('[fornecedor/solicitacoes registrar_conclusao]', erroConclusao);
+      return NextResponse.json(
+        { erro: 'Não foi possível registrar a conclusão.' },
+        { status: 500 }
+      );
+    }
+  }
+
+  // ---------------- UC 015: aprovar ou recusar ----------------
+  const motivoRecusa = String(corpo.motivoRecusa ?? '');
+  if (acao === 'recusar' && !MOTIVOS_RECUSA.includes(motivoRecusa)) {
+    return NextResponse.json({ erro: 'Selecione o motivo da recusa.' }, { status: 400 });
+  }
 
   if (solicitacao.status !== 'aguardando_analise') {
     return NextResponse.json(
@@ -85,8 +135,8 @@ export async function PATCH(request, { params }) {
         [motivoRecusa, idSolicitacao]
       );
       return NextResponse.json({ status: 'recusado' });
-    } catch (erro) {
-      console.error('[fornecedor/solicitacoes PATCH recusar]', erro);
+    } catch (erroRecusa) {
+      console.error('[fornecedor/solicitacoes recusar]', erroRecusa);
       return NextResponse.json(
         { erro: 'Não foi possível registrar a resposta.' },
         { status: 500 }
@@ -95,9 +145,7 @@ export async function PATCH(request, { params }) {
   }
 
   // RN023 — aprovada, a solicitação segue para pagamento, e o registro de
-  // pagamento nasce no mesmo instante. As duas coisas numa transação: uma
-  // solicitação "aguardando pagamento" sem pagamento gerado deixaria o
-  // cliente sem para onde ir.
+  // pagamento nasce no mesmo instante, numa transação.
   const conexao = await pool.getConnection();
   try {
     await conexao.beginTransaction();
@@ -114,9 +162,9 @@ export async function PATCH(request, { params }) {
 
     await conexao.commit();
     return NextResponse.json({ status: 'aguardando_pagamento' });
-  } catch (erro) {
+  } catch (erroAprovacao) {
     await conexao.rollback();
-    console.error('[fornecedor/solicitacoes PATCH aprovar]', erro);
+    console.error('[fornecedor/solicitacoes aprovar]', erroAprovacao);
     return NextResponse.json(
       { erro: 'Não foi possível aprovar a solicitação.' },
       { status: 500 }
