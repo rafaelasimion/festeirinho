@@ -37,11 +37,48 @@ export default async function Admin() {
       ORDER BY (s.status_verificacao = 'pendente') DESC, s.id DESC`
   );
 
+  // UC 043 — contestações de conclusão. Só entram solicitações que têm
+  // contestação registrada, em qualquer estado; as pendentes vêm primeiro.
+  const [contestacoes] = await pool.query(
+    `SELECT so.id, so.status,
+            so.motivo_contestacao_cliente, so.descricao_contestacao_cliente,
+            so.data_contestacao_cliente, so.status_contestacao,
+            so.resultado_contestacao, so.justificativa_contestacao,
+            so.data_analise_contestacao,
+            so.data_hora_evento, so.duracao, so.numero_convidados,
+            so.valor_final, so.data_registro_conclusao_fornecedor,
+            s.nome AS servico,
+            f.nome_exibicao AS fornecedor,
+            u.nome AS cliente, u.email AS email_cliente,
+            p.status AS status_pagamento, p.forma_pagamento, p.valor_bruto
+       FROM solicitacao so
+       JOIN servico s    ON s.id = so.id_servico
+       JOIN fornecedor f ON f.id = s.id_fornecedor
+       JOIN cliente c    ON c.id = so.id_cliente
+       JOIN usuario u    ON u.id = c.id_usuario
+       LEFT JOIN pagamento p ON p.id_solicitacao = so.id
+      WHERE so.status_contestacao IS NOT NULL
+      ORDER BY (so.status_contestacao = 'pendente') DESC,
+               so.data_contestacao_cliente DESC`
+  );
+
+  const iso = (valor) => (valor ? valor.toISOString() : null);
+
   return (
     <PainelVerificacao
       nomeAdministrador={administrador.nome}
       fornecedores={fornecedores.map((f) => ({ ...f }))}
       servicos={servicos.map((s) => ({ ...s, preco_base: Number(s.preco_base) }))}
+      contestacoes={contestacoes.map((c) => ({
+        ...c,
+        data_contestacao_cliente: iso(c.data_contestacao_cliente),
+        data_analise_contestacao: iso(c.data_analise_contestacao),
+        data_hora_evento: iso(c.data_hora_evento),
+        data_registro_conclusao_fornecedor: iso(c.data_registro_conclusao_fornecedor),
+        duracao: Number(c.duracao),
+        valor_final: Number(c.valor_final),
+        valor_bruto: c.valor_bruto === null ? null : Number(c.valor_bruto),
+      }))}
     />
   );
 }

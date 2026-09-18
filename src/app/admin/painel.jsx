@@ -10,8 +10,23 @@ import {
   ROTULO_VERIFICACAO,
   TOM_VERIFICACAO,
 } from '@/lib/solicitacao';
+import {
+  ROTULO_MOTIVO_CONTESTACAO,
+  ROTULO_RESULTADO_CONTESTACAO,
+  TOM_RESULTADO_CONTESTACAO,
+} from '@/lib/contestacao';
 
-export default function PainelVerificacao({ nomeAdministrador, fornecedores, servicos }) {
+function formatarDataHora(valor) {
+  if (!valor) return '';
+  return new Date(valor).toLocaleString('pt-BR', {
+    dateStyle: 'short',
+    timeStyle: 'short',
+  });
+}
+
+export default function PainelVerificacao({
+  nomeAdministrador, fornecedores, servicos, contestacoes = [],
+}) {
   const router = useRouter();
   const [aba, setAba] = useState('fornecedores');
   const [rejeitando, setRejeitando] = useState(null); // `${tipo}:${id}`
@@ -22,6 +37,7 @@ export default function PainelVerificacao({ nomeAdministrador, fornecedores, ser
 
   const pendentesFornecedor = fornecedores.filter((f) => f.status_verificacao === 'pendente').length;
   const pendentesServico = servicos.filter((s) => s.status_verificacao === 'pendente').length;
+  const pendentesContestacao = contestacoes.filter((c) => c.status_contestacao === 'pendente').length;
 
   async function analisar(tipo, id, acao, motivoRejeicao = null) {
     setErro('');
@@ -59,6 +75,46 @@ export default function PainelVerificacao({ nomeAdministrador, fornecedores, ser
     }
   }
 
+  async function analisarContestacao(id, resultado, justificativa) {
+    setErro('');
+    setMensagem('');
+    setProcessando(true);
+
+    try {
+      const resposta = await fetch('/api/admin/contestacoes', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, resultado, justificativa }),
+      });
+
+      let dados;
+      try {
+        dados = await resposta.json();
+      } catch {
+        setErro(`O servidor respondeu ${resposta.status} sem conteúdo válido.`);
+        return;
+      }
+
+      if (!resposta.ok) {
+        setErro(dados.erro ?? 'Não foi possível registrar a análise.');
+        return;
+      }
+
+      setMensagem(
+        dados.resultado === 'improcedente'
+          ? 'Contestação julgada improcedente. A solicitação foi concluída.'
+          : dados.aguardandoDadosRecebimento
+            ? 'Contestação julgada procedente. O reembolso aguarda os dados de recebimento do cliente.'
+            : 'Contestação julgada procedente. A solicitação foi cancelada com reembolso integral.'
+      );
+      router.refresh();
+    } catch {
+      setErro('Falha de conexão. Tente novamente.');
+    } finally {
+      setProcessando(false);
+    }
+  }
+
   return (
     <main className="mx-auto max-w-4xl px-6 py-8">
       <header className="mb-8 flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-6">
@@ -80,11 +136,13 @@ export default function PainelVerificacao({ nomeAdministrador, fornecedores, ser
         </form>
       </header>
 
-      <div className="mb-6 flex gap-2" role="tablist">
+      <div className="mb-6 flex flex-wrap gap-2" role="tablist">
         <Aba ativa={aba === 'fornecedores'} aoClicar={() => setAba('fornecedores')}
           rotulo="Fornecedores" pendentes={pendentesFornecedor} />
         <Aba ativa={aba === 'servicos'} aoClicar={() => setAba('servicos')}
           rotulo="Serviços" pendentes={pendentesServico} />
+        <Aba ativa={aba === 'contestacoes'} aoClicar={() => setAba('contestacoes')}
+          rotulo="Contestações" pendentes={pendentesContestacao} />
       </div>
 
       {mensagem && <p className="mb-4 text-sm text-sucesso-700">{mensagem}</p>}
@@ -157,6 +215,18 @@ export default function PainelVerificacao({ nomeAdministrador, fornecedores, ser
           ))}
         </Lista>
       )}
+
+      {aba === 'contestacoes' && (
+        <Lista vazio="Nenhuma contestação registrada.">
+          {contestacoes.map((c) => (
+            <ItemContestacao key={`${c.id}-${c.status_contestacao}`}
+              contestacao={c}
+              processando={processando}
+              aoAnalisar={(resultado, justificativa) =>
+                analisarContestacao(c.id, resultado, justificativa)} />
+          ))}
+        </Lista>
+      )}
     </main>
   );
 }
@@ -164,12 +234,14 @@ export default function PainelVerificacao({ nomeAdministrador, fornecedores, ser
 function Aba({ ativa, aoClicar, rotulo, pendentes }) {
   return (
     <button type="button" role="tab" aria-selected={ativa} onClick={aoClicar}
-      className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${ativa ? 'bg-festa-600 text-white' : 'border border-slate-300 text-slate-700 hover:bg-slate-50'
-        }`}>
+      className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+        ativa ? 'bg-festa-600 text-white' : 'border border-slate-300 text-slate-700 hover:bg-slate-50'
+      }`}>
       {rotulo}
       {pendentes > 0 && (
-        <span className={`rounded-full px-2 py-0.5 text-xs ${ativa ? 'bg-white/20 text-white' : 'bg-atencao-100 text-atencao-800'
-          }`}>
+        <span className={`rounded-full px-2 py-0.5 text-xs ${
+          ativa ? 'bg-white/20 text-white' : 'bg-atencao-100 text-atencao-800'
+        }`}>
           {pendentes}
         </span>
       )}
@@ -279,6 +351,135 @@ function Item({
                 Cancelar
               </button>
             )}
+          </div>
+        )}
+      </div>
+    </li>
+  );
+}
+
+// UC 043 — a decisão da contestação é DEFINITIVA: procedente cancela com
+// reembolso, improcedente conclui a solicitação. Por isso não existe
+// "alterar decisão" aqui, diferente da verificação de cadastro.
+function ItemContestacao({ contestacao, processando, aoAnalisar }) {
+  const [decidindo, setDecidindo] = useState(null); // 'procedente' | 'improcedente'
+  const [justificativa, setJustificativa] = useState('');
+
+  const pendente = contestacao.status_contestacao === 'pendente';
+
+  return (
+    <li className="rounded-xl border border-slate-200 bg-white p-5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="font-medium text-slate-900">{contestacao.servico}</h2>
+          <p className="text-sm text-slate-600">
+            {contestacao.cliente} contestou · fornecedor {contestacao.fornecedor}
+          </p>
+        </div>
+        {pendente ? (
+          <Etiqueta tom="atencao" contorno>pendente de análise</Etiqueta>
+        ) : (
+          <Etiqueta tom={TOM_RESULTADO_CONTESTACAO[contestacao.resultado_contestacao]}>
+            {ROTULO_RESULTADO_CONTESTACAO[contestacao.resultado_contestacao]}
+          </Etiqueta>
+        )}
+      </div>
+
+      <dl className="mt-3 space-y-1 text-sm text-slate-600">
+        <Linha rotulo="Evento">
+          {formatarDataHora(contestacao.data_hora_evento)} · {contestacao.duracao}h ·{' '}
+          {contestacao.numero_convidados} convidados
+        </Linha>
+        <Linha rotulo="Valor">{formatarPreco(contestacao.valor_final)}</Linha>
+        <Linha rotulo="Pagamento">
+          {contestacao.status_pagamento ?? 'sem pagamento'}
+          {contestacao.forma_pagamento && ` · ${contestacao.forma_pagamento}`}
+        </Linha>
+        <Linha rotulo="Conclusão registrada em">
+          {formatarDataHora(contestacao.data_registro_conclusao_fornecedor)}
+        </Linha>
+        <Linha rotulo="Contestada em">
+          {formatarDataHora(contestacao.data_contestacao_cliente)}
+        </Linha>
+      </dl>
+
+      <div className="mt-3 rounded-lg border border-atencao-200 bg-atencao-50 p-3 text-sm">
+        <p className="font-medium text-slate-800">
+          {ROTULO_MOTIVO_CONTESTACAO[contestacao.motivo_contestacao_cliente]}
+        </p>
+        <p className="mt-1 whitespace-pre-line text-slate-700">
+          {contestacao.descricao_contestacao_cliente}
+        </p>
+      </div>
+
+      {!pendente && (
+        <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm">
+          <p className="font-medium text-slate-800">Justificativa da decisão</p>
+          <p className="mt-1 whitespace-pre-line text-slate-700">
+            {contestacao.justificativa_contestacao}
+          </p>
+          <p className="mt-1 text-xs text-slate-500">
+            Analisada em {formatarDataHora(contestacao.data_analise_contestacao)}.
+          </p>
+        </div>
+      )}
+
+      <div className="mt-4 border-t border-slate-200 pt-4">
+        {!pendente ? (
+          <p className="text-sm text-slate-600">
+            {contestacao.resultado_contestacao === 'procedente'
+              ? 'Solicitação cancelada com reembolso integral ao cliente.'
+              : 'Solicitação concluída; a carência do repasse ao fornecedor foi iniciada.'}
+          </p>
+        ) : decidindo ? (
+          <div className="space-y-3">
+            <p className="text-sm text-slate-700">
+              {decidindo === 'procedente'
+                ? 'Procedente: a solicitação será cancelada, com reembolso integral ao cliente e sem repasse ao fornecedor.'
+                : 'Improcedente: a solicitação será concluída e o repasse ao fornecedor entra em carência.'}
+            </p>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-slate-700">
+                Justificativa da decisão
+              </label>
+              <textarea rows={4} value={justificativa}
+                onChange={(e) => setJustificativa(e.target.value)}
+                placeholder="Explique a decisão. O texto é exibido ao cliente e ao fornecedor."
+                className="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 text-slate-900 placeholder:text-slate-400 focus:border-festa-600 focus:outline-none focus:ring-2 focus:ring-festa-600/30" />
+              <p className="mt-1 text-xs text-slate-500">
+                {justificativa.trim().length}/20 caracteres mínimos.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button type="button"
+                disabled={processando || justificativa.trim().length < 20}
+                onClick={() => aoAnalisar(decidindo, justificativa)}
+                className={`rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors disabled:opacity-50 ${
+                  decidindo === 'procedente'
+                    ? 'bg-sucesso-600 hover:bg-sucesso-700'
+                    : 'bg-perigo-600 hover:bg-perigo-700'
+                }`}>
+                Confirmar decisão
+              </button>
+              <button type="button" onClick={() => { setDecidindo(null); setJustificativa(''); }}
+                disabled={processando}
+                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50">
+                Voltar
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            <button type="button" disabled={processando}
+              onClick={() => { setDecidindo('procedente'); setJustificativa(''); }}
+              className="rounded-lg border border-sucesso-600 px-4 py-2 text-sm font-medium text-sucesso-700 transition-colors hover:bg-sucesso-50 disabled:opacity-50">
+              Julgar procedente
+            </button>
+            <button type="button" disabled={processando}
+              onClick={() => { setDecidindo('improcedente'); setJustificativa(''); }}
+              className="rounded-lg border border-perigo-600 px-4 py-2 text-sm font-medium text-perigo-700 transition-colors hover:bg-perigo-50 disabled:opacity-50">
+              Julgar improcedente
+            </button>
           </div>
         )}
       </div>
