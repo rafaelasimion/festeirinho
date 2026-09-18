@@ -13,10 +13,10 @@ export default async function Vitrine() {
   const sessao = await lerSessao();
   const podeSolicitar = sessao?.tipoUsuario === 'cliente';
 
-  // RN020 — só aparece o que está ativo e aprovado, de fornecedor ativo.
   // A média de avaliações vem de uma subconsulta agrupada: avaliação está
-  // ligada à solicitação, e a solicitação ao serviço. Só entram as visíveis
-  // (RN062). Serviço sem avaliação devolve NULL, tratado na tela.
+  // ligada à solicitação, e a solicitação ao serviço. Entram TODAS as notas,
+  // inclusive as de avaliação oculta: a RN062 esconde só o comentário, nunca
+  // a nota. Serviço sem avaliação devolve NULL, tratado na tela.
   const [servicos] = await pool.query(
     `SELECT s.id, s.nome, s.descricao, s.preco_base, s.capacidade_max,
             s.dias_antecedencia,
@@ -35,7 +35,6 @@ export default async function Vitrine() {
                    COUNT(*)     AS total_avaliacoes
               FROM avaliacao a
               JOIN solicitacao so ON so.id = a.id_solicitacao
-             WHERE a.status_avaliacao = 'visivel'
              GROUP BY so.id_servico
        ) av ON av.id_servico = s.id
       WHERE s.status_servico = 'ativo'

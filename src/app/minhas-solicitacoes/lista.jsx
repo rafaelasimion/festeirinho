@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Etiqueta from '@/componentes/etiqueta';
 import DialogoCancelamento from '@/componentes/dialogo-cancelamento';
+import FormularioAvaliacao from '@/componentes/formulario-avaliacao';
 import {
   formatarPreco,
   ROTULO_STATUS_SOLICITACAO,
@@ -329,6 +330,42 @@ export default function ListaMinhasSolicitacoes({ solicitacoes, prazoConfirmacao
                     Serviço concluído em{' '}
                     {formatarDataHora(solicitacao.data_confirmacao_conclusao_cliente)}.
                   </p>
+                )}
+
+                {solicitacao.status === 'concluido' && (
+                  <FormularioAvaliacao
+                    avaliacao={solicitacao.id_avaliacao ? {
+                      id: solicitacao.id_avaliacao,
+                      nota: solicitacao.nota,
+                      comentario: solicitacao.comentario,
+                      status_avaliacao: solicitacao.status_avaliacao,
+                    } : null}
+                    processando={processando}
+                    aoEnviar={async ({ nota, comentario, visibilidade }) => {
+                      setErro('');
+                      setMensagem('');
+                      setProcessando(true);
+                      try {
+                        const resposta = await fetch('/api/avaliacoes', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            idSolicitacao: solicitacao.id, nota, comentario, visibilidade,
+                          }),
+                        });
+                        const dados = await resposta.json();
+                        if (!resposta.ok) {
+                          setErro(dados.erro ?? 'Não foi possível registrar a avaliação.');
+                          return;
+                        }
+                        setMensagem('Avaliação registrada. Obrigado!');
+                        router.refresh();
+                      } catch {
+                        setErro('Falha de conexão. Tente novamente.');
+                      } finally {
+                        setProcessando(false);
+                      }
+                    }} />
                 )}
 
                 {solicitacao.status === 'recusado' && solicitacao.motivo_recusa && (

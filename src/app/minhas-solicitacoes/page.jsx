@@ -42,7 +42,8 @@ export default async function MinhasSolicitacoes() {
             p.perc_multa_faixa_mais_7d, p.perc_multa_faixa_7d_48h,
             p.perc_multa_faixa_48h_24h, p.perc_multa_faixa_24h,
             ca.id AS id_cancelamento, ca.solicitado_por, ca.motivo AS motivo_cancelamento,
-            ca.valor_reembolso, ca.valor_multa, ca.status AS status_cancelamento
+            ca.valor_reembolso, ca.valor_multa, ca.status AS status_cancelamento,
+            av.id AS id_avaliacao, av.nota, av.comentario, av.status_avaliacao
        FROM solicitacao so
        JOIN cliente c     ON c.id  = so.id_cliente
        JOIN servico s     ON s.id  = so.id_servico
@@ -50,6 +51,7 @@ export default async function MinhasSolicitacoes() {
        JOIN endereco e    ON e.id  = so.id_endereco
        LEFT JOIN pagamento p     ON p.id_solicitacao  = so.id
        LEFT JOIN cancelamento ca ON ca.id_solicitacao = so.id
+       LEFT JOIN avaliacao av    ON av.id_solicitacao = so.id
       WHERE c.id_usuario = ?
       ORDER BY so.data_solicitacao DESC`,
     [sessao.id]
