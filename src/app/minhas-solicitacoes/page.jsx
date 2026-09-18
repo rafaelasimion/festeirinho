@@ -3,7 +3,10 @@ import { pool } from '@/lib/db';
 import { lerSessao } from '@/lib/sessao';
 import { expirarSolicitacoesVencidas } from '@/lib/solicitacao-servidor';
 import { expirarPagamentosVencidos } from '@/lib/pagamento-servidor';
-import { confirmarConclusoesVencidas } from '@/lib/conclusao-servidor';
+import {
+  confirmarConclusoesVencidas,
+  cancelarSemRegistroDeConclusao,
+} from '@/lib/conclusao-servidor';
 import { obterConfiguracoes } from '@/lib/configuracao';
 import ListaMinhasSolicitacoes from './lista';
 
@@ -12,22 +15,26 @@ export default async function MinhasSolicitacoes() {
   if (!sessao) redirect('/login');
   if (sessao.tipoUsuario !== 'cliente') redirect('/minha-conta');
 
-  // Fecha o que venceu antes de mostrar a lista: RN035, RN025 e RF036.
+  // Fecha o que venceu antes de mostrar a lista: resposta do fornecedor
+  // (RN035), pagamento (RN025), confirmação da conclusão (RF036) e registro
+  // de conclusão ausente (RN066).
   await expirarSolicitacoesVencidas();
   await expirarPagamentosVencidos();
+  await cancelarSemRegistroDeConclusao();
   await confirmarConclusoesVencidas();
 
   const configuracoes = await obterConfiguracoes();
 
-  // Os percentuais de multa vêm do pagamento, não da configuração: são os
-  // congelados na contratação (RN027), e a tela precisa deles para mostrar
-  // ao cliente quanto ele recebe de volta antes de confirmar (RN050).
   const [solicitacoes] = await pool.execute(
     `SELECT so.id, so.data_hora_evento, so.duracao, so.numero_convidados,
             so.valor_final, so.status, so.motivo_recusa,
             so.data_solicitacao, so.data_limite_resposta_fornecedor,
             so.data_registro_conclusao_fornecedor,
             so.data_confirmacao_conclusao_cliente,
+            so.motivo_contestacao_cliente, so.descricao_contestacao_cliente,
+            so.data_contestacao_cliente, so.status_contestacao,
+            so.resultado_contestacao, so.justificativa_contestacao,
+            so.data_analise_contestacao,
             s.nome AS servico, f.nome_exibicao AS fornecedor,
             e.cidade, e.estado,
             p.id AS id_pagamento, p.status AS status_pagamento,
@@ -41,7 +48,7 @@ export default async function MinhasSolicitacoes() {
        JOIN servico s     ON s.id  = so.id_servico
        JOIN fornecedor f  ON f.id  = s.id_fornecedor
        JOIN endereco e    ON e.id  = so.id_endereco
-       LEFT JOIN pagamento p    ON p.id_solicitacao  = so.id
+       LEFT JOIN pagamento p     ON p.id_solicitacao  = so.id
        LEFT JOIN cancelamento ca ON ca.id_solicitacao = so.id
       WHERE c.id_usuario = ?
       ORDER BY so.data_solicitacao DESC`,
@@ -67,6 +74,8 @@ function serializar(linhas) {
     data_limite_resposta_fornecedor: iso(linha.data_limite_resposta_fornecedor),
     data_registro_conclusao_fornecedor: iso(linha.data_registro_conclusao_fornecedor),
     data_confirmacao_conclusao_cliente: iso(linha.data_confirmacao_conclusao_cliente),
+    data_contestacao_cliente: iso(linha.data_contestacao_cliente),
+    data_analise_contestacao: iso(linha.data_analise_contestacao),
     data_limite: iso(linha.data_limite),
     duracao: Number(linha.duracao),
     valor_final: Number(linha.valor_final),

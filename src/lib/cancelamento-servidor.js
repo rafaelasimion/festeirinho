@@ -4,8 +4,7 @@ import { calcularValores, impedimentoParaCancelar } from '@/lib/cancelamento';
 // Registro do cancelamento — o caminho único por onde passam os quatro
 // cenários que cancelam uma solicitação: pedido do cliente e do fornecedor
 // (UC 022), contestação procedente (RN069) e ausência de registro de
-// conclusão (RN066). Por isso recebe `solicitadoPor` em vez de descobrir
-// sozinho quem chamou.
+// conclusão (RN066).
 
 export async function registrarCancelamento({ idSolicitacao, solicitadoPor, motivo }) {
   const conexao = await pool.getConnection();
@@ -13,6 +12,7 @@ export async function registrarCancelamento({ idSolicitacao, solicitadoPor, moti
   try {
     const [linhas] = await conexao.execute(
       `SELECT so.id, so.status, so.data_hora_evento,
+              so.data_registro_conclusao_fornecedor, so.status_contestacao,
               p.id AS id_pagamento, p.status AS status_pagamento,
               p.valor_bruto, p.forma_pagamento,
               p.perc_multa_faixa_mais_7d, p.perc_multa_faixa_7d_48h,
@@ -32,11 +32,21 @@ export async function registrarCancelamento({ idSolicitacao, solicitadoPor, moti
 
     const dados = linhas[0];
 
-    const impedimento = impedimentoParaCancelar({
-      status: dados.status,
-      dataEvento: dados.data_hora_evento,
-      temCancelamento: Number(dados.ja_cancelada) > 0,
-    });
+    // O cancelamento pelo sistema (RN066, contestação procedente) não passa
+    // pelas travas de conclusão e contestação: é justamente ele quem age
+    // nesses dois cenários.
+    const impedimento = solicitadoPor === 'sistema'
+      ? (Number(dados.ja_cancelada) > 0
+          ? 'Esta solicitação já possui um cancelamento registrado.'
+          : null)
+      : impedimentoParaCancelar({
+          status: dados.status,
+          dataEvento: dados.data_hora_evento,
+          temCancelamento: Number(dados.ja_cancelada) > 0,
+          conclusaoRegistrada: dados.data_registro_conclusao_fornecedor !== null,
+          contestacaoPendente: dados.status_contestacao === 'pendente',
+        });
+
     if (impedimento) return { erro: impedimento, status: 409 };
 
     const pagamento = dados.id_pagamento ? {
@@ -64,12 +74,10 @@ export async function registrarCancelamento({ idSolicitacao, solicitadoPor, moti
       ? 'concluido'
       : formaBoleto ? 'em_analise' : 'processando';
 
-    // RN057 / UC 022 etapa 8a — a multa retida não é receita da plataforma:
-    // é do fornecedor, e sem carência. Quando o cancelamento já nasce
-    // "concluído" e houve multa, o repasse é liberado no mesmo instante.
-    // Nos demais casos fica "pendente" até o cancelamento concluir.
-    // As três CHECKs da tabela exigem essa coerência na mesma instrução:
-    // multa zero obriga "não aplicável", e "liberado" obriga data preenchida.
+    // RN057 / UC 022 etapa 8a — a multa retida é do fornecedor, e sem
+    // carência. Quando o cancelamento já nasce "concluído" e houve multa, o
+    // repasse é liberado no mesmo instante. As CHECKs da tabela exigem essa
+    // coerência na mesma instrução.
     let statusRepasse = 'nao_aplicavel';
     let liberarAgora = false;
     if (valorMulta > 0) {
@@ -93,9 +101,7 @@ export async function registrarCancelamento({ idSolicitacao, solicitadoPor, moti
     );
 
     // RN053 — a solicitação passa a "cancelado" no REGISTRO do cancelamento,
-    // não na sua conclusão: a partir daqui, registro de conclusão, confirmação
-    // e liberação de repasse deixam de se aplicar, ainda que a liquidação
-    // financeira siga em curso.
+    // não na sua conclusão.
     await conexao.execute(
       `UPDATE solicitacao SET status = 'cancelado' WHERE id = ?`,
       [idSolicitacao]
@@ -105,7 +111,6 @@ export async function registrarCancelamento({ idSolicitacao, solicitadoPor, moti
     if (dados.id_pagamento) {
       let novoStatusPagamento = null;
       if (['pendente', 'processando', 'recusado'].includes(dados.status_pagamento)) {
-        // Nunca foi efetivado: não há estorno a fazer junto ao gateway.
         novoStatusPagamento = 'cancelado';
       } else if (dados.status_pagamento === 'pago' && houveReembolso) {
         novoStatusPagamento = 'estornado';

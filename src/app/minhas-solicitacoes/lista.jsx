@@ -16,6 +16,12 @@ import {
   ROTULO_ORIGEM_CANCELAMENTO,
   impedimentoParaCancelar,
 } from '@/lib/cancelamento';
+import {
+  MOTIVOS_CONTESTACAO,
+  ROTULO_MOTIVO_CONTESTACAO,
+  ROTULO_RESULTADO_CONTESTACAO,
+  TOM_RESULTADO_CONTESTACAO,
+} from '@/lib/contestacao';
 
 function formatarDataHora(valor) {
   if (!valor) return '';
@@ -28,6 +34,9 @@ function formatarDataHora(valor) {
 export default function ListaMinhasSolicitacoes({ solicitacoes, prazoConfirmacaoHoras }) {
   const router = useRouter();
   const [cancelando, setCancelando] = useState(null);
+  const [contestando, setContestando] = useState(null);
+  const [motivoContestacao, setMotivoContestacao] = useState('');
+  const [descricaoContestacao, setDescricaoContestacao] = useState('');
   const [processando, setProcessando] = useState(false);
   const [mensagem, setMensagem] = useState('');
   const [erro, setErro] = useState('');
@@ -58,6 +67,9 @@ export default function ListaMinhasSolicitacoes({ solicitacoes, prazoConfirmacao
       }
 
       setCancelando(null);
+      setContestando(null);
+      setMotivoContestacao('');
+      setDescricaoContestacao('');
       setMensagem(
         dados.aguardandoDadosRecebimento
           ? 'Cancelamento registrado. Como o pagamento foi por boleto, você precisará informar os dados para receber o reembolso.'
@@ -91,16 +103,20 @@ export default function ListaMinhasSolicitacoes({ solicitacoes, prazoConfirmacao
       ) : (
         <ul className="space-y-4">
           {solicitacoes.map((solicitacao) => {
+            const contestacaoPendente = solicitacao.status_contestacao === 'pendente';
+
             const aguardandoConfirmacao =
               solicitacao.status === 'confirmado'
               && Boolean(solicitacao.data_registro_conclusao_fornecedor)
-              && !solicitacao.data_confirmacao_conclusao_cliente;
+              && !solicitacao.data_confirmacao_conclusao_cliente
+              && !solicitacao.status_contestacao;
 
-            // RN041 — cancelar só antes do evento, em status que admita.
             const impedimento = impedimentoParaCancelar({
               status: solicitacao.status,
               dataEvento: solicitacao.data_hora_evento,
               temCancelamento: Boolean(solicitacao.id_cancelamento),
+              conclusaoRegistrada: Boolean(solicitacao.data_registro_conclusao_fornecedor),
+              contestacaoPendente: solicitacao.status_contestacao === 'pendente',
             });
             const podeCancelar = impedimento === null;
 
@@ -132,10 +148,13 @@ export default function ListaMinhasSolicitacoes({ solicitacoes, prazoConfirmacao
                     <p className="font-semibold text-slate-900">
                       {formatarPreco(solicitacao.valor_final)}
                     </p>
-                    <div className="mt-1.5">
+                    <div className="mt-1.5 flex flex-wrap justify-end gap-1.5">
                       <Etiqueta tom={TOM_STATUS_SOLICITACAO[solicitacao.status]}>
                         {ROTULO_STATUS_SOLICITACAO[solicitacao.status]}
                       </Etiqueta>
+                      {contestacaoPendente && (
+                        <Etiqueta tom="atencao" contorno>em contestação</Etiqueta>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -159,7 +178,7 @@ export default function ListaMinhasSolicitacoes({ solicitacoes, prazoConfirmacao
                   </div>
                 )}
 
-                {/* UC 020 — confirmação da conclusão */}
+                {/* UC 020 / UC 042 — confirmar ou contestar */}
                 {aguardandoConfirmacao && (
                   <div className="mt-4 border-t border-slate-200 pt-4">
                     <p className="text-sm text-slate-700">
@@ -170,24 +189,140 @@ export default function ListaMinhasSolicitacoes({ solicitacoes, prazoConfirmacao
                       Se você não responder em {prazoConfirmacaoHoras} horas, o sistema
                       confirma automaticamente.
                     </p>
-                    <button type="button" disabled={processando}
-                      onClick={() => acionar(
-                        solicitacao.id,
-                        { acao: 'confirmar_conclusao' },
-                        'Conclusão confirmada. Obrigado!'
-                      )}
-                      className="mt-3 rounded-lg bg-festa-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-festa-700 disabled:opacity-50">
-                      Confirmar conclusão
-                    </button>
+
+                    {contestando === solicitacao.id ? (
+                      <div className="mt-4 space-y-4 rounded-lg border border-atencao-200 bg-atencao-50 p-4">
+                        <p className="text-sm text-slate-700">
+                          A contestação suspende a confirmação automática e é analisada pela
+                          administração da plataforma, que decide sobre o reembolso.
+                        </p>
+
+                        <fieldset className="space-y-2">
+                          <legend className="mb-1 text-sm font-medium text-slate-700">
+                            O que aconteceu?
+                          </legend>
+                          {MOTIVOS_CONTESTACAO.map(({ valor, rotulo, detalhe }) => (
+                            <label key={valor}
+                              className={`flex cursor-pointer gap-3 rounded-lg border p-3 transition-colors ${motivoContestacao === valor
+                                ? 'border-atencao-600 bg-white'
+                                : 'border-slate-200 bg-white hover:border-slate-300'}`}>
+                              <input type="radio" name={`motivo-contestacao-${solicitacao.id}`}
+                                value={valor} checked={motivoContestacao === valor}
+                                onChange={(e) => setMotivoContestacao(e.target.value)}
+                                className="mt-0.5" />
+                              <span>
+                                <span className="block text-sm font-medium text-slate-800">
+                                  {rotulo}
+                                </span>
+                                <span className="block text-xs text-slate-500">{detalhe}</span>
+                              </span>
+                            </label>
+                          ))}
+                        </fieldset>
+
+                        <div>
+                          <label htmlFor={`descricao-${solicitacao.id}`}
+                            className="mb-1.5 block text-sm font-medium text-slate-700">
+                            Descreva o ocorrido
+                          </label>
+                          <textarea id={`descricao-${solicitacao.id}`} rows={4}
+                            value={descricaoContestacao}
+                            onChange={(e) => setDescricaoContestacao(e.target.value)}
+                            placeholder="Conte o que foi combinado e o que de fato aconteceu. A administração usará este texto para decidir."
+                            className="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 text-slate-900 placeholder:text-slate-400 focus:border-festa-600 focus:outline-none focus:ring-2 focus:ring-festa-600/30" />
+                          <p className="mt-1 text-xs text-slate-500">
+                            {descricaoContestacao.trim().length}/20 caracteres mínimos.
+                          </p>
+                        </div>
+
+                        <div className="flex flex-wrap gap-2">
+                          <button type="button"
+                            disabled={processando || motivoContestacao === ''
+                              || descricaoContestacao.trim().length < 20}
+                            onClick={() => acionar(
+                              solicitacao.id,
+                              {
+                                acao: 'contestar',
+                                motivoContestacao,
+                                descricao: descricaoContestacao,
+                              },
+                              'Contestação registrada. A administração vai analisar.'
+                            )}
+                            className="rounded-lg bg-atencao-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-atencao-700 disabled:opacity-50">
+                            Enviar contestação
+                          </button>
+                          <button type="button" onClick={() => setContestando(null)}
+                            disabled={processando}
+                            className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50">
+                            Voltar
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <button type="button" disabled={processando}
+                          onClick={() => acionar(
+                            solicitacao.id,
+                            { acao: 'confirmar_conclusao' },
+                            'Conclusão confirmada. Obrigado!'
+                          )}
+                          className="rounded-lg bg-festa-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-festa-700 disabled:opacity-50">
+                          Confirmar conclusão
+                        </button>
+                        <button type="button" disabled={processando}
+                          onClick={() => setContestando(solicitacao.id)}
+                          className="rounded-lg border border-atencao-600 px-4 py-2 text-sm font-medium text-atencao-700 transition-colors hover:bg-atencao-50">
+                          Contestar conclusão
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
 
-                {solicitacao.status === 'confirmado' && !aguardandoConfirmacao && (
-                  <p className="mt-4 border-t border-slate-200 pt-4 text-sm text-slate-600">
-                    Contratação confirmada. Após o evento, o fornecedor registra a conclusão
-                    e você confirma por aqui.
-                  </p>
+                {/* UC 042/043 — contestação registrada */}
+                {solicitacao.status_contestacao && (
+                  <div className="mt-4 space-y-2 rounded-lg border border-atencao-200 bg-atencao-50 p-3 text-sm">
+                    <p className="font-medium text-slate-800">
+                      Contestação: {ROTULO_MOTIVO_CONTESTACAO[solicitacao.motivo_contestacao_cliente]}
+                    </p>
+                    <p className="whitespace-pre-line text-slate-700">
+                      {solicitacao.descricao_contestacao_cliente}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      Enviada em {formatarDataHora(solicitacao.data_contestacao_cliente)}.
+                    </p>
+
+                    {solicitacao.status_contestacao === 'pendente' ? (
+                      <p className="text-slate-700">
+                        Aguardando análise da administração. Enquanto isso, a solicitação não
+                        é confirmada automaticamente.
+                      </p>
+                    ) : (
+                      <div className="space-y-1 border-t border-atencao-200 pt-2">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-slate-800">Resultado:</span>
+                          <Etiqueta tom={TOM_RESULTADO_CONTESTACAO[solicitacao.resultado_contestacao]}>
+                            {ROTULO_RESULTADO_CONTESTACAO[solicitacao.resultado_contestacao]}
+                          </Etiqueta>
+                        </div>
+                        <p className="whitespace-pre-line text-slate-700">
+                          {solicitacao.justificativa_contestacao}
+                        </p>
+                        <p className="text-xs text-slate-500">
+                          Analisada em {formatarDataHora(solicitacao.data_analise_contestacao)}.
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 )}
+
+                {solicitacao.status === 'confirmado' && !aguardandoConfirmacao
+                  && !solicitacao.data_registro_conclusao_fornecedor && (
+                    <p className="mt-4 border-t border-slate-200 pt-4 text-sm text-slate-600">
+                      Contratação confirmada. Após o evento, o fornecedor registra a conclusão
+                      e você confirma por aqui.
+                    </p>
+                  )}
 
                 {solicitacao.status === 'concluido' && (
                   <p className="mt-4 border-t border-slate-200 pt-4 text-sm text-sucesso-700">

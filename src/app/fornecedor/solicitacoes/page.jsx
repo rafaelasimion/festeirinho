@@ -3,7 +3,10 @@ import { pool } from '@/lib/db';
 import { lerSessao } from '@/lib/sessao';
 import { expirarSolicitacoesVencidas } from '@/lib/solicitacao-servidor';
 import { expirarPagamentosVencidos } from '@/lib/pagamento-servidor';
-import { confirmarConclusoesVencidas } from '@/lib/conclusao-servidor';
+import {
+  confirmarConclusoesVencidas,
+  cancelarSemRegistroDeConclusao,
+} from '@/lib/conclusao-servidor';
 import { obterConfiguracoes } from '@/lib/configuracao';
 import ListaSolicitacoesRecebidas from './lista';
 
@@ -19,9 +22,9 @@ export default async function SolicitacoesRecebidas() {
   if (fornecedores.length === 0) redirect('/minha-conta');
   const idFornecedor = fornecedores[0].id;
 
-  // Fecha o que venceu antes de mostrar: RN035, RN025 e RF036.
-  await expirarSolicitacoesVencidas();
+  // Fecha o que venceu antes de mostrar: RN035, RN025, RN066 e RF036.  await expirarSolicitacoesVencidas();
   await expirarPagamentosVencidos();
+  await cancelarSemRegistroDeConclusao();
   await confirmarConclusoesVencidas();
 
   const configuracoes = await obterConfiguracoes();
@@ -34,6 +37,9 @@ export default async function SolicitacoesRecebidas() {
             so.data_registro_conclusao_fornecedor,
             so.data_confirmacao_conclusao_cliente,
             DATE_ADD(so.data_hora_evento, INTERVAL so.duracao * 60 MINUTE) AS termino_previsto,
+            so.motivo_contestacao_cliente, so.descricao_contestacao_cliente,
+            so.data_contestacao_cliente, so.status_contestacao,
+            so.resultado_contestacao, so.justificativa_contestacao,
             s.nome AS servico,
             u.nome AS cliente,
             tl.descricao AS tipo_local,
@@ -78,6 +84,7 @@ function serializar(linhas) {
     data_limite_resposta_fornecedor: iso(linha.data_limite_resposta_fornecedor),
     data_registro_conclusao_fornecedor: iso(linha.data_registro_conclusao_fornecedor),
     data_confirmacao_conclusao_cliente: iso(linha.data_confirmacao_conclusao_cliente),
+    data_contestacao_cliente: iso(linha.data_contestacao_cliente),
     termino_previsto: iso(linha.termino_previsto),
     duracao: Number(linha.duracao),
     valor_final: Number(linha.valor_final),

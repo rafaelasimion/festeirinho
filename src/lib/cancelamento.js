@@ -3,8 +3,7 @@
 // Ficam separadas do módulo de servidor porque a TELA também precisa delas:
 // o cliente vê quanto vai receber de volta antes de confirmar (UC 022), e o
 // número que ele vê é calculado pela mesma função que o servidor usa para
-// gravar. Um módulo que importa o banco não pode ser carregado por componente
-// de tela.
+// gravar.
 
 export const ROTULO_STATUS_CANCELAMENTO = {
   em_analise: 'Em análise',
@@ -19,8 +18,7 @@ export const ROTULO_ORIGEM_CANCELAMENTO = {
 };
 
 // RN050 — a faixa vem da antecedência em relação ao evento, e os percentuais
-// são os CONGELADOS no pagamento (RN027), não os atuais da configuração:
-// quem contratou ontem cancela sob as regras de ontem.
+// são os CONGELADOS no pagamento (RN027), não os atuais da configuração.
 export function calcularFaixa(dataEvento, pagamento) {
   const horasRestantes = (new Date(dataEvento) - new Date()) / 3600000;
 
@@ -55,13 +53,7 @@ export function calcularValores({ solicitadoPor, dataEvento, pagamento }) {
 
   // RN026 — pagamento não efetivado: não há o que reembolsar nem o que reter.
   if (!pago) {
-    return {
-      valorMulta: 0,
-      valorReembolso: 0,
-      percentual: 0,
-      rotulo: null,
-      pago: false,
-    };
+    return { valorMulta: 0, valorReembolso: 0, percentual: 0, rotulo: null, pago: false };
   }
 
   const valorBruto = Number(pagamento.valor_bruto);
@@ -85,15 +77,37 @@ export function calcularValores({ solicitadoPor, dataEvento, pagamento }) {
   return { valorMulta, valorReembolso, percentual, rotulo, pago: true };
 }
 
-// RN041 — o cancelamento a pedido das partes só vale para solicitações
-// "aguardando pagamento" ou "confirmado", e apenas antes do evento.
+// Condições que impedem o cancelamento a pedido das partes (UC 022).
 // Devolve a mensagem do impedimento, ou null quando pode cancelar.
-export function impedimentoParaCancelar({ status, dataEvento, temCancelamento }) {
+//
+// As quatro travas, na ordem em que fazem sentido explicar:
+//   1. já existe cancelamento (RN007)
+//   2. status não admite (RN041)
+//   3. a conclusão já foi registrada — o serviço foi prestado, e o que
+//      resta é confirmar ou contestar, não cancelar
+//   4. há contestação em aberto — a solicitação está sob decisão da
+//      administração e não pode seguir por outro caminho (RN069)
+//
+// A terceira e a quarta valem para os DOIS lados: nem cliente nem fornecedor
+// cancelam um serviço que já foi executado ou que está em disputa.
+export function impedimentoParaCancelar({
+  status,
+  dataEvento,
+  temCancelamento,
+  conclusaoRegistrada = false,
+  contestacaoPendente = false,
+}) {
   if (temCancelamento) {
     return 'Esta solicitação já possui um cancelamento registrado.';
   }
   if (!['aguardando_pagamento', 'confirmado'].includes(status)) {
     return 'Esta solicitação não está em um status que admita cancelamento.';
+  }
+  if (contestacaoPendente) {
+    return 'Há uma contestação em análise: aguarde a decisão da administração.';
+  }
+  if (conclusaoRegistrada) {
+    return 'A conclusão do serviço já foi registrada: a solicitação segue pelo fluxo de conclusão.';
   }
   if (new Date(dataEvento) <= new Date()) {
     return 'O evento já ocorreu: a solicitação segue pelo fluxo de conclusão.';

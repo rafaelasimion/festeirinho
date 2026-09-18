@@ -15,6 +15,7 @@ import {
   ROTULO_ORIGEM_CANCELAMENTO,
   impedimentoParaCancelar,
 } from '@/lib/cancelamento';
+import { ROTULO_MOTIVO_CONTESTACAO } from '@/lib/contestacao';
 
 function formatarDataHora(valor) {
   if (!valor) return '';
@@ -106,6 +107,8 @@ export default function ListaSolicitacoesRecebidas({
               status: solicitacao.status,
               dataEvento: solicitacao.data_hora_evento,
               temCancelamento: Boolean(solicitacao.id_cancelamento),
+              conclusaoRegistrada: Boolean(solicitacao.data_registro_conclusao_fornecedor),
+              contestacaoPendente: solicitacao.status_contestacao === 'pendente',
             });
             const podeCancelar = impedimento === null;
 
@@ -180,6 +183,21 @@ export default function ListaSolicitacoesRecebidas({
                   <p className="mt-3 text-sm text-slate-600">
                     Motivo informado: {ROTULO_MOTIVO_RECUSA[solicitacao.motivo_recusa]}
                   </p>
+                )}
+
+                {solicitacao.status_contestacao === 'pendente' && (
+                  <div className="mt-4 space-y-1 rounded-lg border border-atencao-200 bg-atencao-50 p-3 text-sm">
+                    <p className="font-medium text-slate-800">
+                      O cliente contestou a conclusão: {ROTULO_MOTIVO_CONTESTACAO[solicitacao.motivo_contestacao_cliente]}
+                    </p>
+                    <p className="whitespace-pre-line text-slate-700">
+                      {solicitacao.descricao_contestacao_cliente}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      Enviada em {formatarDataHora(solicitacao.data_contestacao_cliente)}.
+                      A administração vai analisar e decidir.
+                    </p>
+                  </div>
                 )}
 
                 {/* UC 022 — cancelamento registrado */}
