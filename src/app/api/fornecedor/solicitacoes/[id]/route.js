@@ -2,12 +2,14 @@ import { NextResponse } from 'next/server';
 import { pool } from '@/lib/db';
 import { obterFornecedorLogado } from '@/lib/autorizacao';
 import { gerarPagamento } from '@/lib/pagamento-servidor';
+import { registrarCancelamento } from '@/lib/cancelamento-servidor';
 
 // RF022/RF023 — resposta do fornecedor à solicitação.
 // UC 019 — registro da conclusão do serviço.
+// UC 022 — solicitação de cancelamento pelo fornecedor.
 
 const MOTIVOS_RECUSA = ['agenda_indisponivel', 'fora_da_area', 'inviabilidade', 'outro'];
-const ACOES = ['aprovar', 'recusar', 'registrar_conclusao'];
+const ACOES = ['aprovar', 'recusar', 'registrar_conclusao', 'cancelar'];
 
 export async function PATCH(request, { params }) {
   const { erro, fornecedor } = await obterFornecedorLogado();
@@ -33,8 +35,7 @@ export async function PATCH(request, { params }) {
 
   // A solicitação precisa ser de um serviço DESTE fornecedor. O JOIN com
   // servico é o que garante isso — sem ele, bastaria trocar o número na URL
-  // para responder solicitação alheia.
-  // O término previsto é a data do evento mais a duração contratada (RN066).
+  // para agir sobre solicitação alheia.
   const [linhas] = await pool.execute(
     `SELECT so.id, so.status, so.data_limite_resposta_fornecedor,
             so.data_registro_conclusao_fornecedor,
@@ -52,6 +53,32 @@ export async function PATCH(request, { params }) {
 
   const solicitacao = linhas[0];
 
+  // ---------------- UC 022: cancelar ----------------
+  if (acao === 'cancelar') {
+    const motivo = String(corpo.motivo ?? '').trim();
+    if (motivo.length < 10) {
+      return NextResponse.json(
+        { erro: 'Descreva o motivo do cancelamento em ao menos 10 caracteres.' },
+        { status: 400 }
+      );
+    }
+    if (motivo.length > 1000) {
+      return NextResponse.json({ erro: 'Motivo muito longo.' }, { status: 400 });
+    }
+
+    // RN051 — cancelamento pelo fornecedor devolve 100% ao cliente, sem multa.
+    const resultado = await registrarCancelamento({
+      idSolicitacao,
+      solicitadoPor: 'fornecedor',
+      motivo,
+    });
+
+    if (resultado.erro) {
+      return NextResponse.json({ erro: resultado.erro }, { status: resultado.status });
+    }
+    return NextResponse.json(resultado.cancelamento);
+  }
+
   // ---------------- UC 019: registrar conclusão ----------------
   if (acao === 'registrar_conclusao') {
     if (solicitacao.status !== 'confirmado') {
@@ -68,9 +95,7 @@ export async function PATCH(request, { params }) {
       );
     }
 
-    // UC 019, pré-condição: o evento já deve ter ocorrido. Registrar
-    // conclusão antes do término previsto seria declarar como prestado um
-    // serviço que ainda está acontecendo.
+    // UC 019, pré-condição: o evento já deve ter ocorrido.
     if (new Date(solicitacao.termino_previsto) > new Date()) {
       return NextResponse.json(
         { erro: 'A conclusão só pode ser registrada após o término previsto do evento.' },

@@ -3,12 +3,18 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Etiqueta from '@/componentes/etiqueta';
+import DialogoCancelamento from '@/componentes/dialogo-cancelamento';
 import {
   formatarPreco,
   ROTULO_STATUS_SOLICITACAO,
   TOM_STATUS_SOLICITACAO,
   ROTULO_MOTIVO_RECUSA,
 } from '@/lib/solicitacao';
+import {
+  ROTULO_STATUS_CANCELAMENTO,
+  ROTULO_ORIGEM_CANCELAMENTO,
+  impedimentoParaCancelar,
+} from '@/lib/cancelamento';
 
 function formatarDataHora(valor) {
   if (!valor) return '';
@@ -29,12 +35,13 @@ export default function ListaSolicitacoesRecebidas({
 }) {
   const router = useRouter();
   const [recusando, setRecusando] = useState(null);
+  const [cancelando, setCancelando] = useState(null);
   const [motivo, setMotivo] = useState('');
   const [processando, setProcessando] = useState(false);
   const [erroGeral, setErroGeral] = useState('');
   const [mensagem, setMensagem] = useState('');
 
-  async function responder(idSolicitacao, acao, motivoRecusa = null) {
+  async function acionar(idSolicitacao, corpo, textoSucesso) {
     setErroGeral('');
     setMensagem('');
     setProcessando(true);
@@ -43,7 +50,7 @@ export default function ListaSolicitacoesRecebidas({
       const resposta = await fetch(`/api/fornecedor/solicitacoes/${idSolicitacao}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ acao, motivoRecusa }),
+        body: JSON.stringify(corpo),
       });
 
       let dados;
@@ -55,19 +62,14 @@ export default function ListaSolicitacoesRecebidas({
       }
 
       if (!resposta.ok) {
-        setErroGeral(dados.erro ?? 'Não foi possível registrar a resposta.');
+        setErroGeral(dados.erro ?? 'Não foi possível concluir a operação.');
         return;
       }
 
       setRecusando(null);
+      setCancelando(null);
       setMotivo('');
-      setMensagem(
-        acao === 'aprovar'
-          ? 'Solicitação aprovada. O cliente foi encaminhado para o pagamento.'
-          : acao === 'recusar'
-            ? 'Solicitação recusada.'
-            : 'Conclusão registrada. O cliente foi avisado para confirmar.'
-      );
+      setMensagem(textoSucesso);
       router.refresh();
     } catch {
       setErroGeral('Falha de conexão. Tente novamente.');
@@ -91,8 +93,6 @@ export default function ListaSolicitacoesRecebidas({
             const aberta = solicitacao.status === 'aguardando_analise';
             const eventoTerminou = new Date(solicitacao.termino_previsto) <= new Date();
 
-            // UC 019 — pode registrar a conclusão quando a solicitação está
-            // confirmada, o evento já terminou e ainda não houve registro.
             const podeRegistrarConclusao =
               solicitacao.status === 'confirmado'
               && eventoTerminou
@@ -102,7 +102,18 @@ export default function ListaSolicitacoesRecebidas({
               solicitacao.status === 'confirmado'
               && Boolean(solicitacao.data_registro_conclusao_fornecedor);
 
-            // Endereço completo só depois da aprovação.
+            const impedimento = impedimentoParaCancelar({
+              status: solicitacao.status,
+              dataEvento: solicitacao.data_hora_evento,
+              temCancelamento: Boolean(solicitacao.id_cancelamento),
+            });
+            const podeCancelar = impedimento === null;
+
+            const pagamento = solicitacao.status_pagamento ? {
+              status: solicitacao.status_pagamento,
+              valor_bruto: solicitacao.valor_bruto,
+            } : null;
+
             const mostrarEnderecoCompleto =
               !aberta && !['recusado', 'expirado'].includes(solicitacao.status);
 
@@ -171,6 +182,29 @@ export default function ListaSolicitacoesRecebidas({
                   </p>
                 )}
 
+                {/* UC 022 — cancelamento registrado */}
+                {solicitacao.id_cancelamento && (
+                  <div className="mt-4 space-y-2 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm">
+                    <p className="font-medium text-slate-800">
+                      {ROTULO_ORIGEM_CANCELAMENTO[solicitacao.solicitado_por]} ·{' '}
+                      {ROTULO_STATUS_CANCELAMENTO[solicitacao.status_cancelamento]}
+                    </p>
+                    <p className="whitespace-pre-line text-slate-700">
+                      <span className="font-medium">Motivo: </span>
+                      {solicitacao.motivo_cancelamento}
+                    </p>
+                    {Number(solicitacao.valor_multa) > 0 && (
+                      <p className="text-slate-700">
+                        <span className="font-medium">Valor retido a seu favor: </span>
+                        {formatarPreco(solicitacao.valor_multa)}
+                        {solicitacao.status_repasse === 'liberado'
+                          ? ' · já liberado para saque'
+                          : ' · liberado quando o cancelamento concluir'}
+                      </p>
+                    )}
+                  </div>
+                )}
+
                 {/* UC 015 — aprovar ou recusar */}
                 {aberta && (
                   <div className="mt-4 border-t border-slate-200 pt-4">
@@ -198,7 +232,11 @@ export default function ListaSolicitacoesRecebidas({
                         </div>
                         <div className="flex gap-2">
                           <button type="button" disabled={processando || motivo === ''}
-                            onClick={() => responder(solicitacao.id, 'recusar', motivo)}
+                            onClick={() => acionar(
+                              solicitacao.id,
+                              { acao: 'recusar', motivoRecusa: motivo },
+                              'Solicitação recusada.'
+                            )}
                             className="rounded-lg bg-perigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-perigo-700 disabled:opacity-50">
                             Confirmar recusa
                           </button>
@@ -212,7 +250,11 @@ export default function ListaSolicitacoesRecebidas({
                     ) : (
                       <div className="flex flex-wrap gap-2">
                         <button type="button" disabled={processando}
-                          onClick={() => responder(solicitacao.id, 'aprovar')}
+                          onClick={() => acionar(
+                            solicitacao.id,
+                            { acao: 'aprovar' },
+                            'Solicitação aprovada. O cliente foi encaminhado para o pagamento.'
+                          )}
                           className="rounded-lg bg-festa-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-festa-700 disabled:opacity-50">
                           Aprovar
                         </button>
@@ -238,7 +280,11 @@ export default function ListaSolicitacoesRecebidas({
                           )}. Sem registro, a solicitação é cancelada com reembolso ao cliente.
                         </p>
                         <button type="button" disabled={processando}
-                          onClick={() => responder(solicitacao.id, 'registrar_conclusao')}
+                          onClick={() => acionar(
+                            solicitacao.id,
+                            { acao: 'registrar_conclusao' },
+                            'Conclusão registrada. O cliente foi avisado para confirmar.'
+                          )}
                           className="shrink-0 rounded-lg bg-festa-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-festa-700 disabled:opacity-50">
                           Registrar conclusão
                         </button>
@@ -269,6 +315,30 @@ export default function ListaSolicitacoesRecebidas({
                     Serviço concluído e confirmado em{' '}
                     {formatarDataHora(solicitacao.data_confirmacao_conclusao_cliente)}.
                   </p>
+                )}
+
+                {/* UC 022 — pedir cancelamento */}
+                {podeCancelar && (
+                  <div className="mt-4 border-t border-slate-200 pt-4">
+                    {cancelando === solicitacao.id ? (
+                      <DialogoCancelamento
+                        solicitadoPor="fornecedor"
+                        dataEvento={solicitacao.data_hora_evento}
+                        pagamento={pagamento}
+                        processando={processando}
+                        aoVoltar={() => setCancelando(null)}
+                        aoCancelar={(motivoTexto) => acionar(
+                          solicitacao.id,
+                          { acao: 'cancelar', motivo: motivoTexto },
+                          'Cancelamento registrado. O cliente será reembolsado integralmente.'
+                        )} />
+                    ) : (
+                      <button type="button" onClick={() => setCancelando(solicitacao.id)}
+                        className="rounded-lg border border-perigo-600 px-4 py-2 text-sm font-medium text-perigo-700 transition-colors hover:bg-perigo-50">
+                        Cancelar solicitação
+                      </button>
+                    )}
+                  </div>
                 )}
               </li>
             );

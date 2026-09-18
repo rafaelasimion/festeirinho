@@ -1,8 +1,12 @@
 import { NextResponse } from 'next/server';
 import { pool } from '@/lib/db';
 import { obterClienteLogado } from '@/lib/autorizacao';
+import { registrarCancelamento } from '@/lib/cancelamento-servidor';
 
 // UC 020 — confirmação da conclusão do serviço pelo cliente.
+// UC 022 — solicitação de cancelamento pelo cliente.
+
+const ACOES = ['confirmar_conclusao', 'cancelar'];
 
 export async function PATCH(request, { params }) {
   const { erro, cliente } = await obterClienteLogado();
@@ -21,7 +25,8 @@ export async function PATCH(request, { params }) {
     return NextResponse.json({ erro: 'Requisição inválida.' }, { status: 400 });
   }
 
-  if (String(corpo.acao ?? '') !== 'confirmar_conclusao') {
+  const acao = String(corpo.acao ?? '');
+  if (!ACOES.includes(acao)) {
     return NextResponse.json({ erro: 'Ação inválida.' }, { status: 400 });
   }
 
@@ -42,7 +47,35 @@ export async function PATCH(request, { params }) {
 
   const solicitacao = linhas[0];
 
-  // UC 020, pré-condição: o fornecedor precisa ter registrado a conclusão.
+  // ---------------- UC 022: cancelar ----------------
+  if (acao === 'cancelar') {
+    // O motivo é texto livre e obrigatório (UC 022, etapa 3). Diferente da
+    // recusa e da contestação, aqui não há lista padronizada: o desfecho
+    // financeiro depende de quem pediu e de quando, não do porquê.
+    const motivo = String(corpo.motivo ?? '').trim();
+    if (motivo.length < 10) {
+      return NextResponse.json(
+        { erro: 'Descreva o motivo do cancelamento em ao menos 10 caracteres.' },
+        { status: 400 }
+      );
+    }
+    if (motivo.length > 1000) {
+      return NextResponse.json({ erro: 'Motivo muito longo.' }, { status: 400 });
+    }
+
+    const resultado = await registrarCancelamento({
+      idSolicitacao,
+      solicitadoPor: 'cliente',
+      motivo,
+    });
+
+    if (resultado.erro) {
+      return NextResponse.json({ erro: resultado.erro }, { status: resultado.status });
+    }
+    return NextResponse.json(resultado.cancelamento);
+  }
+
+  // ---------------- UC 020: confirmar conclusão ----------------
   if (solicitacao.data_registro_conclusao_fornecedor === null) {
     return NextResponse.json(
       { erro: 'O fornecedor ainda não registrou a conclusão deste serviço.' },

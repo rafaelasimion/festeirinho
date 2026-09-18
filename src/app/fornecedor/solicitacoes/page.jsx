@@ -19,9 +19,7 @@ export default async function SolicitacoesRecebidas() {
   if (fornecedores.length === 0) redirect('/minha-conta');
   const idFornecedor = fornecedores[0].id;
 
-  // Fecha o que venceu antes de mostrar qualquer coisa: resposta do
-  // fornecedor (RN035), pagamento do cliente (RN025) e confirmação da
-  // conclusão (RF036).
+  // Fecha o que venceu antes de mostrar: RN035, RN025 e RF036.
   await expirarSolicitacoesVencidas();
   await expirarPagamentosVencidos();
   await confirmarConclusoesVencidas();
@@ -40,13 +38,20 @@ export default async function SolicitacoesRecebidas() {
             u.nome AS cliente,
             tl.descricao AS tipo_local,
             e.rua, e.numero, e.complemento, e.bairro,
-            e.cidade, e.estado, e.cep
+            e.cidade, e.estado, e.cep,
+            p.status AS status_pagamento, p.valor_bruto,
+            ca.id AS id_cancelamento, ca.solicitado_por,
+            ca.motivo AS motivo_cancelamento,
+            ca.valor_reembolso, ca.valor_multa,
+            ca.status AS status_cancelamento, ca.status_repasse
        FROM solicitacao so
        JOIN servico s     ON s.id  = so.id_servico
        JOIN cliente c     ON c.id  = so.id_cliente
        JOIN usuario u     ON u.id  = c.id_usuario
        JOIN endereco e    ON e.id  = so.id_endereco
        JOIN tipo_local tl ON tl.id = so.id_tipo_local
+       LEFT JOIN pagamento p     ON p.id_solicitacao  = so.id
+       LEFT JOIN cancelamento ca ON ca.id_solicitacao = so.id
       WHERE s.id_fornecedor = ?
       ORDER BY (so.status = 'aguardando_analise') DESC,
                so.data_solicitacao DESC`,
@@ -62,11 +67,10 @@ export default async function SolicitacoesRecebidas() {
   );
 }
 
-// Datas vêm do driver como objetos Date e DECIMAL vem como string. Converto
-// para tipos simples antes de entregar à tela: só dado serializável
-// atravessa a fronteira servidor → cliente.
 function serializar(linhas) {
   const iso = (valor) => (valor ? valor.toISOString() : null);
+  const numero = (valor) => (valor === null || valor === undefined ? null : Number(valor));
+
   return linhas.map((linha) => ({
     ...linha,
     data_hora_evento: iso(linha.data_hora_evento),
@@ -77,5 +81,8 @@ function serializar(linhas) {
     termino_previsto: iso(linha.termino_previsto),
     duracao: Number(linha.duracao),
     valor_final: Number(linha.valor_final),
+    valor_bruto: numero(linha.valor_bruto),
+    valor_reembolso: numero(linha.valor_reembolso),
+    valor_multa: numero(linha.valor_multa),
   }));
 }

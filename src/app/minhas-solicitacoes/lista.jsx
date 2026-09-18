@@ -4,12 +4,18 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Etiqueta from '@/componentes/etiqueta';
+import DialogoCancelamento from '@/componentes/dialogo-cancelamento';
 import {
   formatarPreco,
   ROTULO_STATUS_SOLICITACAO,
   TOM_STATUS_SOLICITACAO,
   ROTULO_MOTIVO_RECUSA,
 } from '@/lib/solicitacao';
+import {
+  ROTULO_STATUS_CANCELAMENTO,
+  ROTULO_ORIGEM_CANCELAMENTO,
+  impedimentoParaCancelar,
+} from '@/lib/cancelamento';
 
 function formatarDataHora(valor) {
   if (!valor) return '';
@@ -21,11 +27,12 @@ function formatarDataHora(valor) {
 
 export default function ListaMinhasSolicitacoes({ solicitacoes, prazoConfirmacaoHoras }) {
   const router = useRouter();
+  const [cancelando, setCancelando] = useState(null);
   const [processando, setProcessando] = useState(false);
   const [mensagem, setMensagem] = useState('');
   const [erro, setErro] = useState('');
 
-  async function confirmarConclusao(idSolicitacao) {
+  async function acionar(idSolicitacao, corpo, textoSucesso) {
     setErro('');
     setMensagem('');
     setProcessando(true);
@@ -34,7 +41,7 @@ export default function ListaMinhasSolicitacoes({ solicitacoes, prazoConfirmacao
       const resposta = await fetch(`/api/solicitacoes/${idSolicitacao}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ acao: 'confirmar_conclusao' }),
+        body: JSON.stringify(corpo),
       });
 
       let dados;
@@ -46,11 +53,16 @@ export default function ListaMinhasSolicitacoes({ solicitacoes, prazoConfirmacao
       }
 
       if (!resposta.ok) {
-        setErro(dados.erro ?? 'Não foi possível confirmar a conclusão.');
+        setErro(dados.erro ?? 'Não foi possível concluir a operação.');
         return;
       }
 
-      setMensagem('Conclusão confirmada. Obrigado!');
+      setCancelando(null);
+      setMensagem(
+        dados.aguardandoDadosRecebimento
+          ? 'Cancelamento registrado. Como o pagamento foi por boleto, você precisará informar os dados para receber o reembolso.'
+          : textoSucesso
+      );
       router.refresh();
     } catch {
       setErro('Falha de conexão. Tente novamente.');
@@ -79,12 +91,27 @@ export default function ListaMinhasSolicitacoes({ solicitacoes, prazoConfirmacao
       ) : (
         <ul className="space-y-4">
           {solicitacoes.map((solicitacao) => {
-            // UC 020 — o fornecedor registrou a conclusão e a solicitação
-            // ainda está confirmada: é a vez do cliente.
             const aguardandoConfirmacao =
               solicitacao.status === 'confirmado'
               && Boolean(solicitacao.data_registro_conclusao_fornecedor)
               && !solicitacao.data_confirmacao_conclusao_cliente;
+
+            // RN041 — cancelar só antes do evento, em status que admita.
+            const impedimento = impedimentoParaCancelar({
+              status: solicitacao.status,
+              dataEvento: solicitacao.data_hora_evento,
+              temCancelamento: Boolean(solicitacao.id_cancelamento),
+            });
+            const podeCancelar = impedimento === null;
+
+            const pagamento = solicitacao.id_pagamento ? {
+              status: solicitacao.status_pagamento,
+              valor_bruto: solicitacao.valor_bruto,
+              perc_multa_faixa_mais_7d: solicitacao.perc_multa_faixa_mais_7d,
+              perc_multa_faixa_7d_48h: solicitacao.perc_multa_faixa_7d_48h,
+              perc_multa_faixa_48h_24h: solicitacao.perc_multa_faixa_48h_24h,
+              perc_multa_faixa_24h: solicitacao.perc_multa_faixa_24h,
+            } : null;
 
             return (
               <li key={solicitacao.id} className="rounded-xl border border-slate-200 bg-white p-5">
@@ -144,7 +171,11 @@ export default function ListaMinhasSolicitacoes({ solicitacoes, prazoConfirmacao
                       confirma automaticamente.
                     </p>
                     <button type="button" disabled={processando}
-                      onClick={() => confirmarConclusao(solicitacao.id)}
+                      onClick={() => acionar(
+                        solicitacao.id,
+                        { acao: 'confirmar_conclusao' },
+                        'Conclusão confirmada. Obrigado!'
+                      )}
                       className="mt-3 rounded-lg bg-festa-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-festa-700 disabled:opacity-50">
                       Confirmar conclusão
                     </button>
@@ -170,6 +201,56 @@ export default function ListaMinhasSolicitacoes({ solicitacoes, prazoConfirmacao
                     <span className="font-medium">Motivo da recusa: </span>
                     {ROTULO_MOTIVO_RECUSA[solicitacao.motivo_recusa]}
                   </p>
+                )}
+
+                {/* UC 022 — cancelamento registrado */}
+                {solicitacao.id_cancelamento && (
+                  <div className="mt-4 space-y-2 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm">
+                    <p className="font-medium text-slate-800">
+                      {ROTULO_ORIGEM_CANCELAMENTO[solicitacao.solicitado_por]} ·{' '}
+                      {ROTULO_STATUS_CANCELAMENTO[solicitacao.status_cancelamento]}
+                    </p>
+                    <p className="whitespace-pre-line text-slate-700">
+                      <span className="font-medium">Motivo: </span>
+                      {solicitacao.motivo_cancelamento}
+                    </p>
+                    {Number(solicitacao.valor_reembolso) > 0 && (
+                      <p className="text-slate-700">
+                        <span className="font-medium">Reembolso: </span>
+                        {formatarPreco(solicitacao.valor_reembolso)}
+                      </p>
+                    )}
+                    {Number(solicitacao.valor_multa) > 0 && (
+                      <p className="text-slate-700">
+                        <span className="font-medium">Valor retido: </span>
+                        {formatarPreco(solicitacao.valor_multa)}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* UC 022 — pedir cancelamento */}
+                {podeCancelar && (
+                  <div className="mt-4 border-t border-slate-200 pt-4">
+                    {cancelando === solicitacao.id ? (
+                      <DialogoCancelamento
+                        solicitadoPor="cliente"
+                        dataEvento={solicitacao.data_hora_evento}
+                        pagamento={pagamento}
+                        processando={processando}
+                        aoVoltar={() => setCancelando(null)}
+                        aoCancelar={(motivo) => acionar(
+                          solicitacao.id,
+                          { acao: 'cancelar', motivo },
+                          'Cancelamento registrado.'
+                        )} />
+                    ) : (
+                      <button type="button" onClick={() => setCancelando(solicitacao.id)}
+                        className="rounded-lg border border-perigo-600 px-4 py-2 text-sm font-medium text-perigo-700 transition-colors hover:bg-perigo-50">
+                        Cancelar solicitação
+                      </button>
+                    )}
+                  </div>
                 )}
               </li>
             );
