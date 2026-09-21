@@ -50,6 +50,9 @@ export default async function Cabecalho() {
                   <Link href="/fornecedor/solicitacoes" className="hover:text-festa-700">
                     Solicitações recebidas
                   </Link>
+                  <Link href="/fornecedor/financeiro" className="hover:text-festa-700">
+                    Financeiro
+                  </Link>
                   <Link href="/fornecedor/perfil" className="hover:text-festa-700">
                     Meu perfil
                   </Link>
