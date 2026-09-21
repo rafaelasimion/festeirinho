@@ -43,7 +43,11 @@ export default async function MinhasSolicitacoes() {
             p.perc_multa_faixa_48h_24h, p.perc_multa_faixa_24h,
             ca.id AS id_cancelamento, ca.solicitado_por, ca.motivo AS motivo_cancelamento,
             ca.valor_reembolso, ca.valor_multa, ca.status AS status_cancelamento,
-            av.id AS id_avaliacao, av.nota, av.comentario, av.status_avaliacao
+            av.id AS id_avaliacao, av.nota, av.comentario, av.status_avaliacao,
+            dr.id AS id_dados_reembolso, dr.status_validacao AS validacao_reembolso,
+            dr.motivo_rejeicao AS motivo_rejeicao_reembolso,
+            dr.tipo_recebimento, dr.chave_pix, dr.tipo_chave_pix,
+            dr.banco, dr.tipo_conta, dr.agencia, dr.numero_conta
        FROM solicitacao so
        JOIN cliente c     ON c.id  = so.id_cliente
        JOIN servico s     ON s.id  = so.id_servico
@@ -52,14 +56,25 @@ export default async function MinhasSolicitacoes() {
        LEFT JOIN pagamento p     ON p.id_solicitacao  = so.id
        LEFT JOIN cancelamento ca ON ca.id_solicitacao = so.id
        LEFT JOIN avaliacao av    ON av.id_solicitacao = so.id
+       LEFT JOIN dados_recebimento dr ON dr.id_cancelamento = ca.id
       WHERE c.id_usuario = ?
       ORDER BY so.data_solicitacao DESC`,
     [sessao.id]
   );
 
+  // RN061 — o titular dos dados de reembolso é o próprio cliente.
+  const [titulares] = await pool.execute(
+    `SELECT u.nome, c.cpf
+       FROM cliente c JOIN usuario u ON u.id = c.id_usuario
+      WHERE c.id_usuario = ? LIMIT 1`,
+    [sessao.id]
+  );
+  const titular = { nome: titulares[0]?.nome ?? '', documento: titulares[0]?.cpf ?? '' };
+
   return (
     <ListaMinhasSolicitacoes
       solicitacoes={serializar(solicitacoes)}
+      titular={titular}
       prazoConfirmacaoHoras={configuracoes.prazo_confirmacao_conclusao_horas}
     />
   );
