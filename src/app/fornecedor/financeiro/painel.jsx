@@ -1,9 +1,10 @@
 import { Wallet, Clock, CheckCircle2 } from 'lucide-react';
 import Etiqueta from '@/componentes/etiqueta';
 import { formatarPreco } from '@/lib/solicitacao';
+import Saques from './saques';
 
-// Componente de servidor: só apresenta. Nada aqui muda estado, então não
-// precisa de 'use client'.
+// Componente de servidor: só apresenta. A parte interativa — pedir saque e
+// reenviar dados — fica isolada no componente Saques, que é de cliente.
 
 function formatarData(valor) {
   if (!valor) return '';
@@ -11,7 +12,8 @@ function formatarData(valor) {
 }
 
 export default function PainelFinanceiro({
-  saldoDisponivel, diasCarencia, valorMinimoSaque, percentualComissao, movimentacoes,
+  saldoDisponivel, diasCarencia, valorMinimoSaque, percentualComissao,
+  titular, movimentacoes, saques,
 }) {
   const emCarencia = movimentacoes.filter((m) => m.status_repasse === 'pendente');
   const totalEmCarencia = emCarencia.reduce((soma, m) => soma + m.valor, 0);
@@ -57,10 +59,16 @@ export default function PainelFinanceiro({
         O valor de cada serviço concluído fica retido por {diasCarencia} dias contados da
         confirmação da conclusão, e então é liberado para saque. A plataforma retém{' '}
         {percentualComissao}% de comissão, já descontada nos valores abaixo. Multas de
-        cancelamento são liberadas sem carência.
+        cancelamento são liberadas sem carência. O saque não tem taxa.
       </p>
 
-      <h2 className="mb-4 mt-8 text-lg font-medium text-slate-900">Movimentações</h2>
+      <Saques
+        saldoDisponivel={saldoDisponivel}
+        valorMinimoSaque={valorMinimoSaque}
+        titular={titular}
+        saques={saques} />
+
+      <h2 className="mb-4 mt-10 text-lg font-medium text-slate-900">Movimentações</h2>
 
       {movimentacoes.length === 0 ? (
         <p className="text-sm text-slate-600">
@@ -75,9 +83,7 @@ export default function PainelFinanceiro({
               <div className="min-w-0">
                 <p className="font-medium text-slate-900">{m.servico}</p>
                 <p className="text-sm text-slate-600">
-                  {m.origem === 'conclusao'
-                    ? 'Serviço concluído'
-                    : 'Multa de cancelamento'}
+                  {m.origem === 'conclusao' ? 'Serviço concluído' : 'Multa de cancelamento'}
                   {' · solicitação #'}{m.id_solicitacao}
                 </p>
                 <p className="mt-1 text-xs text-slate-500">

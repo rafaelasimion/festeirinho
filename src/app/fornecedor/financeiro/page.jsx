@@ -16,11 +16,14 @@ export default async function Financeiro() {
   if (sessao.tipoUsuario !== 'fornecedor') redirect('/minha-conta');
 
   const [fornecedores] = await pool.execute(
-    'SELECT id FROM fornecedor WHERE id_usuario = ? LIMIT 1',
+    `SELECT f.id, f.tipo_pessoa, f.cpf, f.cnpj, f.razao_social, u.nome
+       FROM fornecedor f
+       JOIN usuario u ON u.id = f.id_usuario
+      WHERE f.id_usuario = ? LIMIT 1`,
     [sessao.id]
   );
   if (fornecedores.length === 0) redirect('/minha-conta');
-  const idFornecedor = fornecedores[0].id;
+  const fornecedor = fornecedores[0];
 
   // Fecha o que venceu antes de calcular o saldo: uma conclusão confirmada
   // automaticamente agora pode ser a que destrava um repasse.
@@ -34,13 +37,12 @@ export default async function Financeiro() {
   // mesma conta.
   const [saldos] = await pool.execute(
     'SELECT saldo_disponivel FROM vw_saldo_fornecedor WHERE id_fornecedor = ?',
-    [idFornecedor]
+    [fornecedor.id]
   );
   const saldoDisponivel = Number(saldos[0]?.saldo_disponivel ?? 0);
 
-  // As duas origens de repasse, unidas: valor do serviço concluído (RN056)
-  // e multa retida em cancelamento pelo cliente (RN057). A multa não tem
-  // carência, por isso a previsão dela é a própria data do cancelamento.
+  // As duas origens de repasse: valor do serviço concluído (RN056) e multa
+  // retida em cancelamento pelo cliente (RN057).
   const [movimentacoes] = await pool.execute(
     `SELECT 'conclusao' AS origem,
             p.id                AS id_origem,
@@ -76,10 +78,30 @@ export default async function Financeiro() {
         AND c.valor_multa > 0
 
       ORDER BY marco DESC`,
-    [configuracoes.periodo_carencia_repasse_dias, idFornecedor, idFornecedor]
+    [configuracoes.periodo_carencia_repasse_dias, fornecedor.id, fornecedor.id]
+  );
+
+  // UC 037 — saques do fornecedor, com os dados de recebimento de cada um.
+  const [saques] = await pool.execute(
+    `SELECT sq.id, sq.valor, sq.data_solicitacao, sq.status, sq.motivo_recusa,
+            sq.id_transacao_gateway, sq.data_processamento,
+            d.tipo_recebimento, d.chave_pix, d.tipo_chave_pix,
+            d.banco, d.tipo_conta, d.agencia, d.numero_conta,
+            d.nome_titular, d.status_validacao, d.motivo_rejeicao
+       FROM saque sq
+       LEFT JOIN dados_recebimento d ON d.id_saque = sq.id
+      WHERE sq.id_fornecedor = ?
+      ORDER BY sq.data_solicitacao DESC`,
+    [fornecedor.id]
   );
 
   const iso = (valor) => (valor ? valor.toISOString() : null);
+
+  // RN061 — o titular dos dados é o próprio fornecedor. Pré-preencher evita
+  // o erro mais comum, que é informar a conta de outra pessoa.
+  const titular = fornecedor.tipo_pessoa === 'PF'
+    ? { nome: fornecedor.nome, documento: fornecedor.cpf ?? '' }
+    : { nome: fornecedor.razao_social ?? fornecedor.nome, documento: fornecedor.cnpj ?? '' };
 
   return (
     <PainelFinanceiro
@@ -87,12 +109,19 @@ export default async function Financeiro() {
       diasCarencia={configuracoes.periodo_carencia_repasse_dias}
       valorMinimoSaque={Number(configuracoes.valor_minimo_saque)}
       percentualComissao={Number(configuracoes.percentual_comissao)}
+      titular={titular}
       movimentacoes={movimentacoes.map((m) => ({
         ...m,
         valor: Number(m.valor),
         data_repasse: iso(m.data_repasse),
         marco: iso(m.marco),
         previsao: iso(m.previsao),
+      }))}
+      saques={saques.map((s) => ({
+        ...s,
+        valor: Number(s.valor),
+        data_solicitacao: iso(s.data_solicitacao),
+        data_processamento: iso(s.data_processamento),
       }))}
     />
   );

@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { pool } from '@/lib/db';
 import { administradorAtivo } from '@/lib/sessao-admin';
+import { descreverRecebimento } from '@/lib/recebimento';
 import PainelVerificacao from './painel';
 
 export const metadata = {
@@ -11,8 +12,6 @@ export default async function Admin() {
   const administrador = await administradorAtivo();
   if (!administrador) redirect('/admin/login');
 
-  // Pendentes primeiro: é o que exige ação. Os já analisados continuam na
-  // lista para permitir reverter uma decisão.
   const [fornecedores] = await pool.query(
     `SELECT f.id, f.tipo_pessoa, f.cpf, f.cnpj, f.razao_social,
             f.nome_exibicao, f.descricao, f.status_verificacao,
@@ -37,8 +36,6 @@ export default async function Admin() {
       ORDER BY (s.status_verificacao = 'pendente') DESC, s.id DESC`
   );
 
-  // UC 043 — contestações de conclusão. Só entram solicitações que têm
-  // contestação registrada, em qualquer estado; as pendentes vêm primeiro.
   const [contestacoes] = await pool.query(
     `SELECT so.id, so.status,
             so.motivo_contestacao_cliente, so.descricao_contestacao_cliente,
@@ -62,6 +59,66 @@ export default async function Admin() {
                so.data_contestacao_cliente DESC`
   );
 
+  // UC 038 — dados de recebimento pendentes, dos dois fluxos. Cada linha
+  // traz também o documento e o nome da conta na plataforma, para o painel
+  // comparar com o titular informado (RN061).
+  const [dadosPendentes] = await pool.query(
+    `SELECT 'saque' AS origem, d.id, d.tipo_recebimento, d.chave_pix, d.tipo_chave_pix,
+            d.banco, d.tipo_conta, d.agencia, d.numero_conta,
+            d.cpf_cnpj_titular, d.nome_titular, d.data_envio,
+            sq.valor,
+            u.nome AS nome_conta,
+            IF(f.tipo_pessoa = 'PF', f.cpf, f.cnpj) AS documento_conta
+       FROM dados_recebimento d
+       JOIN saque sq     ON sq.id = d.id_saque
+       JOIN fornecedor f ON f.id  = sq.id_fornecedor
+       JOIN usuario u    ON u.id  = f.id_usuario
+      WHERE d.status_validacao = 'pendente'
+
+      UNION ALL
+
+     SELECT 'reembolso' AS origem, d.id, d.tipo_recebimento, d.chave_pix, d.tipo_chave_pix,
+            d.banco, d.tipo_conta, d.agencia, d.numero_conta,
+            d.cpf_cnpj_titular, d.nome_titular, d.data_envio,
+            ca.valor_reembolso AS valor,
+            u.nome AS nome_conta,
+            cl.cpf AS documento_conta
+       FROM dados_recebimento d
+       JOIN cancelamento ca ON ca.id = d.id_cancelamento
+       JOIN solicitacao so  ON so.id = ca.id_solicitacao
+       JOIN cliente cl      ON cl.id = so.id_cliente
+       JOIN usuario u       ON u.id  = cl.id_usuario
+      WHERE d.status_validacao = 'pendente'
+
+      ORDER BY data_envio`
+  );
+
+  // Transferências e estornos aguardando o gateway: saques "processando" e
+  // cancelamentos "processando" (Pix e cartão entram direto aqui; boleto
+  // chega depois da validação dos dados).
+  const [processamentos] = await pool.query(
+    `SELECT 'saque' AS origem, sq.id, sq.valor, u.nome AS nome_conta,
+            d.tipo_recebimento, d.chave_pix, d.tipo_chave_pix,
+            d.banco, d.tipo_conta, d.agencia, d.numero_conta
+       FROM saque sq
+       JOIN fornecedor f ON f.id = sq.id_fornecedor
+       JOIN usuario u    ON u.id = f.id_usuario
+       LEFT JOIN dados_recebimento d ON d.id_saque = sq.id
+      WHERE sq.status = 'processando'
+
+      UNION ALL
+
+     SELECT 'reembolso' AS origem, ca.id, ca.valor_reembolso AS valor, u.nome AS nome_conta,
+            d.tipo_recebimento, d.chave_pix, d.tipo_chave_pix,
+            d.banco, d.tipo_conta, d.agencia, d.numero_conta
+       FROM cancelamento ca
+       JOIN solicitacao so ON so.id = ca.id_solicitacao
+       JOIN cliente cl     ON cl.id = so.id_cliente
+       JOIN usuario u      ON u.id  = cl.id_usuario
+       LEFT JOIN dados_recebimento d ON d.id_cancelamento = ca.id
+      WHERE ca.status = 'processando'`
+  );
+
   const iso = (valor) => (valor ? valor.toISOString() : null);
 
   return (
@@ -78,6 +135,20 @@ export default async function Admin() {
         duracao: Number(c.duracao),
         valor_final: Number(c.valor_final),
         valor_bruto: c.valor_bruto === null ? null : Number(c.valor_bruto),
+      }))}
+      dadosPendentes={dadosPendentes.map((d) => ({
+        ...d,
+        valor: Number(d.valor),
+        data_envio: iso(d.data_envio),
+      }))}
+      processamentos={processamentos.map((p) => ({
+        origem: p.origem,
+        id: p.id,
+        valor: Number(p.valor),
+        nome_conta: p.nome_conta,
+        // Estorno por Pix ou cartão volta pelo próprio gateway, sem dados
+        // informados; aí não há destino a descrever.
+        destino: p.tipo_recebimento ? descreverRecebimento(p) : 'Estorno pelo meio de pagamento original',
       }))}
     />
   );

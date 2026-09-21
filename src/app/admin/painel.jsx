@@ -15,6 +15,7 @@ import {
   ROTULO_RESULTADO_CONTESTACAO,
   TOM_RESULTADO_CONTESTACAO,
 } from '@/lib/contestacao';
+import AbaFinanceiro from './aba-financeiro';
 
 function formatarDataHora(valor) {
   if (!valor) return '';
@@ -26,6 +27,7 @@ function formatarDataHora(valor) {
 
 export default function PainelVerificacao({
   nomeAdministrador, fornecedores, servicos, contestacoes = [],
+  dadosPendentes = [], processamentos = [],
 }) {
   const router = useRouter();
   const [aba, setAba] = useState('fornecedores');
@@ -38,6 +40,7 @@ export default function PainelVerificacao({
   const pendentesFornecedor = fornecedores.filter((f) => f.status_verificacao === 'pendente').length;
   const pendentesServico = servicos.filter((s) => s.status_verificacao === 'pendente').length;
   const pendentesContestacao = contestacoes.filter((c) => c.status_contestacao === 'pendente').length;
+  const pendentesFinanceiro = dadosPendentes.length + processamentos.length;
 
   async function analisar(tipo, id, acao, motivoRejeicao = null) {
     setErro('');
@@ -143,6 +146,8 @@ export default function PainelVerificacao({
           rotulo="Serviços" pendentes={pendentesServico} />
         <Aba ativa={aba === 'contestacoes'} aoClicar={() => setAba('contestacoes')}
           rotulo="Contestações" pendentes={pendentesContestacao} />
+        <Aba ativa={aba === 'financeiro'} aoClicar={() => setAba('financeiro')}
+          rotulo="Financeiro" pendentes={pendentesFinanceiro} />
       </div>
 
       {mensagem && <p className="mb-4 text-sm text-sucesso-700">{mensagem}</p>}
@@ -226,6 +231,10 @@ export default function PainelVerificacao({
                 analisarContestacao(c.id, resultado, justificativa)} />
           ))}
         </Lista>
+      )}
+
+      {aba === 'financeiro' && (
+        <AbaFinanceiro dadosPendentes={dadosPendentes} processamentos={processamentos} />
       )}
     </main>
   );
