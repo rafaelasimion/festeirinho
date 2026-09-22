@@ -5,8 +5,10 @@ import { pool } from '@/lib/db';
 // ninguém precise mexer no sistema.
 //
 // O cache evita ir ao banco a cada requisição por valores que quase nunca
-// mudam. Uma alteração feita pela administração passa a valer em no
-// máximo um minuto.
+// mudam. Quando a própria aplicação altera um parâmetro (UC 028), ela limpa
+// o cache na hora — a mudança vale na requisição seguinte. O prazo de um
+// minuto fica como rede de segurança para alterações feitas por fora, direto
+// no banco.
 
 let cache = null;
 let carregadoEm = 0;
@@ -19,6 +21,11 @@ export async function obterConfiguracoes() {
   cache = Object.fromEntries(linhas.map((linha) => [linha.chave, Number(linha.valor)]));
   carregadoEm = Date.now();
   return cache;
+}
+
+export function limparCacheConfiguracoes() {
+  cache = null;
+  carregadoEm = 0;
 }
 
 // RN046 — a antecedência mínima que o fornecedor pode exigir para um

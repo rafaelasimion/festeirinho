@@ -16,6 +16,7 @@ import {
   TOM_RESULTADO_CONTESTACAO,
 } from '@/lib/contestacao';
 import AbaFinanceiro from './aba-financeiro';
+import AbaConfiguracoes from './aba-configuracoes';
 
 function formatarDataHora(valor) {
   if (!valor) return '';
@@ -27,7 +28,7 @@ function formatarDataHora(valor) {
 
 export default function PainelVerificacao({
   nomeAdministrador, fornecedores, servicos, contestacoes = [],
-  dadosPendentes = [], processamentos = [],
+  dadosPendentes = [], processamentos = [], configuracoes = [],
 }) {
   const router = useRouter();
   const [aba, setAba] = useState('fornecedores');
@@ -148,6 +149,8 @@ export default function PainelVerificacao({
           rotulo="Contestações" pendentes={pendentesContestacao} />
         <Aba ativa={aba === 'financeiro'} aoClicar={() => setAba('financeiro')}
           rotulo="Financeiro" pendentes={pendentesFinanceiro} />
+        <Aba ativa={aba === 'configuracoes'} aoClicar={() => setAba('configuracoes')}
+          rotulo="Configurações" pendentes={0} />
       </div>
 
       {mensagem && <p className="mb-4 text-sm text-sucesso-700">{mensagem}</p>}
@@ -235,6 +238,10 @@ export default function PainelVerificacao({
 
       {aba === 'financeiro' && (
         <AbaFinanceiro dadosPendentes={dadosPendentes} processamentos={processamentos} />
+      )}
+
+      {aba === 'configuracoes' && (
+        <AbaConfiguracoes configuracoes={configuracoes} />
       )}
     </main>
   );

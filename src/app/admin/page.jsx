@@ -119,6 +119,11 @@ export default async function Admin() {
       WHERE ca.status = 'processando'`
   );
 
+  // UC 028 — parâmetros configuráveis, na ordem da carga inicial.
+  const [configuracoes] = await pool.query(
+    'SELECT chave, descricao, valor, data_alteracao FROM configuracao ORDER BY id'
+  );
+
   const iso = (valor) => (valor ? valor.toISOString() : null);
 
   return (
@@ -140,6 +145,12 @@ export default async function Admin() {
         ...d,
         valor: Number(d.valor),
         data_envio: iso(d.data_envio),
+      }))}
+      configuracoes={configuracoes.map((c) => ({
+        chave: c.chave,
+        descricao: c.descricao,
+        valor: Number(c.valor),
+        data_alteracao: iso(c.data_alteracao),
       }))}
       processamentos={processamentos.map((p) => ({
         origem: p.origem,
