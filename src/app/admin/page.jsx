@@ -36,6 +36,21 @@ export default async function Admin() {
       ORDER BY (s.status_verificacao = 'pendente') DESC, s.id DESC`
   );
 
+  // RF012 / RN067 — incluir ou remover foto devolve o serviço à análise.
+  // A análise, então, precisa VER as fotos: sem elas, a administração
+  // aprovaria justamente o que mudou sem olhar.
+  const [fotos] = await pool.query(
+    'SELECT id, id_servico, imagem_url, principal FROM foto_servico ORDER BY principal DESC, id'
+  );
+  const fotosPorServico = {};
+  for (const foto of fotos) {
+    (fotosPorServico[foto.id_servico] ??= []).push({
+      id: foto.id,
+      imagem_url: foto.imagem_url,
+      principal: Boolean(foto.principal),
+    });
+  }
+
   const [contestacoes] = await pool.query(
     `SELECT so.id, so.status,
             so.motivo_contestacao_cliente, so.descricao_contestacao_cliente,
@@ -130,7 +145,11 @@ export default async function Admin() {
     <PainelVerificacao
       nomeAdministrador={administrador.nome}
       fornecedores={fornecedores.map((f) => ({ ...f }))}
-      servicos={servicos.map((s) => ({ ...s, preco_base: Number(s.preco_base) }))}
+      servicos={servicos.map((s) => ({
+        ...s,
+        preco_base: Number(s.preco_base),
+        fotos: fotosPorServico[s.id] ?? [],
+      }))}
       contestacoes={contestacoes.map((c) => ({
         ...c,
         data_contestacao_cliente: iso(c.data_contestacao_cliente),

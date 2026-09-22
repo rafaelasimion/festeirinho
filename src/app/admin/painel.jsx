@@ -219,6 +219,7 @@ export default function PainelVerificacao({
                 </Linha>
                 <Linha rotulo="Descrição" quebraLinha>{s.descricao}</Linha>
               </dl>
+              <FotosDoServico fotos={s.fotos ?? []} />
             </Item>
           ))}
         </Lista>
@@ -500,5 +501,42 @@ function ItemContestacao({ contestacao, processando, aoAnalisar }) {
         )}
       </div>
     </li>
+  );
+}
+
+// RF012 / RN067 — as fotos são parte do que a administração aprova. Cada
+// miniatura abre a imagem em tamanho real numa nova aba, para conferir
+// detalhes que a miniatura esconde.
+function FotosDoServico({ fotos }) {
+  if (fotos.length === 0) {
+    return (
+      <p className="mt-3 text-xs text-slate-500">Serviço sem fotos.</p>
+    );
+  }
+
+  return (
+    <div className="mt-3">
+      <p className="mb-2 text-sm font-medium text-slate-700">
+        Fotos ({fotos.length})
+      </p>
+      <ul className="flex gap-2 overflow-x-auto pb-1">
+        {fotos.map((foto) => (
+          <li key={foto.id} className="relative shrink-0">
+            <a href={foto.imagem_url} target="_blank" rel="noreferrer"
+              className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-festa-600/40">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={foto.imagem_url} alt="Foto do serviço — abrir em tamanho real"
+                className={`h-24 w-32 rounded-lg object-cover ${
+                  foto.principal ? 'ring-2 ring-festa-600' : 'border border-slate-200'}`} />
+            </a>
+            {foto.principal && (
+              <span className="absolute left-1.5 top-1.5 rounded bg-festa-600 px-1.5 py-0.5 text-[10px] font-medium text-white">
+                principal
+              </span>
+            )}
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }

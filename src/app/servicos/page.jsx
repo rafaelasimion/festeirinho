@@ -88,12 +88,14 @@ export default async function Vitrine({ searchParams }) {
             c.nome AS categoria, cb.descricao AS cobranca,
             f.nome_exibicao, f.status_verificacao AS verificacao_fornecedor,
             u.cidade, u.estado,
-            av.media_nota, av.total_avaliacoes
+            av.media_nota, av.total_avaliacoes,
+            fp.imagem_url AS foto_principal
        FROM servico s
        JOIN fornecedor f ON f.id = s.id_fornecedor
        JOIN usuario u    ON u.id = f.id_usuario
        JOIN categoria c  ON c.id = s.id_categoria
        JOIN cobranca cb  ON cb.id = s.id_cobranca
+       LEFT JOIN foto_servico fp ON fp.id_servico = s.id AND fp.principal = TRUE
        LEFT JOIN (
             SELECT so.id_servico,
                    AVG(a.nota)  AS media_nota,
@@ -190,11 +192,17 @@ export default async function Vitrine({ searchParams }) {
             <li key={servico.id}
               className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
 
-              {/* Espaço reservado para as fotos do serviço, ainda não
-                  implementadas. A proporção fixa mantém o card estável
-                  para quando as imagens entrarem. */}
-              <div className="relative flex aspect-[16/10] items-center justify-center bg-festa-100">
-                <ImageIcon className="h-10 w-10 text-festa-600" aria-hidden="true" />
+              {/* Foto principal do serviço (RF012). Sem foto, o espaço fica
+                  reservado com o ícone: a proporção fixa mantém a grade
+                  alinhada nos dois casos. */}
+              <div className="relative flex aspect-[16/10] items-center justify-center overflow-hidden bg-festa-100">
+                {servico.foto_principal ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={servico.foto_principal} alt={servico.nome}
+                    className="h-full w-full object-cover" />
+                ) : (
+                  <ImageIcon className="h-10 w-10 text-festa-600" aria-hidden="true" />
+                )}
                 <span className="absolute right-3 top-3">
                   <Etiqueta tom="roxo">{servico.categoria}</Etiqueta>
                 </span>

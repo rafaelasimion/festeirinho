@@ -16,10 +16,13 @@ export async function GET() {
       `SELECT s.id, s.nome, s.descricao, s.preco_base, s.capacidade_max,
               s.dias_antecedencia, s.status_servico, s.status_verificacao,
               s.motivo_rejeicao, s.id_categoria, s.id_cobranca,
-              c.nome AS categoria, cb.descricao AS cobranca
+              c.nome AS categoria, cb.descricao AS cobranca,
+              fp.imagem_url AS foto_principal
          FROM servico s
          JOIN categoria c  ON c.id  = s.id_categoria
          JOIN cobranca  cb ON cb.id = s.id_cobranca
+         -- RF012: a principal é a miniatura que identifica o serviço na lista.
+         LEFT JOIN foto_servico fp ON fp.id_servico = s.id AND fp.principal = TRUE
         WHERE s.id_fornecedor = ?
         ORDER BY s.data_cadastro DESC`,
       [fornecedor.id]
