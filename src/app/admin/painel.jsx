@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ShieldCheck } from 'lucide-react';
+import { ShieldCheck, Image as ImageIcon } from 'lucide-react';
 import Etiqueta from '@/componentes/etiqueta';
 import {
   formatarPreco,
@@ -162,6 +162,9 @@ export default function PainelVerificacao({
             // A chave inclui o status: quando ele muda, o React recria o item
             // e o estado interno de "alterar decisão" volta ao início.
             <Item key={`${f.id}-${f.status_verificacao}`}
+              imagem={f.foto_perfil ?? null}
+              formaImagem="circulo"
+              textoImagem={f.nome_exibicao}
               titulo={f.nome_exibicao}
               subtitulo={`${f.responsavel} · ${f.cidade}/${f.estado}`}
               status={f.status_verificacao}
@@ -197,6 +200,8 @@ export default function PainelVerificacao({
         <Lista vazio="Nenhum serviço cadastrado.">
           {servicos.map((s) => (
             <Item key={`${s.id}-${s.status_verificacao}`}
+              imagem={s.fotos?.find((foto) => foto.principal)?.imagem_url ?? null}
+              formaImagem="quadrado"
               titulo={s.nome}
               subtitulo={`${s.fornecedor} · ${s.categoria}`}
               status={s.status_verificacao}
@@ -284,6 +289,7 @@ function Linha({ rotulo, children, quebraLinha = false }) {
 }
 
 function Item({
+  imagem, formaImagem = 'quadrado', textoImagem,
   titulo, subtitulo, status, motivoRejeicao, children,
   rejeitando, motivo, aoMudarMotivo, processando,
   aoAprovar, aoAbrirRejeicao, aoCancelarRejeicao, aoRejeitar,
@@ -296,9 +302,14 @@ function Item({
   return (
     <li className="rounded-xl border border-slate-200 bg-white p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2 className="font-medium text-slate-900">{titulo}</h2>
-          <p className="text-sm text-slate-600">{subtitulo}</p>
+        <div className="flex min-w-0 items-center gap-3">
+          {imagem !== undefined && (
+            <Miniatura url={imagem} forma={formaImagem} texto={textoImagem ?? titulo} />
+          )}
+          <div className="min-w-0">
+            <h2 className="font-medium text-slate-900">{titulo}</h2>
+            <p className="text-sm text-slate-600">{subtitulo}</p>
+          </div>
         </div>
         <Etiqueta tom={TOM_VERIFICACAO[status]} contorno>
           {ROTULO_VERIFICACAO[status]}
@@ -538,5 +549,41 @@ function FotosDoServico({ fotos }) {
         ))}
       </ul>
     </div>
+  );
+}
+
+// Miniatura no cabeçalho dos itens de análise: foto de perfil (redonda) no
+// fornecedor, foto principal (quadrada) no serviço. Sem imagem, mostra as
+// iniciais ou o ícone — o espaço fica reservado, e a ausência de foto já é,
+// ela mesma, uma informação para a análise.
+function Miniatura({ url, forma, texto }) {
+  const formato = forma === 'circulo' ? 'rounded-full' : 'rounded-lg';
+
+  if (url) {
+    return (
+      <a href={url} target="_blank" rel="noreferrer" className="shrink-0">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={url} alt={`Imagem de ${texto} — abrir em tamanho real`}
+          className={`h-12 w-12 object-cover ${formato}`} />
+      </a>
+    );
+  }
+
+  if (forma === 'circulo') {
+    const partes = String(texto ?? '').trim().split(/\s+/).filter(Boolean);
+    const iniciais = ((partes[0]?.[0] ?? '?') + (partes.length > 1 ? partes[partes.length - 1][0] : '')).toUpperCase();
+    return (
+      <span aria-hidden="true"
+        className={`flex h-12 w-12 shrink-0 items-center justify-center bg-festa-100 text-sm font-semibold text-festa-700 ${formato}`}>
+        {iniciais}
+      </span>
+    );
+  }
+
+  return (
+    <span aria-hidden="true"
+      className={`flex h-12 w-12 shrink-0 items-center justify-center border-2 border-dashed border-festa-300 bg-festa-50 ${formato}`}>
+      <ImageIcon className="h-5 w-5 text-festa-600" />
+    </span>
   );
 }

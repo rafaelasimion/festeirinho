@@ -16,7 +16,7 @@ export default async function Admin() {
     `SELECT f.id, f.tipo_pessoa, f.cpf, f.cnpj, f.razao_social,
             f.nome_exibicao, f.descricao, f.status_verificacao,
             f.motivo_rejeicao, f.status_fornecedor,
-            u.nome AS responsavel, u.email, u.telefone, u.cidade, u.estado,
+            u.nome AS responsavel, u.email, u.telefone, u.cidade, u.estado, u.foto_perfil,
             f.instagram_url, f.whatsapp_url, f.site
        FROM fornecedor f
        JOIN usuario u ON u.id = f.id_usuario

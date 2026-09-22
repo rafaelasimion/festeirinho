@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { UFS, dataMaximaNascimento, IDADE_MINIMA } from '@/lib/validacao';
 import Campo from '@/componentes/campo';
+import Etiqueta from '@/componentes/etiqueta';
+import FotoPerfil from '@/componentes/foto-perfil';
 
 const ROTULO_VERIFICACAO = {
   pendente: 'Verificação pendente',
@@ -11,10 +13,21 @@ const ROTULO_VERIFICACAO = {
   rejeitado: 'Verificação rejeitada',
 };
 
+const TOM_VERIFICACAO = {
+  pendente: 'atencao',
+  aprovado: 'sucesso',
+  rejeitado: 'perigo',
+};
+
+const CLASSE_SELECT =
+  'w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 text-slate-900 ' +
+  'focus:border-festa-600 focus:outline-none focus:ring-2 focus:ring-festa-600/30';
+
 export default function PerfilFornecedor() {
   const router = useRouter();
   const [campos, setCampos] = useState(null);
   const [status, setStatus] = useState(null);
+  const [fotoPerfil, setFotoPerfil] = useState(null);
   const [erros, setErros] = useState({});
   const [mensagem, setMensagem] = useState('');
   const [erroGeral, setErroGeral] = useState('');
@@ -56,6 +69,7 @@ export default function PerfilFornecedor() {
           fornecedor: dados.status_fornecedor,
           motivoRejeicao: dados.motivo_rejeicao,
         });
+        setFotoPerfil(dados.foto_perfil ?? null);
       } catch {
         setErroGeral('Falha de conexão ao carregar o perfil.');
       }
@@ -136,7 +150,7 @@ export default function PerfilFornecedor() {
   }
 
   if (!campos) {
-    return <main className="mx-auto max-w-xl p-6"><p className="text-sm">Carregando...</p></main>;
+    return <main className="mx-auto max-w-xl p-6"><p className="text-sm text-slate-600">Carregando...</p></main>;
   }
 
   const ehPF = status.tipoPessoa === 'PF';
@@ -145,21 +159,42 @@ export default function PerfilFornecedor() {
 
   return (
     <main className="mx-auto max-w-xl p-6">
-      <h1 className="mb-1 text-2xl font-semibold">Meu perfil</h1>
-      <p className="mb-6 text-sm text-gray-600">
-        {ROTULO_VERIFICACAO[status.verificacao]}
-        {status.fornecedor === 'pausado' && ' · Perfil pausado'}
-      </p>
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl font-semibold text-slate-900">Meu perfil</h1>
+        <div className="flex flex-wrap gap-2">
+          <Etiqueta tom={TOM_VERIFICACAO[status.verificacao]} contorno>
+            {ROTULO_VERIFICACAO[status.verificacao]}
+          </Etiqueta>
+          {status.fornecedor === 'pausado' && (
+            <Etiqueta tom="neutro" contorno>perfil pausado</Etiqueta>
+          )}
+        </div>
+      </div>
 
       {status.motivoRejeicao && status.verificacao !== 'aprovado' && (
-        <div className="mb-6 rounded-lg border border-amber-400 bg-amber-50 p-3 text-sm">
-          <span className="font-medium">Motivo da última rejeição: </span>
-          {status.motivoRejeicao}
+        <div className="mb-6 rounded-lg bg-perigo-50 p-3 text-sm">
+          <p className="text-xs font-semibold uppercase tracking-wide text-perigo-700">
+            Motivo da última rejeição
+          </p>
+          <p className="mt-1 text-slate-700">{status.motivoRejeicao}</p>
         </div>
       )}
 
       <div className="space-y-4">
-        <p className="text-sm font-medium text-gray-700">Dados do responsável</p>
+        {/* RN067 — a foto é dado da vitrine: trocá-la reenvia o perfil à
+            verificação, e a tela reflete isso na hora. */}
+        <FotoPerfil
+          fotoAtual={fotoPerfil}
+          nome={campos.nomeExibicao || campos.nome}
+          avisoVerificacao
+          aoAlterar={(dados) => {
+            setFotoPerfil(dados.fotoPerfil);
+            if (dados.voltouParaVerificacao) {
+              setStatus((anterior) => ({ ...anterior, verificacao: 'pendente' }));
+            }
+          }} />
+
+        <p className="pt-2 text-sm font-medium text-slate-700">Dados do responsável</p>
 
         <Campo label="Nome" name="nome" value={campos.nome}
           onChange={aoDigitar} erro={erros.nome} />
@@ -167,12 +202,12 @@ export default function PerfilFornecedor() {
         <Campo label="Telefone com DDD" name="telefone" value={campos.telefone}
           onChange={aoDigitar} erro={erros.telefone} />
 
-        <p className="pt-2 text-sm font-medium text-gray-700">Dados do negócio</p>
+        <p className="pt-2 text-sm font-medium text-slate-700">Dados do negócio</p>
 
-        <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm">
+        <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
           <span className="font-medium">Tipo de pessoa: </span>
           {ehPF ? 'Pessoa física' : 'Pessoa jurídica'}
-          <p className="mt-1 text-xs text-gray-500">Não pode ser alterado.</p>
+          <p className="mt-1 text-xs text-slate-500">Não pode ser alterado.</p>
         </div>
 
         {ehPF ? (
@@ -202,10 +237,12 @@ export default function PerfilFornecedor() {
           onChange={aoDigitar} erro={erros.nomeExibicao} />
 
         <div>
-          <label htmlFor="descricao" className="mb-1 block text-sm font-medium">Descrição</label>
+          <label htmlFor="descricao" className="mb-1.5 block text-sm font-medium text-slate-700">
+            Descrição
+          </label>
           <textarea id="descricao" name="descricao" rows={4} value={campos.descricao}
             onChange={aoDigitar}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2" />
+            className="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 text-slate-900 focus:border-festa-600 focus:outline-none focus:ring-2 focus:ring-festa-600/30" />
           {erros.descricao && <p className="mt-1 text-sm text-red-600">{erros.descricao}</p>}
         </div>
 
@@ -218,17 +255,19 @@ export default function PerfilFornecedor() {
         <Campo label="Site" name="site" value={campos.site}
           onChange={aoDigitar} erro={erros.site} placeholder="https://..." />
 
-        <p className="text-xs text-gray-500">
-          Alterar nome de exibição, descrição, razão social ou redes sociais envia seu
-          perfil para nova verificação.
+        <p className="text-xs text-slate-500">
+          Alterar foto, nome de exibição, descrição, razão social ou redes sociais envia
+          seu perfil para nova verificação.
         </p>
 
-        <p className="pt-2 text-sm font-medium text-gray-700">Área de atendimento</p>
+        <p className="pt-2 text-sm font-medium text-slate-700">Área de atendimento</p>
 
         <div>
-          <label htmlFor="estado" className="mb-1 block text-sm font-medium">Estado</label>
-          <select id="estado" name="estado" value={campos.estado} onChange={aoDigitar}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2">
+          <label htmlFor="estado" className="mb-1.5 block text-sm font-medium text-slate-700">
+            Estado
+          </label>
+          <select id="estado" name="estado" value={campos.estado}
+            onChange={aoDigitar} className={CLASSE_SELECT}>
             <option value="">Selecione</option>
             {UFS.map((uf) => <option key={uf} value={uf}>{uf}</option>)}
           </select>
@@ -242,23 +281,23 @@ export default function PerfilFornecedor() {
           min="1" max="200" value={campos.raioAtendimentoKm}
           onChange={aoDigitar} erro={erros.raioAtendimentoKm} />
 
-        {mensagem && <p className="text-sm text-green-700">{mensagem}</p>}
+        {mensagem && <p className="text-sm text-sucesso-700">{mensagem}</p>}
         {erroGeral && <p className="text-sm text-red-600">{erroGeral}</p>}
 
         <button type="button" onClick={salvar} disabled={salvando}
-          className="w-full rounded-lg bg-festa-600 hover:bg-festa-700 px-4 py-2.5 text-white disabled:opacity-50">
+          className="w-full rounded-lg bg-festa-600 px-4 py-2.5 font-medium text-white transition-colors hover:bg-festa-700 disabled:opacity-50">
           {salvando ? 'Salvando...' : 'Salvar alterações'}
         </button>
 
-        <div className="mt-8 border-t border-gray-200 pt-6">
-          <p className="text-sm font-medium text-gray-700">Disponibilidade</p>
-          <p className="mt-1 text-sm text-gray-600">
+        <div className="mt-8 border-t border-slate-200 pt-6">
+          <p className="text-sm font-medium text-slate-700">Disponibilidade</p>
+          <p className="mt-1 text-sm text-slate-600">
             Pausar esconde seu perfil de novos clientes. Seus dados, serviços e
             histórico continuam guardados.
           </p>
           <button type="button"
             onClick={() => alterarDisponibilidade(status.fornecedor === 'pausado' ? 'reativar' : 'pausar')}
-            className="mt-3 rounded-lg border rounded-lg border border-festa-600 text-festa-700 hover:bg-festa-50 px-3 py-1.5 text-sm px-3 py-1.5 text-sm">
+            className="mt-3 rounded-lg border border-festa-600 px-3 py-1.5 text-sm font-medium text-festa-700 transition-colors hover:bg-festa-50">
             {status.fornecedor === 'pausado' ? 'Reativar meu perfil' : 'Pausar meu perfil'}
           </button>
         </div>
