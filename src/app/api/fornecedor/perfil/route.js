@@ -24,6 +24,7 @@ export async function GET() {
 
   const [linhas] = await pool.execute(
     `SELECT u.nome, u.telefone, u.cidade, u.estado, u.foto_perfil,
+            u.latitude, u.longitude,
             f.tipo_pessoa, f.cpf, f.data_nascimento, f.cnpj, f.razao_social,
             f.nome_exibicao, f.descricao,
             f.instagram_url, f.whatsapp_url, f.site,

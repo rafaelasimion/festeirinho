@@ -41,13 +41,11 @@ export default function CapturaLocalizacao({ coordenadas, aoAlterar, descricao }
   const capturada = Boolean(coordenadas);
 
   return (
-    <div className={`rounded-xl border p-4 transition-colors ${
-      capturada ? 'border-sucesso-200 bg-sucesso-50' : 'border-slate-200 bg-slate-50'
-    }`}>
+    <div className={`rounded-xl border p-4 transition-colors ${capturada ? 'border-sucesso-200 bg-sucesso-50' : 'border-slate-200 bg-slate-50'
+      }`}>
       <div className="flex items-start gap-3">
-        <span className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
-          capturada ? 'bg-sucesso-600' : 'bg-festa-100'
-        }`}>
+        <span className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${capturada ? 'bg-sucesso-600' : 'bg-festa-100'
+          }`}>
           {capturada
             ? <Check className="h-5 w-5 text-white" aria-hidden="true" />
             : <MapPin className="h-5 w-5 text-festa-600" aria-hidden="true" />}
@@ -58,7 +56,8 @@ export default function CapturaLocalizacao({ coordenadas, aoAlterar, descricao }
             <>
               <p className="text-sm font-medium text-sucesso-800">Localização registrada</p>
               <p className="mt-0.5 text-xs text-slate-600">
-                {coordenadas.latitude.toFixed(4)}, {coordenadas.longitude.toFixed(4)}
+                Usada apenas para calcular distâncias na busca. Não é exibida a
+                outros usuários.
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
                 <button type="button" onClick={capturar}

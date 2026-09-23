@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { lerSessao } from '@/lib/sessao';
 import { pool } from '@/lib/db';
 import FotoPerfil from '@/componentes/foto-perfil';
+import MinhaLocalizacao from '@/componentes/minha-localizacao';
 
 // Esta página roda no servidor. Ela lê a sessão ANTES de renderizar
 // qualquer coisa — quem não estiver logado é mandado para o login e
@@ -17,7 +18,9 @@ export default async function MinhaConta() {
   if (!sessao) redirect('/login');
 
   const [linhas] = await pool.execute(
-    'SELECT nome, nome_usuario, email, cidade, estado, foto_perfil FROM usuario WHERE id = ?',
+    `SELECT nome, nome_usuario, email, cidade, estado, foto_perfil,
+            latitude, longitude
+       FROM usuario WHERE id = ?`,
     [sessao.id]
   );
 
@@ -55,6 +58,20 @@ export default async function MinhaConta() {
               <dd className="inline text-slate-700">{usuario.cidade}/{usuario.estado}</dd>
             </div>
           </dl>
+        </div>
+
+        {/* RF066 / RN068 — quem não autorizou a captura no cadastro pode
+            fazê-lo aqui. Sem coordenadas, a busca filtra por cidade. */}
+        <div className="mt-6 border-t border-slate-200 pt-5">
+          <p className="mb-2 text-sm font-medium text-slate-700">Localização</p>
+          <MinhaLocalizacao
+            coordenadas={usuario.latitude === null ? null : {
+              latitude: Number(usuario.latitude),
+              longitude: Number(usuario.longitude),
+            }}
+            descricao={ehFornecedor
+              ? 'Define a partir de onde seu raio de atendimento é medido.'
+              : 'Mostra os fornecedores que atendem a sua região, com a distância até cada um.'} />
         </div>
 
         <div className="mt-6 flex flex-wrap gap-2 border-t border-slate-200 pt-5">

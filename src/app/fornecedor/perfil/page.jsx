@@ -6,6 +6,7 @@ import { UFS, dataMaximaNascimento, IDADE_MINIMA } from '@/lib/validacao';
 import Campo from '@/componentes/campo';
 import Etiqueta from '@/componentes/etiqueta';
 import FotoPerfil from '@/componentes/foto-perfil';
+import MinhaLocalizacao from '@/componentes/minha-localizacao';
 
 const ROTULO_VERIFICACAO = {
   pendente: 'Verificação pendente',
@@ -28,6 +29,7 @@ export default function PerfilFornecedor() {
   const [campos, setCampos] = useState(null);
   const [status, setStatus] = useState(null);
   const [fotoPerfil, setFotoPerfil] = useState(null);
+  const [coordenadas, setCoordenadas] = useState(null);
   const [erros, setErros] = useState({});
   const [mensagem, setMensagem] = useState('');
   const [erroGeral, setErroGeral] = useState('');
@@ -70,6 +72,10 @@ export default function PerfilFornecedor() {
           motivoRejeicao: dados.motivo_rejeicao,
         });
         setFotoPerfil(dados.foto_perfil ?? null);
+        setCoordenadas(dados.latitude === null || dados.latitude === undefined ? null : {
+          latitude: Number(dados.latitude),
+          longitude: Number(dados.longitude),
+        });
       } catch {
         setErroGeral('Falha de conexão ao carregar o perfil.');
       }
@@ -280,6 +286,12 @@ export default function PerfilFornecedor() {
         <Campo label="Raio de atendimento (km)" name="raioAtendimentoKm" type="number"
           min="1" max="200" value={campos.raioAtendimentoKm}
           onChange={aoDigitar} erro={erros.raioAtendimentoKm} />
+
+        {/* RF066 — a sede a partir da qual o raio é medido. Alterá-la não
+            submete o perfil a nova verificação (RN067). */}
+        <MinhaLocalizacao
+          coordenadas={coordenadas}
+          descricao="Define a partir de onde seu raio de atendimento é medido na busca." />
 
         {mensagem && <p className="text-sm text-sucesso-700">{mensagem}</p>}
         {erroGeral && <p className="text-sm text-red-600">{erroGeral}</p>}
