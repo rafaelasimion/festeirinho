@@ -18,6 +18,12 @@ import DescricaoExpansivel from '@/componentes/descricao-expansivel';
 // entrada da lista; ele NUNCA é colado no SQL. ORDER BY não aceita
 // parâmetro "?", então esta lista é a única proteção possível ali.
 const ORDENACOES = {
+  distancia: {
+    rotulo: 'Mais perto de mim',
+    // Fornecedor sem coordenada entrou pela regra de cidade; sem distância
+    // para medir, vai ao fim da lista.
+    sql: 'distancia_km IS NULL, distancia_km ASC',
+  },
   recentes: { rotulo: 'Mais recentes', sql: 's.data_cadastro DESC' },
   avaliacao: {
     rotulo: 'Melhor avaliados',
@@ -40,23 +46,74 @@ export default async function Vitrine({ searchParams }) {
   const sessao = await lerSessao();
   const podeSolicitar = sessao?.tipoUsuario === 'cliente';
 
+  // RN068 — o filtro de proximidade é do CLIENTE: é a localização dele que
+  // define quais fornecedores o alcançam. Visitante e fornecedor navegam na
+  // vitrine completa (RN030).
+  let localizacao = null;
+  if (podeSolicitar) {
+    const [linhas] = await pool.execute(
+      'SELECT latitude, longitude, cidade, estado FROM usuario WHERE id = ? LIMIT 1',
+      [sessao.id]
+    );
+    localizacao = linhas[0] ?? null;
+  }
+  const temCoordenadas = Boolean(localizacao && localizacao.latitude !== null);
+
   const texto = String(parametros?.q ?? '').trim().slice(0, 100);
   const idCategoria = Number(parametros?.categoria);
   const cidade = String(parametros?.cidade ?? '').trim().slice(0, 100);
-  const ordem = ORDENACOES[parametros?.ordem] ? parametros.ordem : 'recentes';
-
   const temCategoria = Number.isInteger(idCategoria) && idCategoria > 0;
   const filtrando = Boolean(texto) || temCategoria || Boolean(cidade);
 
+  // "Mais perto de mim" só existe quando há distância a medir.
+  const ordensDisponiveis = Object.fromEntries(
+    Object.entries(ORDENACOES).filter(([valor]) => valor !== 'distancia' || temCoordenadas)
+  );
+  const ordemPadrao = temCoordenadas ? 'distancia' : 'recentes';
+  const ordem = ordensDisponiveis[parametros?.ordem] ? parametros.ordem : ordemPadrao;
+
+  // Os valores da lista de seleção vêm ANTES dos valores do WHERE: a ordem
+  // dos "?" no comando é a ordem do array.
+  const valoresSelecao = [];
+  const valoresCondicao = [];
+
+  // ST_Distance_Sphere recebe POINT(longitude, latitude) — nessa ordem — e
+  // devolve metros. Sem coordenada do cliente não há distância a calcular.
+  let selecaoDistancia = 'NULL AS distancia_km';
+  if (temCoordenadas) {
+    selecaoDistancia = `ROUND(
+              ST_Distance_Sphere(POINT(u.longitude, u.latitude), POINT(?, ?)) / 1000, 1
+            ) AS distancia_km`;
+    valoresSelecao.push(localizacao.longitude, localizacao.latitude);
+  }
+
   // RN020 — só aparece o que está ativo e aprovado, de fornecedor ativo.
-  // Os filtros são acrescentados como condições com "?", cada uma com o seu
-  // valor no array: o texto digitado nunca vira parte do comando.
   const condicoes = [
     "s.status_servico = 'ativo'",
     "s.status_verificacao = 'aprovado'",
     "f.status_fornecedor = 'ativo'",
   ];
-  const valores = [];
+
+  // RN068 — proximidade. Com as duas coordenadas, vale a distância contra o
+  // raio declarado pelo fornecedor. Faltando a de qualquer das partes, o
+  // critério passa a ser cidade e estado iguais: ninguém é excluído da busca
+  // por não ter autorizado a captura da localização.
+  if (localizacao) {
+    if (temCoordenadas) {
+      condicoes.push(`(
+             (u.latitude IS NOT NULL
+               AND ST_Distance_Sphere(POINT(u.longitude, u.latitude), POINT(?, ?))
+                   <= f.raio_atendimento_km * 1000)
+          OR (u.latitude IS NULL AND u.cidade = ? AND u.estado = ?))`);
+      valoresCondicao.push(
+        localizacao.longitude, localizacao.latitude,
+        localizacao.cidade, localizacao.estado
+      );
+    } else {
+      condicoes.push('(u.cidade = ? AND u.estado = ?)');
+      valoresCondicao.push(localizacao.cidade, localizacao.estado);
+    }
+  }
 
   if (texto) {
     // Um termo busca em nome e descrição do serviço, no nome do fornecedor
@@ -66,22 +123,25 @@ export default async function Vitrine({ searchParams }) {
                   OR f.nome_exibicao LIKE CONCAT('%', ?, '%')
                   OR c.nome LIKE CONCAT('%', ?, '%'))`);
     const termo = escaparLike(texto);
-    valores.push(termo, termo, termo, termo);
+    valoresCondicao.push(termo, termo, termo, termo);
   }
 
   if (temCategoria) {
     condicoes.push('s.id_categoria = ?');
-    valores.push(idCategoria);
+    valoresCondicao.push(idCategoria);
   }
 
   if (cidade) {
     condicoes.push(`u.cidade LIKE CONCAT('%', ?, '%')`);
-    valores.push(escaparLike(cidade));
+    valoresCondicao.push(escaparLike(cidade));
   }
 
   // A média de avaliações vem de uma subconsulta agrupada. Entram TODAS as
   // notas, inclusive as de avaliação oculta: a RN062 esconde só o
   // comentário, nunca a nota.
+  //
+  // RN068 — latitude e longitude são dado pessoal e NÃO saem daqui: a
+  // consulta devolve apenas cidade, estado e a distância calculada.
   const [servicos] = await pool.execute(
     `SELECT s.id, s.nome, s.descricao, s.preco_base, s.capacidade_max,
             s.dias_antecedencia,
@@ -89,7 +149,8 @@ export default async function Vitrine({ searchParams }) {
             f.nome_exibicao, f.status_verificacao AS verificacao_fornecedor,
             u.cidade, u.estado,
             av.media_nota, av.total_avaliacoes,
-            fp.imagem_url AS foto_principal
+            fp.imagem_url AS foto_principal,
+            ${selecaoDistancia}
        FROM servico s
        JOIN fornecedor f ON f.id = s.id_fornecedor
        JOIN usuario u    ON u.id = f.id_usuario
@@ -106,16 +167,26 @@ export default async function Vitrine({ searchParams }) {
        ) av ON av.id_servico = s.id
       WHERE ${condicoes.join(' AND ')}
       ORDER BY ${ORDENACOES[ordem].sql}`,
-    valores
+    [...valoresSelecao, ...valoresCondicao]
   );
 
   const [categorias] = await pool.query('SELECT id, nome FROM categoria ORDER BY nome');
 
   return (
     <main className="mx-auto max-w-4xl px-6 py-10">
-      <h1 className="mb-6 text-2xl font-semibold text-slate-900">
+      <h1 className="mb-2 text-2xl font-semibold text-slate-900">
         Serviços disponíveis
       </h1>
+
+      {/* RN068 — o filtro é de conveniência, mas esconde resultados: sem
+          explicar, uma lista curta parece defeito do sistema. */}
+      {localizacao && (
+        <p className="mb-6 text-sm text-slate-600">
+          {temCoordenadas
+            ? 'Mostrando fornecedores cuja área de atendimento alcança a sua localização.'
+            : `Mostrando fornecedores de ${localizacao.cidade}/${localizacao.estado}. Informe sua localização em Minha conta para ver também os de cidades vizinhas que atendem a sua região.`}
+        </p>
+      )}
 
       {/* method="get": os campos viram parâmetros na URL ao enviar. */}
       <form method="get" action="/servicos" role="search"
@@ -152,7 +223,7 @@ export default async function Vitrine({ searchParams }) {
             <label htmlFor="busca-ordem" className="sr-only">Ordenar por</label>
             <select id="busca-ordem" name="ordem" defaultValue={ordem}
               className="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 text-slate-900 focus:border-festa-600 focus:outline-none focus:ring-2 focus:ring-festa-600/30">
-              {Object.entries(ORDENACOES).map(([valor, { rotulo }]) => (
+              {Object.entries(ordensDisponiveis).map(([valor, { rotulo }]) => (
                 <option key={valor} value={valor}>{rotulo}</option>
               ))}
             </select>
@@ -164,7 +235,7 @@ export default async function Vitrine({ searchParams }) {
             className="rounded-lg bg-festa-600 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-festa-700">
             Buscar
           </button>
-          {(filtrando || ordem !== 'recentes') && (
+          {(filtrando || ordem !== ordemPadrao) && (
             <Link href="/servicos" className="text-sm font-medium text-festa-700 hover:underline">
               Limpar filtros
             </Link>
@@ -183,7 +254,9 @@ export default async function Vitrine({ searchParams }) {
       {servicos.length === 0 ? (
         !filtrando && (
           <p className="text-sm text-slate-600">
-            Ainda não há serviços aprovados disponíveis.
+            {localizacao
+              ? 'Nenhum fornecedor atende a sua região por enquanto.'
+              : 'Ainda não há serviços aprovados disponíveis.'}
           </p>
         )
       ) : (
@@ -228,6 +301,13 @@ export default async function Vitrine({ searchParams }) {
                     <p className="flex items-center gap-1.5 text-slate-600">
                       <MapPin className="h-4 w-4 shrink-0 text-festa-600" aria-hidden="true" />
                       {servico.cidade}/{servico.estado}
+                      {servico.distancia_km !== null && (
+                        <span className="text-slate-500">
+                          · {Number(servico.distancia_km).toLocaleString('pt-BR', {
+                            minimumFractionDigits: 1, maximumFractionDigits: 1,
+                          })} km
+                        </span>
+                      )}
                     </p>
                   </div>
 
