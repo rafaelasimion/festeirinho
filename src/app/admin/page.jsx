@@ -139,6 +139,54 @@ export default async function Admin() {
     'SELECT chave, descricao, valor, data_alteracao FROM configuracao ORDER BY id'
   );
 
+  // UC 027 / UC 035 — contas da plataforma. Os dois papéis vêm unidos numa
+  // consulta só, com os campos de suspensão e de revisão. A ordem põe na
+  // frente o que exige decisão: revisão pendente, depois suspensas.
+  const [contas] = await pool.query(
+    `SELECT 'cliente' AS tipo, c.id, u.nome, u.email, u.foto_perfil,
+            u.cidade, u.estado, NULL AS nome_exibicao,
+            c.status_cliente AS status, c.motivo_suspensao, c.data_suspensao,
+            c.motivo_solicitacao_revisao, c.data_solicitacao_revisao,
+            c.status_solicitacao_revisao, c.resultado_solicitacao_revisao,
+            c.data_analise_revisao,
+            -- Contestou e a administração deu razão ao fornecedor.
+            (SELECT COUNT(*) FROM solicitacao so
+              WHERE so.id_cliente = c.id
+                AND so.resultado_contestacao = 'improcedente') AS alerta_contestacoes,
+            (SELECT COUNT(*) FROM cancelamento ca
+               JOIN solicitacao so2 ON so2.id = ca.id_solicitacao
+              WHERE so2.id_cliente = c.id
+                AND ca.solicitado_por = 'cliente') AS alerta_cancelamentos
+       FROM cliente c
+       JOIN usuario u ON u.id = c.id_usuario
+
+      UNION ALL
+
+     SELECT 'fornecedor' AS tipo, f.id, u.nome, u.email, u.foto_perfil,
+            u.cidade, u.estado, f.nome_exibicao,
+            f.status_fornecedor AS status, f.motivo_suspensao, f.data_suspensao,
+            f.motivo_solicitacao_revisao, f.data_solicitacao_revisao,
+            f.status_solicitacao_revisao, f.resultado_solicitacao_revisao,
+            f.data_analise_revisao,
+            -- A administração confirmou que o serviço não foi entregue.
+            (SELECT COUNT(*) FROM solicitacao so
+               JOIN servico s ON s.id = so.id_servico
+              WHERE s.id_fornecedor = f.id
+                AND so.resultado_contestacao = 'procedente') AS alerta_contestacoes,
+            -- Cancelou por conta própria, ou sumiu sem registrar a conclusão
+            -- dentro do prazo (RN066), o que o sistema cancela sozinho.
+            (SELECT COUNT(*) FROM cancelamento ca
+               JOIN solicitacao so2 ON so2.id = ca.id_solicitacao
+               JOIN servico s2      ON s2.id = so2.id_servico
+              WHERE s2.id_fornecedor = f.id
+                AND ca.solicitado_por IN ('fornecedor', 'sistema')) AS alerta_cancelamentos
+       FROM fornecedor f
+       JOIN usuario u ON u.id = f.id_usuario
+
+      ORDER BY (status_solicitacao_revisao = 'pendente') DESC,
+               (status = 'suspenso') DESC, nome`
+  );
+
   const iso = (valor) => (valor ? valor.toISOString() : null);
 
   return (
@@ -159,6 +207,14 @@ export default async function Admin() {
         duracao: Number(c.duracao),
         valor_final: Number(c.valor_final),
         valor_bruto: c.valor_bruto === null ? null : Number(c.valor_bruto),
+      }))}
+      contas={contas.map((c) => ({
+        ...c,
+        data_suspensao: iso(c.data_suspensao),
+        data_solicitacao_revisao: iso(c.data_solicitacao_revisao),
+        data_analise_revisao: iso(c.data_analise_revisao),
+        alerta_contestacoes: Number(c.alerta_contestacoes),
+        alerta_cancelamentos: Number(c.alerta_cancelamentos),
       }))}
       dadosPendentes={dadosPendentes.map((d) => ({
         ...d,
