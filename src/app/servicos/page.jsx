@@ -4,7 +4,6 @@ import { pool } from '@/lib/db';
 import { formatarPreco, SUFIXO_PRECO } from '@/lib/solicitacao';
 import { lerSessao } from '@/lib/sessao';
 import Etiqueta from '@/componentes/etiqueta';
-import DescricaoExpansivel from '@/componentes/descricao-expansivel';
 
 // Esta página só LÊ e mostra. Por isso ela consulta o banco direto, sem
 // passar por uma rota de API: componente de servidor já roda no servidor.
@@ -262,8 +261,10 @@ export default async function Vitrine({ searchParams }) {
       ) : (
         <ul className="grid gap-6 sm:grid-cols-2">
           {servicos.map((servico) => (
+            // flex-col + h-full: todos os cards da linha ficam da mesma
+            // altura, e o botão encosta no rodapé de cada um.
             <li key={servico.id}
-              className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+              className="flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white">
 
               {/* Foto principal do serviço (RF012). Sem foto, o espaço fica
                   reservado com o ícone: a proporção fixa mantém a grade
@@ -281,11 +282,19 @@ export default async function Vitrine({ searchParams }) {
                 </span>
               </div>
 
-              <div className="flex flex-col gap-3 p-5">
+              <div className="flex flex-1 flex-col gap-3 p-5">
                 <div>
-                  <h2 className="font-medium text-slate-900">{servico.nome}</h2>
+                  <h2 className="font-medium text-slate-900">
+                    <Link href={`/servicos/${servico.id}`} className="hover:underline">
+                      {servico.nome}
+                    </Link>
+                  </h2>
                   <Estrelas media={servico.media_nota} total={servico.total_avaliacoes} />
-                  <DescricaoExpansivel texto={servico.descricao} />
+                  {/* Três linhas e ponto: o texto completo está na página
+                      de detalhes. Expandir aqui desalinharia a grade. */}
+                  <p className="mt-2 line-clamp-3 whitespace-pre-line text-sm text-slate-700">
+                    {servico.descricao}
+                  </p>
                 </div>
 
                 <div className="flex items-end justify-between gap-4">
@@ -329,17 +338,13 @@ export default async function Vitrine({ searchParams }) {
                     ` · até ${servico.capacidade_max} convidados`}
                 </p>
 
-                {podeSolicitar ? (
-                  <Link href={`/servicos/${servico.id}/solicitar`}
-                    className="mt-1 block rounded-lg bg-festa-600 px-4 py-3 text-center font-medium text-white transition-colors hover:bg-festa-700">
-                    Solicitar
-                  </Link>
-                ) : !sessao ? (
-                  <Link href="/login"
-                    className="mt-1 block rounded-lg border border-festa-600 px-4 py-3 text-center font-medium text-festa-700 transition-colors hover:bg-festa-50">
-                    Entrar para solicitar
-                  </Link>
-                ) : null}
+                {/* UC 011 — o card leva aos detalhes; a solicitação parte
+                    de lá, com as fotos, o fornecedor e as avaliações à
+                    vista. */}
+                <Link href={`/servicos/${servico.id}`}
+                  className="mt-auto block rounded-lg bg-festa-600 px-4 py-3 text-center font-medium text-white transition-colors hover:bg-festa-700">
+                  Ver detalhes
+                </Link>
               </div>
             </li>
           ))}
