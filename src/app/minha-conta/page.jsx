@@ -75,14 +75,20 @@ export default async function MinhaConta() {
         </div>
 
         <div className="mt-6 flex flex-wrap gap-2 border-t border-slate-200 pt-5">
+          {/* UC 004 — os dados da conta valem para os dois papéis; o
+              perfil do negócio é exclusivo do fornecedor. */}
+          <Link href="/minha-conta/editar"
+            className="rounded-lg bg-festa-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-festa-700">
+            Editar dados da conta
+          </Link>
           {ehFornecedor ? (
             <Link href="/fornecedor/perfil"
-              className="rounded-lg bg-festa-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-festa-700">
-              Editar perfil do negócio
+              className="rounded-lg border border-festa-600 px-4 py-2 text-sm font-medium text-festa-700 transition-colors hover:bg-festa-50">
+              Perfil do negócio
             </Link>
           ) : (
             <Link href="/minhas-solicitacoes"
-              className="rounded-lg bg-festa-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-festa-700">
+              className="rounded-lg border border-festa-600 px-4 py-2 text-sm font-medium text-festa-700 transition-colors hover:bg-festa-50">
               Minhas solicitações
             </Link>
           )}
