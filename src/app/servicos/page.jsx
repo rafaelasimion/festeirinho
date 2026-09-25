@@ -4,6 +4,7 @@ import { pool } from '@/lib/db';
 import { formatarPreco, SUFIXO_PRECO } from '@/lib/solicitacao';
 import { lerSessao } from '@/lib/sessao';
 import Etiqueta from '@/componentes/etiqueta';
+import BotaoFavorito from '@/componentes/botao-favorito';
 
 // Esta página só LÊ e mostra. Por isso ela consulta o banco direto, sem
 // passar por uma rota de API: componente de servidor já roda no servidor.
@@ -75,6 +76,11 @@ export default async function Vitrine({ searchParams }) {
   // dos "?" no comando é a ordem do array.
   const valoresSelecao = [];
   const valoresCondicao = [];
+
+  // O parâmetro do favorito pertence ao JOIN, que vem depois da lista de
+  // seleção e antes do WHERE. Visitante e fornecedor passam 0: nenhum
+  // favorito casa com esse id, e a coluna sai nula.
+  const valoresJuncao = [podeSolicitar ? sessao.id : 0];
 
   // ST_Distance_Sphere recebe POINT(longitude, latitude) — nessa ordem — e
   // devolve metros. Sem coordenada do cliente não há distância a calcular.
@@ -149,6 +155,7 @@ export default async function Vitrine({ searchParams }) {
             u.cidade, u.estado,
             av.media_nota, av.total_avaliacoes,
             fp.imagem_url AS foto_principal,
+            fv.id AS id_favorito,
             ${selecaoDistancia}
        FROM servico s
        JOIN fornecedor f ON f.id = s.id_fornecedor
@@ -156,6 +163,8 @@ export default async function Vitrine({ searchParams }) {
        JOIN categoria c  ON c.id = s.id_categoria
        JOIN cobranca cb  ON cb.id = s.id_cobranca
        LEFT JOIN foto_servico fp ON fp.id_servico = s.id AND fp.principal = TRUE
+       -- RF015 — o coração já nasce preenchido no que o cliente salvou.
+       LEFT JOIN favorito fv ON fv.id_servico = s.id AND fv.id_cliente = ?
        LEFT JOIN (
             SELECT so.id_servico,
                    AVG(a.nota)  AS media_nota,
@@ -166,7 +175,7 @@ export default async function Vitrine({ searchParams }) {
        ) av ON av.id_servico = s.id
       WHERE ${condicoes.join(' AND ')}
       ORDER BY ${ORDENACOES[ordem].sql}`,
-    [...valoresSelecao, ...valoresCondicao]
+    [...valoresSelecao, ...valoresJuncao, ...valoresCondicao]
   );
 
   const [categorias] = await pool.query('SELECT id, nome FROM categoria ORDER BY nome');
@@ -283,7 +292,8 @@ export default async function Vitrine({ searchParams }) {
               </div>
 
               <div className="flex flex-1 flex-col gap-3 p-5">
-                <div>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
                   <h2 className="font-medium text-slate-900">
                     <Link href={`/servicos/${servico.id}`} className="hover:underline">
                       {servico.nome}
@@ -295,6 +305,11 @@ export default async function Vitrine({ searchParams }) {
                   <p className="mt-2 line-clamp-3 whitespace-pre-line text-sm text-slate-700">
                     {servico.descricao}
                   </p>
+                  </div>
+                  {podeSolicitar && (
+                    <BotaoFavorito tipo="servico" id={servico.id}
+                      favorito={Boolean(servico.id_favorito)} rotulo={servico.nome} />
+                  )}
                 </div>
 
                 <div className="flex items-end justify-between gap-4">

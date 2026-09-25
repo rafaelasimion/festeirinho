@@ -9,6 +9,7 @@ import { lerSessao } from '@/lib/sessao';
 import { formatarPreco, SUFIXO_PRECO, EXPLICACAO_COBRANCA } from '@/lib/solicitacao';
 import Etiqueta from '@/componentes/etiqueta';
 import GaleriaFotos from '@/componentes/galeria-fotos';
+import BotaoFavorito from '@/componentes/botao-favorito';
 
 // UC 011, passo 6 — detalhes do serviço e do fornecedor, com o indicador de
 // verificação, as fotos e as avaliações.
@@ -64,6 +65,7 @@ export default async function DetalheServico({ params }) {
     `SELECT s.id, s.nome, s.descricao, s.preco_base, s.capacidade_max,
             s.dias_antecedencia,
             c.nome AS categoria, cb.descricao AS cobranca,
+            f.id AS id_fornecedor,
             f.nome_exibicao, f.descricao AS descricao_fornecedor,
             f.status_verificacao AS verificacao_fornecedor,
             f.instagram_url, f.whatsapp_url, f.site,
@@ -84,6 +86,23 @@ export default async function DetalheServico({ params }) {
 
   if (servicos.length === 0) notFound();
   const servico = servicos[0];
+
+  // RF015 / RF016 — estado dos dois corações. Só o cliente favorita.
+  let favoritos = { servico: false, fornecedor: false };
+  if (podeSolicitar) {
+    const [linhas] = await pool.execute(
+      `SELECT fv.id_servico, fv.id_fornecedor
+         FROM favorito fv
+         JOIN cliente c ON c.id = fv.id_cliente
+        WHERE c.id_usuario = ?
+          AND (fv.id_servico = ? OR fv.id_fornecedor = ?)`,
+      [sessao.id, idServico, servico.id_fornecedor]
+    );
+    favoritos = {
+      servico: linhas.some((linha) => linha.id_servico === idServico),
+      fornecedor: linhas.some((linha) => linha.id_fornecedor === servico.id_fornecedor),
+    };
+  }
 
   const [fotos] = await pool.execute(
     `SELECT id, imagem_url FROM foto_servico
@@ -144,8 +163,16 @@ export default async function DetalheServico({ params }) {
         </section>
 
         <section className="rounded-2xl bg-white p-5">
-          <h2 className="text-xl font-semibold text-slate-900">{servico.nome}</h2>
-          <Estrelas media={media} total={totalAvaliacoes} />
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <h2 className="text-xl font-semibold text-slate-900">{servico.nome}</h2>
+              <Estrelas media={media} total={totalAvaliacoes} />
+            </div>
+            {podeSolicitar && (
+              <BotaoFavorito tipo="servico" id={servico.id}
+                favorito={favoritos.servico} rotulo={servico.nome} />
+            )}
+          </div>
           <div className="mt-3">
             <Etiqueta tom="roxo">{servico.categoria}</Etiqueta>
           </div>
@@ -165,6 +192,13 @@ export default async function DetalheServico({ params }) {
                 </span>
               )}
             </div>
+
+            {podeSolicitar && (
+              <span className="order-last">
+                <BotaoFavorito tipo="fornecedor" id={servico.id_fornecedor}
+                  favorito={favoritos.fornecedor} rotulo={servico.nome_exibicao} />
+              </span>
+            )}
 
             <div className="min-w-0 flex-1">
               <h3 className="flex flex-wrap items-center gap-1.5 text-lg font-medium text-slate-900">

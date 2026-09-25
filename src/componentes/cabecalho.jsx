@@ -43,7 +43,7 @@ export default async function Cabecalho() {
 
           {sessao && (
             <>
-            <SinoNotificacoes />
+              <SinoNotificacoes />
               {ehFornecedor && (
                 <>
                   <Link href="/fornecedor/servicos" className="hover:text-festa-700">
@@ -65,6 +65,9 @@ export default async function Cabecalho() {
                 <>
                   <Link href="/servicos" className="hover:text-festa-700">
                     Serviços
+                  </Link>
+                  <Link href="/favoritos" className="hover:text-festa-700">
+                    Favoritos
                   </Link>
                   <Link href="/minhas-solicitacoes" className="hover:text-festa-700">
                     Minhas solicitações
