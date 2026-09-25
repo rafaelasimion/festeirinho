@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { Star } from 'lucide-react';
 import Etiqueta from '@/componentes/etiqueta';
 import DialogoCancelamento from '@/componentes/dialogo-cancelamento';
 import {
@@ -17,6 +18,8 @@ import {
 } from '@/lib/cancelamento';
 import { ROTULO_MOTIVO_CONTESTACAO } from '@/lib/contestacao';
 import Chat from '@/componentes/chat';
+import DialogoDenuncia from '@/componentes/dialogo-denuncia';
+import { ROTULO_RESULTADO_DENUNCIA } from '@/lib/denuncia';
 
 function formatarDataHora(valor) {
   if (!valor) return '';
@@ -39,6 +42,7 @@ export default function ListaSolicitacoesRecebidas({
   const [recusando, setRecusando] = useState(null);
   const [cancelando, setCancelando] = useState(null);
   const [conversando, setConversando] = useState(null);
+  const [denunciando, setDenunciando] = useState(null);
   const [motivo, setMotivo] = useState('');
   const [processando, setProcessando] = useState(false);
   const [erroGeral, setErroGeral] = useState('');
@@ -339,30 +343,100 @@ export default function ListaSolicitacoesRecebidas({
                   </p>
                 )}
 
+                {/* RF037 — a avaliação recebida. RN062: a nota conta na
+                    média mesmo quando o comentário é privado ou foi ocultado
+                    pela moderação; só o texto deixa de aparecer. */}
+                {solicitacao.id_avaliacao && (
+                  <div className="mt-4 border-t border-slate-200 pt-4">
+                    <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="flex" aria-label={`Nota ${solicitacao.nota} de 5`}>
+                          {[1, 2, 3, 4, 5].map((posicao) => (
+                            <Star key={posicao} aria-hidden="true"
+                              className={`h-4 w-4 ${posicao <= solicitacao.nota
+                                ? 'fill-atencao-600 text-atencao-600'
+                                : 'text-slate-300'}`} />
+                          ))}
+                        </span>
+                        <span className="text-sm text-slate-600">
+                          Avaliação de {solicitacao.cliente}
+                          {solicitacao.status_avaliacao === 'oculta'
+                            && solicitacao.origem_ocultacao === 'usuario'
+                            && ' · comentário privado'}
+                          {solicitacao.status_avaliacao === 'oculta'
+                            && solicitacao.origem_ocultacao === 'moderacao'
+                            && ' · comentário removido pela moderação'}
+                        </span>
+                      </div>
+
+                      {solicitacao.comentario && (
+                        <p className="mt-2 whitespace-pre-line text-sm text-slate-700">
+                          {solicitacao.comentario}
+                        </p>
+                      )}
+
+                      {solicitacao.comentario && (
+                        <div className="mt-3 border-t border-slate-200 pt-3">
+                          {solicitacao.id_denuncia ? (
+                            <p className="text-sm text-slate-600">
+                              Comentário denunciado
+                              {solicitacao.status_denuncia === 'analisada'
+                                ? `: ${ROTULO_RESULTADO_DENUNCIA[solicitacao.resultado_analise]}. ${solicitacao.justificativa_analise}`
+                                : '. A administração vai analisar.'}
+                            </p>
+                          ) : denunciando === solicitacao.id ? (
+                            <DialogoDenuncia
+                              tipo="avaliacao"
+                              alvo={{ idAvaliacao: solicitacao.id_avaliacao }}
+                              aoVoltar={() => setDenunciando(null)}
+                              aoConcluir={() => {
+                                setDenunciando(null);
+                                setMensagem('Denúncia registrada. A administração vai analisar.');
+                                router.refresh();
+                              }} />
+                          ) : (
+                            <button type="button" onClick={() => setDenunciando(solicitacao.id)}
+                              className="text-sm font-medium text-perigo-700 hover:underline">
+                              Denunciar comentário
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 {/* UC 016 / RN022 — chat da solicitação. O histórico
                     continua acessível depois de encerrado o canal. */}
                 {['aguardando_pagamento', 'confirmado', 'concluido', 'cancelado']
                   .includes(solicitacao.status) && (
-                    <div className="mt-4 border-t border-slate-200 pt-4">
-                      {conversando === solicitacao.id ? (
-                        <Chat
-                          idSolicitacao={solicitacao.id}
-                          titulo={`Conversa com ${solicitacao.cliente}`}
-                          aoFechar={() => setConversando(null)}
-                          aoAlterar={() => router.refresh()} />
-                      ) : (
-                        <button type="button" onClick={() => setConversando(solicitacao.id)}
-                          className="inline-flex items-center gap-2 rounded-lg border border-festa-600 px-4 py-2 text-sm font-medium text-festa-700 transition-colors hover:bg-festa-50">
-                          Conversar com o cliente
-                          {solicitacao.nao_lidas > 0 && (
-                            <span className="rounded-full bg-festa-600 px-2 py-0.5 text-xs text-white">
-                              {solicitacao.nao_lidas}
-                            </span>
-                          )}
-                        </button>
-                      )}
-                    </div>
-                  )}
+                  <div className="mt-4 border-t border-slate-200 pt-4">
+                    {conversando === solicitacao.id ? (
+                      <>
+                        <div className="mb-3 flex items-center justify-between gap-3">
+                          <p className="text-sm font-medium text-slate-700">
+                            Conversa com {solicitacao.cliente}
+                          </p>
+                          <button type="button" onClick={() => setConversando(null)}
+                            className="text-sm font-medium text-slate-600 hover:underline">
+                            Fechar
+                          </button>
+                        </div>
+                        <Chat idSolicitacao={solicitacao.id} aoAlterar={() => router.refresh()} />
+                      </>
+                    ) : (
+                      <button type="button" onClick={() => setConversando(solicitacao.id)}
+                        className="inline-flex items-center gap-2 rounded-lg border border-festa-600 px-4 py-2 text-sm font-medium text-festa-700 transition-colors hover:bg-festa-50">
+                        Conversar com o cliente
+                        {solicitacao.nao_lidas > 0 && (
+                          <span className="rounded-full bg-festa-600 px-2 py-0.5 text-xs text-white">
+                            {solicitacao.nao_lidas}
+                          </span>
+                        )}
+                      </button>
+                    )}
+                  </div>
+                )}
 
                 {/* UC 022 — pedir cancelamento */}
                 {podeCancelar && (

@@ -52,7 +52,11 @@ export default async function MinhasSolicitacoes() {
             -- não leu nesta solicitação.
             (SELECT COUNT(*) FROM mensagem m
               WHERE m.id_solicitacao = so.id
-                AND m.id_usuario <> ? AND m.lida = FALSE) AS nao_lidas
+                AND m.id_usuario <> ? AND m.lida = FALSE) AS nao_lidas,
+            -- RN052 — uma denúncia por solicitação; se existir, a opção
+            -- some e o resultado é exibido.
+            dn.id AS id_denuncia, dn.status_denuncia,
+            dn.resultado_analise, dn.justificativa_analise
        FROM solicitacao so
        JOIN cliente c     ON c.id  = so.id_cliente
        JOIN servico s     ON s.id  = so.id_servico
@@ -62,6 +66,7 @@ export default async function MinhasSolicitacoes() {
        LEFT JOIN cancelamento ca ON ca.id_solicitacao = so.id
        LEFT JOIN avaliacao av    ON av.id_solicitacao = so.id
        LEFT JOIN dados_recebimento dr ON dr.id_cancelamento = ca.id
+       LEFT JOIN denuncia dn     ON dn.id_solicitacao = so.id
       WHERE c.id_usuario = ?
       ORDER BY so.data_solicitacao DESC`,
     [sessao.id, sessao.id]

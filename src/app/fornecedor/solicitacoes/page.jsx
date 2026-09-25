@@ -54,7 +54,13 @@ export default async function SolicitacoesRecebidas() {
             -- UC 016 — mensagens do cliente ainda não lidas nesta solicitação.
             (SELECT COUNT(*) FROM mensagem m
               WHERE m.id_solicitacao = so.id
-                AND m.id_usuario <> ? AND m.lida = FALSE) AS nao_lidas
+                AND m.id_usuario <> ? AND m.lida = FALSE) AS nao_lidas,
+            -- RF037 — a avaliação recebida, para o fornecedor ler e, se
+            -- for o caso, denunciar o comentário (RN052).
+            av.id AS id_avaliacao, av.nota, av.comentario,
+            av.status_avaliacao, av.origem_ocultacao, av.data_avaliacao,
+            dn.id AS id_denuncia, dn.status_denuncia,
+            dn.resultado_analise, dn.justificativa_analise
        FROM solicitacao so
        JOIN servico s     ON s.id  = so.id_servico
        JOIN cliente c     ON c.id  = so.id_cliente
@@ -63,6 +69,8 @@ export default async function SolicitacoesRecebidas() {
        JOIN tipo_local tl ON tl.id = so.id_tipo_local
        LEFT JOIN pagamento p     ON p.id_solicitacao  = so.id
        LEFT JOIN cancelamento ca ON ca.id_solicitacao = so.id
+       LEFT JOIN avaliacao av    ON av.id_solicitacao = so.id
+       LEFT JOIN denuncia dn     ON dn.id_avaliacao = av.id
       WHERE s.id_fornecedor = ?
       ORDER BY (so.status = 'aguardando_analise') DESC,
                so.data_solicitacao DESC`,
@@ -91,6 +99,7 @@ function serializar(linhas) {
     data_confirmacao_conclusao_cliente: iso(linha.data_confirmacao_conclusao_cliente),
     termino_previsto: iso(linha.termino_previsto),
     data_contestacao_cliente: iso(linha.data_contestacao_cliente),
+    data_avaliacao: iso(linha.data_avaliacao),
     duracao: Number(linha.duracao),
     valor_final: Number(linha.valor_final),
     valor_bruto: numero(linha.valor_bruto),
