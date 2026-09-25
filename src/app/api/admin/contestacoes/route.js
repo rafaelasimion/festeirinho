@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { pool } from '@/lib/db';
 import { obterAdministradorLogado } from '@/lib/sessao-admin';
 import { registrarCancelamento } from '@/lib/cancelamento-servidor';
+import { notificar, partesDaSolicitacao } from '@/lib/notificacao-servidor';
 
 // UC 043 / RF070 — análise da contestação de conclusão pelo administrador.
 
@@ -75,6 +76,26 @@ export async function PATCH(request) {
         [justificativa, idSolicitacao]
       );
 
+      // UC 043 — as duas partes recebem a decisão e a justificativa.
+      const partes = await partesDaSolicitacao(idSolicitacao);
+      if (partes) {
+        await notificar({
+          idUsuario: partes.cliente,
+          tipo: 'solicitacao',
+          titulo: 'Contestação julgada improcedente',
+          mensagem: `Sobre ${partes.servico}: ${justificativa}`,
+          idSolicitacao,
+        });
+        await notificar({
+          idUsuario: partes.fornecedor,
+          tipo: 'solicitacao',
+          titulo: 'Contestação resolvida a seu favor',
+          mensagem: `A contestação de ${partes.servico} foi julgada improcedente. `
+            + 'O serviço consta como concluído e o repasse entra em carência.',
+          idSolicitacao,
+        });
+      }
+
       return NextResponse.json({ resultado: 'improcedente', status: 'concluido' });
     }
 
@@ -105,6 +126,26 @@ export async function PATCH(request) {
         WHERE id = ? AND status_contestacao = 'pendente'`,
       [justificativa, idSolicitacao]
     );
+
+    // O cancelamento já avisou as duas partes do desfecho financeiro; aqui
+    // vai a decisão em si, que é outra informação.
+    const partes = await partesDaSolicitacao(idSolicitacao);
+    if (partes) {
+      await notificar({
+        idUsuario: partes.cliente,
+        tipo: 'solicitacao',
+        titulo: 'Contestação acolhida',
+        mensagem: `Sobre ${partes.servico}: ${justificativa}`,
+        idSolicitacao,
+      });
+      await notificar({
+        idUsuario: partes.fornecedor,
+        tipo: 'solicitacao',
+        titulo: 'Contestação julgada procedente',
+        mensagem: `A contestação de ${partes.servico} foi acolhida: ${justificativa}`,
+        idSolicitacao,
+      });
+    }
 
     return NextResponse.json({
       resultado: 'procedente',

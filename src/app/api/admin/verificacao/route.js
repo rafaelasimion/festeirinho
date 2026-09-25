@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { pool } from '@/lib/db';
 import { obterAdministradorLogado } from '@/lib/sessao-admin';
+import { notificar } from '@/lib/notificacao-servidor';
 
 // UC 024 (verificar fornecedor) e UC 025 (moderar serviço).
 //
@@ -12,6 +13,26 @@ const TABELAS = {
   fornecedor: 'fornecedor',
   servico: 'servico',
 };
+
+// Quem recebe o aviso é sempre o fornecedor dono do registro analisado.
+// No serviço, o nome dele entra na mensagem: o fornecedor pode ter vários,
+// e "seu serviço foi aprovado" sem dizer qual não ajuda ninguém.
+async function destinatario(tipo, id) {
+  if (tipo === 'fornecedor') {
+    const [linhas] = await pool.execute(
+      'SELECT id_usuario FROM fornecedor WHERE id = ? LIMIT 1',
+      [id]
+    );
+    return linhas[0] ? { idUsuario: linhas[0].id_usuario, nome: null } : null;
+  }
+  const [linhas] = await pool.execute(
+    `SELECT f.id_usuario, s.nome
+       FROM servico s JOIN fornecedor f ON f.id = s.id_fornecedor
+      WHERE s.id = ? LIMIT 1`,
+    [id]
+  );
+  return linhas[0] ? { idUsuario: linhas[0].id_usuario, nome: linhas[0].nome } : null;
+}
 
 export async function PATCH(request) {
   const { erro } = await obterAdministradorLogado();
@@ -67,6 +88,26 @@ export async function PATCH(request) {
       if (resultado.affectedRows === 0) {
         return NextResponse.json({ erro: 'Registro não encontrado.' }, { status: 404 });
       }
+      // RN065 — verificação de cadastro é assunto de conta; moderação de
+      // serviço tem tipo próprio. Nenhum dos dois aponta para solicitação.
+      const alvo = await destinatario(tipo, id);
+      if (alvo) {
+        await notificar(tipo === 'fornecedor'
+          ? {
+              idUsuario: alvo.idUsuario,
+              tipo: 'conta',
+              titulo: 'Cadastro aprovado',
+              mensagem: 'Seu perfil foi verificado e já aparece para os clientes, '
+                + 'com o selo de fornecedor verificado.',
+            }
+          : {
+              idUsuario: alvo.idUsuario,
+              tipo: 'servico',
+              titulo: 'Serviço aprovado',
+              mensagem: `${alvo.nome} foi aprovado e já aparece na vitrine.`,
+            });
+      }
+
       return NextResponse.json({ statusVerificacao: 'aprovado' });
     }
 
@@ -85,6 +126,25 @@ export async function PATCH(request) {
     if (resultado.affectedRows === 0) {
       return NextResponse.json({ erro: 'Registro não encontrado.' }, { status: 404 });
     }
+    const alvo = await destinatario(tipo, id);
+    if (alvo) {
+      await notificar(tipo === 'fornecedor'
+        ? {
+            idUsuario: alvo.idUsuario,
+            tipo: 'conta',
+            titulo: 'Cadastro não aprovado',
+            mensagem: `Motivo: ${motivoRejeicao} Corrija os dados e o perfil volta `
+              + 'automaticamente para análise.',
+          }
+        : {
+            idUsuario: alvo.idUsuario,
+            tipo: 'servico',
+            titulo: `Serviço não aprovado: ${alvo.nome}`,
+            mensagem: `Motivo: ${motivoRejeicao} Edite o serviço e ele volta `
+              + 'automaticamente para análise.',
+          });
+    }
+
     return NextResponse.json({ statusVerificacao: 'rejeitado' });
   } catch (erro) {
     console.error('[admin/verificacao]', erro);

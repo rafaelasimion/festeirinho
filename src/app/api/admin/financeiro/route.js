@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { pool } from '@/lib/db';
 import { obterAdministradorLogado } from '@/lib/sessao-admin';
+import { notificar } from '@/lib/notificacao-servidor';
 
 // UC 038 — validação dos dados de recebimento (saque e reembolso).
 // UC 037, etapas 9–10 e fluxo 9a — transferência do saque.
@@ -15,6 +16,29 @@ import { obterAdministradorLogado } from '@/lib/sessao-admin';
 // ---------------------------------------------------------------------
 
 const ACOES = ['validar_dados', 'concluir_saque', 'concluir_reembolso'];
+
+// Os avisos financeiros não apontam para solicitação (RN065): levam o
+// usuário à seção financeira, não a uma contratação.
+async function usuarioDoSaque(idSaque) {
+  const [linhas] = await pool.execute(
+    `SELECT f.id_usuario FROM saque sq
+       JOIN fornecedor f ON f.id = sq.id_fornecedor
+      WHERE sq.id = ? LIMIT 1`,
+    [idSaque]
+  );
+  return linhas[0]?.id_usuario ?? null;
+}
+
+async function usuarioDoCancelamento(idCancelamento) {
+  const [linhas] = await pool.execute(
+    `SELECT c.id_usuario FROM cancelamento ca
+       JOIN solicitacao so ON so.id = ca.id_solicitacao
+       JOIN cliente c      ON c.id = so.id_cliente
+      WHERE ca.id = ? LIMIT 1`,
+    [idCancelamento]
+  );
+  return linhas[0]?.id_usuario ?? null;
+}
 
 export async function PATCH(request) {
   const { erro } = await obterAdministradorLogado();
@@ -82,6 +106,18 @@ async function validarDados(corpo) {
         WHERE id = ? AND status_validacao = 'pendente'`,
       [motivo, idDados]
     );
+    const idUsuario = idSaque
+      ? await usuarioDoSaque(idSaque)
+      : await usuarioDoCancelamento(idCancelamento);
+    if (idUsuario) {
+      await notificar({
+        idUsuario,
+        tipo: 'financeiro',
+        titulo: 'Dados de recebimento rejeitados',
+        mensagem: `${motivo} Corrija os dados para que a transferência siga.`,
+      });
+    }
+
     return NextResponse.json({ statusValidacao: 'rejeitado' });
   }
 
@@ -116,6 +152,21 @@ async function validarDados(corpo) {
     }
 
     await conexao.commit();
+
+    const idUsuario = idSaque
+      ? await usuarioDoSaque(idSaque)
+      : await usuarioDoCancelamento(idCancelamento);
+    if (idUsuario) {
+      await notificar({
+        idUsuario,
+        tipo: 'financeiro',
+        titulo: 'Dados de recebimento validados',
+        mensagem: idSaque
+          ? 'Seu saque foi enviado para transferência.'
+          : 'Seu reembolso foi enviado para processamento.',
+      });
+    }
+
     return NextResponse.json({ statusValidacao: 'validado' });
   } catch (erroValidacao) {
     await conexao.rollback();
@@ -165,6 +216,23 @@ async function concluirSaque(corpo) {
     if (retorno.affectedRows === 0) {
       return NextResponse.json({ erro: 'Este saque não está em processamento.' }, { status: 409 });
     }
+    const idUsuario = await usuarioDoSaque(idSaque);
+    if (idUsuario) {
+      await notificar(resultado === 'concluido'
+        ? {
+            idUsuario,
+            tipo: 'financeiro',
+            titulo: 'Saque concluído',
+            mensagem: 'A transferência foi confirmada pelo banco.',
+          }
+        : {
+            idUsuario,
+            tipo: 'financeiro',
+            titulo: 'Saque recusado',
+            mensagem: `${motivo} O valor voltou para o seu saldo disponível.`,
+          });
+    }
+
     return NextResponse.json({ status: resultado });
   } catch (erroSaque) {
     console.error('[admin/financeiro concluir_saque]', erroSaque);
@@ -199,6 +267,16 @@ async function concluirReembolso(corpo) {
         { status: 409 }
       );
     }
+    const idUsuario = await usuarioDoCancelamento(idCancelamento);
+    if (idUsuario) {
+      await notificar({
+        idUsuario,
+        tipo: 'financeiro',
+        titulo: 'Reembolso concluído',
+        mensagem: 'O valor do cancelamento foi devolvido.',
+      });
+    }
+
     return NextResponse.json({ status: 'concluido' });
   } catch (erroReembolso) {
     console.error('[admin/financeiro concluir_reembolso]', erroReembolso);

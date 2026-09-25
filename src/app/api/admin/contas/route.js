@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { pool } from '@/lib/db';
 import { obterAdministradorLogado } from '@/lib/sessao-admin';
+import { notificar } from '@/lib/notificacao-servidor';
 
 // UC 027 e correspondente do fornecedor (RF052, RF053) — suspensão e
 // reativação de contas.
@@ -14,6 +15,17 @@ const PAPEIS = {
 };
 
 const ACOES = ['suspender', 'reativar', 'analisar_revisao'];
+
+// RN065 — avisos de situação da conta ficam registrados mesmo enquanto o
+// login está bloqueado: a tela de bloqueio mostra motivo e resultado, e a
+// central fica disponível quando a conta volta.
+async function usuarioDaConta(papel, id) {
+  const [linhas] = await pool.execute(
+    `SELECT id_usuario FROM ${papel.tabela} WHERE id = ? LIMIT 1`,
+    [id]
+  );
+  return linhas[0]?.id_usuario ?? null;
+}
 
 export async function PATCH(request) {
   const { erro } = await obterAdministradorLogado();
@@ -88,6 +100,16 @@ export async function PATCH(request) {
       // UC 027, etapa 5 — "encerrando as sessões ativas". O cookie de sessão
       // continua no navegador da pessoa, mas toda rota confere o status no
       // banco a cada requisição: a partir daqui ela não consegue mais nada.
+      const idUsuario = await usuarioDaConta(papel, id);
+      if (idUsuario) {
+        await notificar({
+          idUsuario,
+          tipo: 'conta',
+          titulo: 'Conta suspensa',
+          mensagem: `Motivo: ${motivo} Você pode solicitar revisão na tela de acesso.`,
+        });
+      }
+
       return NextResponse.json({ status: 'suspenso' });
     }
 
@@ -113,6 +135,16 @@ export async function PATCH(request) {
           WHERE id = ?`,
         [id]
       );
+      const idUsuario = await usuarioDaConta(papel, id);
+      if (idUsuario) {
+        await notificar({
+          idUsuario,
+          tipo: 'conta',
+          titulo: 'Conta reativada',
+          mensagem: 'Sua conta voltou a ficar ativa e o acesso está liberado.',
+        });
+      }
+
       return NextResponse.json({ status: 'ativo' });
     }
 
@@ -144,6 +176,16 @@ export async function PATCH(request) {
           WHERE id = ?`,
         [resultado, id]
       );
+      const idUsuario = await usuarioDaConta(papel, id);
+      if (idUsuario) {
+        await notificar({
+          idUsuario,
+          tipo: 'conta',
+          titulo: 'Revisão analisada: suspensão mantida',
+          mensagem: resultado,
+        });
+      }
+
       return NextResponse.json({ status: 'suspenso', revisao: 'analisada' });
     }
 
@@ -160,6 +202,16 @@ export async function PATCH(request) {
         WHERE id = ?`,
       [resultado, id]
     );
+    const idUsuario = await usuarioDaConta(papel, id);
+    if (idUsuario) {
+      await notificar({
+        idUsuario,
+        tipo: 'conta',
+        titulo: 'Revisão acolhida: conta reativada',
+        mensagem: resultado,
+      });
+    }
+
     return NextResponse.json({ status: 'ativo', revisao: 'analisada' });
   } catch (erroAcao) {
     console.error('[admin/contas]', erroAcao);
