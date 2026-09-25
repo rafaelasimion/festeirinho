@@ -242,6 +242,21 @@ export default function FormularioConta({ dados, documento, ehFornecedor }) {
           </div>
         )}
       </section>
+
+      {/* UC 007 — a exclusão fica no fim da tela, separada, e não repete o
+          aviso: a tela própria explica o que acontece. */}
+      <section className="mt-10 border-t border-slate-200 pt-6">
+        <h2 className="font-medium text-slate-900">Excluir conta</h2>
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm text-slate-600">
+            Remove seus dados pessoais em caráter definitivo.
+          </p>
+          <Link href="/minha-conta/excluir"
+            className="rounded-lg border border-perigo-600 px-4 py-2 text-sm font-medium text-perigo-700 transition-colors hover:bg-perigo-50">
+            Excluir minha conta
+          </Link>
+        </div>
+      </section>
     </main>
   );
 }
