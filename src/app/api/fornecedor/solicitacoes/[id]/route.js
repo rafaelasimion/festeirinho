@@ -3,6 +3,7 @@ import { pool } from '@/lib/db';
 import { obterFornecedorLogado } from '@/lib/autorizacao';
 import { gerarPagamento } from '@/lib/pagamento-servidor';
 import { registrarCancelamento } from '@/lib/cancelamento-servidor';
+import { notificar, partesDaSolicitacao } from '@/lib/notificacao-servidor';
 
 // RF022/RF023 — resposta do fornecedor à solicitação.
 // UC 019 — registro da conclusão do serviço.
@@ -112,6 +113,20 @@ export async function PATCH(request, { params }) {
             AND data_registro_conclusao_fornecedor IS NULL`,
         [idSolicitacao]
       );
+      // RN065 — é a vez do cliente: ele precisa saber que o relógio da
+      // confirmação começou a correr.
+      const partes = await partesDaSolicitacao(idSolicitacao);
+      if (partes) {
+        await notificar({
+          idUsuario: partes.cliente,
+          tipo: 'solicitacao',
+          titulo: 'Conclusão registrada pelo fornecedor',
+          mensagem: `${partes.nome_fornecedor} registrou a conclusão de ${partes.servico}. `
+            + 'Confirme ou conteste dentro do prazo.',
+          idSolicitacao,
+        });
+      }
+
       return NextResponse.json({ conclusaoRegistrada: true });
     } catch (erroConclusao) {
       console.error('[fornecedor/solicitacoes registrar_conclusao]', erroConclusao);
@@ -159,6 +174,18 @@ export async function PATCH(request, { params }) {
           WHERE id = ? AND status = 'aguardando_analise'`,
         [motivoRecusa, idSolicitacao]
       );
+      const partes = await partesDaSolicitacao(idSolicitacao);
+      if (partes) {
+        await notificar({
+          idUsuario: partes.cliente,
+          tipo: 'solicitacao',
+          titulo: 'Solicitação recusada',
+          mensagem: `${partes.nome_fornecedor} não pôde atender sua solicitação de `
+            + `${partes.servico}.`,
+          idSolicitacao,
+        });
+      }
+
       return NextResponse.json({ status: 'recusado' });
     } catch (erroRecusa) {
       console.error('[fornecedor/solicitacoes recusar]', erroRecusa);
@@ -186,6 +213,19 @@ export async function PATCH(request, { params }) {
     await gerarPagamento(conexao, idSolicitacao);
 
     await conexao.commit();
+
+    const partes = await partesDaSolicitacao(idSolicitacao);
+    if (partes) {
+      await notificar({
+        idUsuario: partes.cliente,
+        tipo: 'solicitacao',
+        titulo: 'Solicitação aprovada',
+        mensagem: `${partes.nome_fornecedor} aprovou sua solicitação de ${partes.servico}. `
+          + 'Conclua o pagamento para confirmar a contratação.',
+        idSolicitacao,
+      });
+    }
+
     return NextResponse.json({ status: 'aguardando_pagamento' });
   } catch (erroAprovacao) {
     await conexao.rollback();

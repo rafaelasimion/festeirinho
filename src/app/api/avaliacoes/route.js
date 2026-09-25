@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { pool } from '@/lib/db';
 import { obterClienteLogado } from '@/lib/autorizacao';
+import { notificar, partesDaSolicitacao } from '@/lib/notificacao-servidor';
 
 // UC 021 / RF037 — avaliação do serviço pelo cliente.
 
@@ -74,6 +75,22 @@ export async function POST(request) {
         visibilidade === 'oculta' ? 'usuario' : null,
       ]
     );
+
+    // RN062/RN065 — o fornecedor é avisado da nota mesmo quando o
+    // comentário é privado: a nota conta para a média dele de qualquer jeito.
+    const partes = await partesDaSolicitacao(idSolicitacao);
+    if (partes) {
+      await notificar({
+        idUsuario: partes.fornecedor,
+        tipo: 'avaliacao',
+        titulo: `Nova avaliação: ${nota} de 5`,
+        mensagem: `${partes.nome_cliente} avaliou ${partes.servico}`
+          + (visibilidade === 'oculta'
+            ? ', com comentário privado.'
+            : (comentario ? `: "${comentario.slice(0, 200)}"` : '.')),
+        idSolicitacao,
+      });
+    }
 
     return NextResponse.json({ nota, visibilidade }, { status: 201 });
   } catch (erroAvaliacao) {

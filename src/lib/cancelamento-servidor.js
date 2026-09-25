@@ -1,5 +1,6 @@
 import { pool } from '@/lib/db';
 import { calcularValores, impedimentoParaCancelar } from '@/lib/cancelamento';
+import { notificar, partesDaSolicitacao } from '@/lib/notificacao-servidor';
 
 // Registro do cancelamento — o caminho único por onde passam os quatro
 // cenários que cancelam uma solicitação: pedido do cliente e do fornecedor
@@ -128,6 +129,38 @@ export async function registrarCancelamento({ idSolicitacao, solicitadoPor, moti
           [dados.id_pagamento]
         );
       }
+    }
+
+    // RN065 — as duas partes são avisadas. O aviso entra na MESMA
+    // transação: se o cancelamento falhar, o aviso é desfeito junto e
+    // ninguém recebe notícia de algo que não aconteceu.
+    const partes = await partesDaSolicitacao(idSolicitacao, conexao);
+    if (partes) {
+      const origem = solicitadoPor === 'cliente' ? 'pelo cliente'
+        : solicitadoPor === 'fornecedor' ? 'pelo fornecedor'
+        : 'automaticamente pelo sistema';
+
+      await notificar({
+        idUsuario: partes.cliente,
+        tipo: 'cancelamento',
+        titulo: 'Solicitação cancelada',
+        mensagem: `A contratação de ${partes.servico} foi cancelada ${origem}.`
+          + (valorReembolso > 0
+            ? ` Você receberá R$ ${valorReembolso.toFixed(2).replace('.', ',')} de reembolso.`
+            : ''),
+        idSolicitacao,
+      }, conexao);
+
+      await notificar({
+        idUsuario: partes.fornecedor,
+        tipo: 'cancelamento',
+        titulo: 'Solicitação cancelada',
+        mensagem: `A contratação de ${partes.servico} foi cancelada ${origem}.`
+          + (valorMulta > 0
+            ? ` O valor retido de R$ ${valorMulta.toFixed(2).replace('.', ',')} fica a seu favor.`
+            : ''),
+        idSolicitacao,
+      }, conexao);
     }
 
     await conexao.commit();

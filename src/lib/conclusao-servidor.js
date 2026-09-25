@@ -1,6 +1,7 @@
 import { pool } from '@/lib/db';
 import { obterConfiguracoes } from '@/lib/configuracao';
 import { registrarCancelamento } from '@/lib/cancelamento-servidor';
+import { notificar, partesDaSolicitacao } from '@/lib/notificacao-servidor';
 
 // Módulo de servidor: importa o banco, então nunca pode ser carregado por
 // componente de tela.
@@ -16,10 +17,11 @@ import { registrarCancelamento } from '@/lib/cancelamento-servidor';
 export async function confirmarConclusoesVencidas() {
   const configuracoes = await obterConfiguracoes();
 
-  await pool.execute(
-    `UPDATE solicitacao
-        SET data_confirmacao_conclusao_cliente = NOW(),
-            status = 'concluido'
+  // Os ids são levantados ANTES da atualização: depois dela, as linhas não
+  // se distinguem mais das que já estavam concluídas, e não haveria como
+  // saber quem notificar (RN065).
+  const [vencidas] = await pool.execute(
+    `SELECT id FROM solicitacao
       WHERE status = 'confirmado'
         AND data_registro_conclusao_fornecedor IS NOT NULL
         AND data_confirmacao_conclusao_cliente IS NULL
@@ -27,6 +29,36 @@ export async function confirmarConclusoesVencidas() {
         AND DATE_ADD(data_registro_conclusao_fornecedor, INTERVAL ? HOUR) < NOW()`,
     [configuracoes.prazo_confirmacao_conclusao_horas]
   );
+
+  if (vencidas.length === 0) return;
+
+  const ids = vencidas.map((linha) => linha.id);
+  await pool.query(
+    `UPDATE solicitacao
+        SET data_confirmacao_conclusao_cliente = NOW(),
+            status = 'concluido'
+      WHERE id IN (?)`,
+    [ids]
+  );
+
+  for (const idSolicitacao of ids) {
+    const partes = await partesDaSolicitacao(idSolicitacao);
+    if (!partes) continue;
+    await notificar({
+      idUsuario: partes.fornecedor,
+      tipo: 'solicitacao',
+      titulo: 'Conclusão confirmada automaticamente',
+      mensagem: `O prazo do cliente se esgotou e ${partes.servico} foi dado como concluído.`,
+      idSolicitacao,
+    });
+    await notificar({
+      idUsuario: partes.cliente,
+      tipo: 'solicitacao',
+      titulo: 'Serviço concluído',
+      mensagem: `${partes.servico} foi confirmado automaticamente por falta de resposta no prazo.`,
+      idSolicitacao,
+    });
+  }
 }
 
 // RN066 / UC 019, fluxo 2a — cancelamento automático por ausência de registro.

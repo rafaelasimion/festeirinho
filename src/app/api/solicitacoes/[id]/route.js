@@ -3,6 +3,7 @@ import { pool } from '@/lib/db';
 import { obterClienteLogado } from '@/lib/autorizacao';
 import { obterConfiguracoes } from '@/lib/configuracao';
 import { registrarCancelamento } from '@/lib/cancelamento-servidor';
+import { notificar, partesDaSolicitacao } from '@/lib/notificacao-servidor';
 
 // UC 020 — confirmação da conclusão do serviço pelo cliente.
 // UC 022 — solicitação de cancelamento pelo cliente.
@@ -152,6 +153,18 @@ export async function PATCH(request, { params }) {
 
       // RN069 — a solicitação permanece em "confirmado", a confirmação
       // automática fica suspensa e o repasse não se torna elegível.
+      const partes = await partesDaSolicitacao(idSolicitacao);
+      if (partes) {
+        await notificar({
+          idUsuario: partes.fornecedor,
+          tipo: 'solicitacao',
+          titulo: 'Conclusão contestada pelo cliente',
+          mensagem: `${partes.nome_cliente} contestou a conclusão de ${partes.servico}. `
+            + 'A administração vai analisar.',
+          idSolicitacao,
+        });
+      }
+
       return NextResponse.json({ statusContestacao: 'pendente' });
     } catch (erroContestacao) {
       console.error('[solicitacoes contestar]', erroContestacao);
@@ -188,6 +201,18 @@ export async function PATCH(request, { params }) {
           AND data_confirmacao_conclusao_cliente IS NULL`,
       [idSolicitacao]
     );
+
+    const partes = await partesDaSolicitacao(idSolicitacao);
+    if (partes) {
+      await notificar({
+        idUsuario: partes.fornecedor,
+        tipo: 'solicitacao',
+        titulo: 'Conclusão confirmada',
+        mensagem: `${partes.nome_cliente} confirmou a conclusão de ${partes.servico}. `
+          + 'O repasse entra em carência e depois fica disponível para saque.',
+        idSolicitacao,
+      });
+    }
 
     return NextResponse.json({ status: 'concluido' });
   } catch (erroConfirmacao) {
