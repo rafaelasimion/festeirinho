@@ -47,7 +47,12 @@ export default async function MinhasSolicitacoes() {
             dr.id AS id_dados_reembolso, dr.status_validacao AS validacao_reembolso,
             dr.motivo_rejeicao AS motivo_rejeicao_reembolso,
             dr.tipo_recebimento, dr.chave_pix, dr.tipo_chave_pix,
-            dr.banco, dr.tipo_conta, dr.agencia, dr.numero_conta
+            dr.banco, dr.tipo_conta, dr.agencia, dr.numero_conta,
+            -- UC 016 — quantas mensagens do fornecedor este cliente ainda
+            -- não leu nesta solicitação.
+            (SELECT COUNT(*) FROM mensagem m
+              WHERE m.id_solicitacao = so.id
+                AND m.id_usuario <> ? AND m.lida = FALSE) AS nao_lidas
        FROM solicitacao so
        JOIN cliente c     ON c.id  = so.id_cliente
        JOIN servico s     ON s.id  = so.id_servico
@@ -59,7 +64,7 @@ export default async function MinhasSolicitacoes() {
        LEFT JOIN dados_recebimento dr ON dr.id_cancelamento = ca.id
       WHERE c.id_usuario = ?
       ORDER BY so.data_solicitacao DESC`,
-    [sessao.id]
+    [sessao.id, sessao.id]
   );
 
   // RN061 — o titular dos dados de reembolso é o próprio cliente.
@@ -99,6 +104,7 @@ function serializar(linhas) {
     valor_bruto: numero(linha.valor_bruto),
     valor_reembolso: numero(linha.valor_reembolso),
     valor_multa: numero(linha.valor_multa),
+    nao_lidas: Number(linha.nao_lidas),
     perc_multa_faixa_mais_7d: numero(linha.perc_multa_faixa_mais_7d),
     perc_multa_faixa_7d_48h: numero(linha.perc_multa_faixa_7d_48h),
     perc_multa_faixa_48h_24h: numero(linha.perc_multa_faixa_48h_24h),

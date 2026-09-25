@@ -16,6 +16,7 @@ import {
   impedimentoParaCancelar,
 } from '@/lib/cancelamento';
 import { ROTULO_MOTIVO_CONTESTACAO } from '@/lib/contestacao';
+import Chat from '@/componentes/chat';
 
 function formatarDataHora(valor) {
   if (!valor) return '';
@@ -37,6 +38,7 @@ export default function ListaSolicitacoesRecebidas({
   const router = useRouter();
   const [recusando, setRecusando] = useState(null);
   const [cancelando, setCancelando] = useState(null);
+  const [conversando, setConversando] = useState(null);
   const [motivo, setMotivo] = useState('');
   const [processando, setProcessando] = useState(false);
   const [erroGeral, setErroGeral] = useState('');
@@ -185,10 +187,12 @@ export default function ListaSolicitacoesRecebidas({
                   </p>
                 )}
 
+                {/* UC 042 — o fornecedor é informado da contestação. */}
                 {solicitacao.status_contestacao === 'pendente' && (
                   <div className="mt-4 space-y-1 rounded-lg border border-atencao-200 bg-atencao-50 p-3 text-sm">
                     <p className="font-medium text-slate-800">
-                      O cliente contestou a conclusão: {ROTULO_MOTIVO_CONTESTACAO[solicitacao.motivo_contestacao_cliente]}
+                      O cliente contestou a conclusão:{' '}
+                      {ROTULO_MOTIVO_CONTESTACAO[solicitacao.motivo_contestacao_cliente]}
                     </p>
                     <p className="whitespace-pre-line text-slate-700">
                       {solicitacao.descricao_contestacao_cliente}
@@ -334,6 +338,31 @@ export default function ListaSolicitacoesRecebidas({
                     {formatarDataHora(solicitacao.data_confirmacao_conclusao_cliente)}.
                   </p>
                 )}
+
+                {/* UC 016 / RN022 — chat da solicitação. O histórico
+                    continua acessível depois de encerrado o canal. */}
+                {['aguardando_pagamento', 'confirmado', 'concluido', 'cancelado']
+                  .includes(solicitacao.status) && (
+                    <div className="mt-4 border-t border-slate-200 pt-4">
+                      {conversando === solicitacao.id ? (
+                        <Chat
+                          idSolicitacao={solicitacao.id}
+                          titulo={`Conversa com ${solicitacao.cliente}`}
+                          aoFechar={() => setConversando(null)}
+                          aoAlterar={() => router.refresh()} />
+                      ) : (
+                        <button type="button" onClick={() => setConversando(solicitacao.id)}
+                          className="inline-flex items-center gap-2 rounded-lg border border-festa-600 px-4 py-2 text-sm font-medium text-festa-700 transition-colors hover:bg-festa-50">
+                          Conversar com o cliente
+                          {solicitacao.nao_lidas > 0 && (
+                            <span className="rounded-full bg-festa-600 px-2 py-0.5 text-xs text-white">
+                              {solicitacao.nao_lidas}
+                            </span>
+                          )}
+                        </button>
+                      )}
+                    </div>
+                  )}
 
                 {/* UC 022 — pedir cancelamento */}
                 {podeCancelar && (

@@ -22,7 +22,8 @@ export default async function SolicitacoesRecebidas() {
   if (fornecedores.length === 0) redirect('/minha-conta');
   const idFornecedor = fornecedores[0].id;
 
-  // Fecha o que venceu antes de mostrar: RN035, RN025, RN066 e RF036.  await expirarSolicitacoesVencidas();
+  // Fecha o que venceu antes de mostrar: RN035, RN025, RN066 e RF036.
+  await expirarSolicitacoesVencidas();
   await expirarPagamentosVencidos();
   await cancelarSemRegistroDeConclusao();
   await confirmarConclusoesVencidas();
@@ -49,7 +50,11 @@ export default async function SolicitacoesRecebidas() {
             ca.id AS id_cancelamento, ca.solicitado_por,
             ca.motivo AS motivo_cancelamento,
             ca.valor_reembolso, ca.valor_multa,
-            ca.status AS status_cancelamento, ca.status_repasse
+            ca.status AS status_cancelamento, ca.status_repasse,
+            -- UC 016 — mensagens do cliente ainda não lidas nesta solicitação.
+            (SELECT COUNT(*) FROM mensagem m
+              WHERE m.id_solicitacao = so.id
+                AND m.id_usuario <> ? AND m.lida = FALSE) AS nao_lidas
        FROM solicitacao so
        JOIN servico s     ON s.id  = so.id_servico
        JOIN cliente c     ON c.id  = so.id_cliente
@@ -61,7 +66,7 @@ export default async function SolicitacoesRecebidas() {
       WHERE s.id_fornecedor = ?
       ORDER BY (so.status = 'aguardando_analise') DESC,
                so.data_solicitacao DESC`,
-    [idFornecedor]
+    [sessao.id, idFornecedor]
   );
 
   return (
@@ -84,12 +89,13 @@ function serializar(linhas) {
     data_limite_resposta_fornecedor: iso(linha.data_limite_resposta_fornecedor),
     data_registro_conclusao_fornecedor: iso(linha.data_registro_conclusao_fornecedor),
     data_confirmacao_conclusao_cliente: iso(linha.data_confirmacao_conclusao_cliente),
-    data_contestacao_cliente: iso(linha.data_contestacao_cliente),
     termino_previsto: iso(linha.termino_previsto),
+    data_contestacao_cliente: iso(linha.data_contestacao_cliente),
     duracao: Number(linha.duracao),
     valor_final: Number(linha.valor_final),
     valor_bruto: numero(linha.valor_bruto),
     valor_reembolso: numero(linha.valor_reembolso),
     valor_multa: numero(linha.valor_multa),
+    nao_lidas: Number(linha.nao_lidas),
   }));
 }

@@ -7,6 +7,7 @@ import Etiqueta from '@/componentes/etiqueta';
 import DialogoCancelamento from '@/componentes/dialogo-cancelamento';
 import FormularioAvaliacao from '@/componentes/formulario-avaliacao';
 import DadosReembolso from '@/componentes/dados-reembolso';
+import Chat from '@/componentes/chat';
 import {
   formatarPreco,
   ROTULO_STATUS_SOLICITACAO,
@@ -36,6 +37,7 @@ function formatarDataHora(valor) {
 export default function ListaMinhasSolicitacoes({ solicitacoes, prazoConfirmacaoHoras, titular }) {
   const router = useRouter();
   const [cancelando, setCancelando] = useState(null);
+  const [conversando, setConversando] = useState(null);
   const [contestando, setContestando] = useState(null);
   const [motivoContestacao, setMotivoContestacao] = useState('');
   const [descricaoContestacao, setDescricaoContestacao] = useState('');
@@ -205,8 +207,7 @@ export default function ListaMinhasSolicitacoes({ solicitacoes, prazoConfirmacao
                           </legend>
                           {MOTIVOS_CONTESTACAO.map(({ valor, rotulo, detalhe }) => (
                             <label key={valor}
-                              className={`flex cursor-pointer gap-3 rounded-lg border p-3 transition-colors ${
-                                motivoContestacao === valor
+                              className={`flex cursor-pointer gap-3 rounded-lg border p-3 transition-colors ${motivoContestacao === valor
                                   ? 'border-atencao-600 bg-white'
                                   : 'border-slate-200 bg-white hover:border-slate-300'}`}>
                               <input type="radio" name={`motivo-contestacao-${solicitacao.id}`}
@@ -321,11 +322,11 @@ export default function ListaMinhasSolicitacoes({ solicitacoes, prazoConfirmacao
 
                 {solicitacao.status === 'confirmado' && !aguardandoConfirmacao
                   && !solicitacao.data_registro_conclusao_fornecedor && (
-                  <p className="mt-4 border-t border-slate-200 pt-4 text-sm text-slate-600">
-                    Contratação confirmada. Após o evento, o fornecedor registra a conclusão
-                    e você confirma por aqui.
-                  </p>
-                )}
+                    <p className="mt-4 border-t border-slate-200 pt-4 text-sm text-slate-600">
+                      Contratação confirmada. Após o evento, o fornecedor registra a conclusão
+                      e você confirma por aqui.
+                    </p>
+                  )}
 
                 {solicitacao.status === 'concluido' && (
                   <p className="mt-4 border-t border-slate-200 pt-4 text-sm text-sucesso-700">
@@ -406,23 +407,48 @@ export default function ListaMinhasSolicitacoes({ solicitacoes, prazoConfirmacao
                     {solicitacao.status_cancelamento === 'em_analise'
                       && Number(solicitacao.valor_reembolso) > 0
                       && solicitacao.forma_pagamento === 'boleto' && (
-                      <DadosReembolso
-                        idCancelamento={solicitacao.id_cancelamento}
-                        titular={titular}
-                        dados={solicitacao.id_dados_reembolso ? {
-                          status_validacao: solicitacao.validacao_reembolso,
-                          motivo_rejeicao: solicitacao.motivo_rejeicao_reembolso,
-                          tipo_recebimento: solicitacao.tipo_recebimento,
-                          chave_pix: solicitacao.chave_pix,
-                          tipo_chave_pix: solicitacao.tipo_chave_pix,
-                          banco: solicitacao.banco,
-                          tipo_conta: solicitacao.tipo_conta,
-                          agencia: solicitacao.agencia,
-                          numero_conta: solicitacao.numero_conta,
-                        } : null} />
-                    )}
+                        <DadosReembolso
+                          idCancelamento={solicitacao.id_cancelamento}
+                          titular={titular}
+                          dados={solicitacao.id_dados_reembolso ? {
+                            status_validacao: solicitacao.validacao_reembolso,
+                            motivo_rejeicao: solicitacao.motivo_rejeicao_reembolso,
+                            tipo_recebimento: solicitacao.tipo_recebimento,
+                            chave_pix: solicitacao.chave_pix,
+                            tipo_chave_pix: solicitacao.tipo_chave_pix,
+                            banco: solicitacao.banco,
+                            tipo_conta: solicitacao.tipo_conta,
+                            agencia: solicitacao.agencia,
+                            numero_conta: solicitacao.numero_conta,
+                          } : null} />
+                      )}
                   </div>
                 )}
+
+                {/* UC 016 / RN022 — chat da solicitação. O histórico
+                    continua acessível depois de encerrado o canal. */}
+                {['aguardando_pagamento', 'confirmado', 'concluido', 'cancelado']
+                  .includes(solicitacao.status) && (
+                    <div className="mt-4 border-t border-slate-200 pt-4">
+                      {conversando === solicitacao.id ? (
+                        <Chat
+                          idSolicitacao={solicitacao.id}
+                          titulo={`Conversa com ${solicitacao.fornecedor}`}
+                          aoFechar={() => setConversando(null)}
+                          aoAlterar={() => router.refresh()} />
+                      ) : (
+                        <button type="button" onClick={() => setConversando(solicitacao.id)}
+                          className="inline-flex items-center gap-2 rounded-lg border border-festa-600 px-4 py-2 text-sm font-medium text-festa-700 transition-colors hover:bg-festa-50">
+                          Conversar com o fornecedor
+                          {solicitacao.nao_lidas > 0 && (
+                            <span className="rounded-full bg-festa-600 px-2 py-0.5 text-xs text-white">
+                              {solicitacao.nao_lidas}
+                            </span>
+                          )}
+                        </button>
+                      )}
+                    </div>
+                  )}
 
                 {/* UC 022 — pedir cancelamento */}
                 {podeCancelar && (
