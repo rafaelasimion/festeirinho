@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { pool } from '@/lib/db';
 import { administradorAtivo } from '@/lib/sessao-admin';
 import { descreverRecebimento } from '@/lib/recebimento';
+import { marcarContasInativas } from '@/lib/inatividade-servidor';
 import PainelVerificacao from './painel';
 
 export const metadata = {
@@ -11,6 +12,10 @@ export const metadata = {
 export default async function Admin() {
   const administrador = await administradorAtivo();
   if (!administrador) redirect('/admin/login');
+
+  // RF005 / RF005-C — manutenção antes de listar: sem isto, uma conta
+  // parada há meses continuaria aparecendo como ativa no painel.
+  await marcarContasInativas();
 
   const [fornecedores] = await pool.query(
     `SELECT f.id, f.tipo_pessoa, f.cpf, f.cnpj, f.razao_social,

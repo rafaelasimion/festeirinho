@@ -1,5 +1,6 @@
 import { pool } from '@/lib/db';
 import { obterConfiguracoes } from '@/lib/configuracao';
+import { notificar, partesDaSolicitacao } from '@/lib/notificacao-servidor';
 
 // Módulo de servidor: importa o banco, então nunca pode ser carregado por
 // componente de tela.
@@ -58,29 +59,69 @@ export async function gerarPagamento(conexao, idSolicitacao) {
 // abre a lista, no lugar de uma tarefa agendada que o projeto não tem.
 export async function expirarPagamentosVencidos() {
   const conexao = await pool.getConnection();
+  let vencidos = [];
+
   try {
     await conexao.beginTransaction();
 
-    await conexao.execute(
-      `UPDATE pagamento
-          SET status = 'expirado'
-        WHERE status IN ('pendente', 'processando')
-          AND data_limite < NOW()`
+    // Os vencidos são levantados ANTES da atualização. Depois dela, eles se
+    // confundem com pagamentos que já estavam expirados de execuções
+    // anteriores, e não haveria como saber quem avisar (RN065).
+    const [linhas] = await conexao.execute(
+      `SELECT p.id, p.id_solicitacao
+         FROM pagamento p
+        WHERE p.status IN ('pendente', 'processando')
+          AND p.data_limite < NOW()`
     );
+    vencidos = linhas;
 
-    await conexao.execute(
-      `UPDATE solicitacao so
-         JOIN pagamento p ON p.id_solicitacao = so.id
-          SET so.status = 'cancelado'
-        WHERE p.status = 'expirado'
-          AND so.status = 'aguardando_pagamento'`
-    );
+    if (vencidos.length > 0) {
+      const ids = vencidos.map((linha) => linha.id);
+
+      await conexao.query(
+        `UPDATE pagamento SET status = 'expirado' WHERE id IN (?)`,
+        [ids]
+      );
+
+      await conexao.query(
+        `UPDATE solicitacao
+            SET status = 'cancelado'
+          WHERE id IN (?) AND status = 'aguardando_pagamento'`,
+        [vencidos.map((linha) => linha.id_solicitacao)]
+      );
+    }
 
     await conexao.commit();
   } catch (erro) {
     await conexao.rollback();
     console.error('[expirarPagamentosVencidos]', erro);
+    return;
   } finally {
     conexao.release();
+  }
+
+  // Os avisos saem depois do commit: são independentes entre si, e mandá-los
+  // dentro da transação seguraria a trava das linhas por mais tempo do que o
+  // necessário.
+  for (const pagamento of vencidos) {
+    const partes = await partesDaSolicitacao(pagamento.id_solicitacao);
+    if (!partes) continue;
+
+    await notificar({
+      idUsuario: partes.cliente,
+      tipo: 'pagamento',
+      titulo: 'Prazo de pagamento esgotado',
+      mensagem: `A solicitação de ${partes.servico} foi cancelada por falta de `
+        + 'pagamento dentro do prazo.',
+      idSolicitacao: pagamento.id_solicitacao,
+    });
+
+    await notificar({
+      idUsuario: partes.fornecedor,
+      tipo: 'pagamento',
+      titulo: 'Contratação cancelada por falta de pagamento',
+      mensagem: `${partes.servico}: o prazo do cliente venceu e a data está livre.`,
+      idSolicitacao: pagamento.id_solicitacao,
+    });
   }
 }
