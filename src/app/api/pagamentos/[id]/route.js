@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { pool } from '@/lib/db';
 import { obterClienteLogado } from '@/lib/autorizacao';
 import { obterConfiguracoes } from '@/lib/configuracao';
+import { notificar, partesDaSolicitacao } from '@/lib/notificacao-servidor';
 
 // RF031 — o cliente escolhe a forma de pagamento e confirma a operação.
 //
@@ -162,6 +163,26 @@ export async function PATCH(request, { params }) {
         [pagamento.id_solicitacao]
       );
 
+      // RN065 — os avisos entram na MESMA transação do pagamento: se ela
+      // falhar, ninguém recebe notícia de uma contratação que não fechou.
+      const partes = await partesDaSolicitacao(pagamento.id_solicitacao, conexao);
+      if (partes) {
+        await notificar({
+          idUsuario: partes.cliente,
+          tipo: 'pagamento',
+          titulo: 'Pagamento confirmado',
+          mensagem: `Sua contratação de ${partes.servico} está confirmada.`,
+          idSolicitacao: pagamento.id_solicitacao,
+        }, conexao);
+        await notificar({
+          idUsuario: partes.fornecedor,
+          tipo: 'pagamento',
+          titulo: 'Pagamento recebido',
+          mensagem: `${partes.nome_cliente} pagou ${partes.servico}. A festa está confirmada.`,
+          idSolicitacao: pagamento.id_solicitacao,
+        }, conexao);
+      }
+
       await conexao.commit();
       return NextResponse.json({ status: 'pago', idTransacao });
     }
@@ -206,6 +227,27 @@ export async function PATCH(request, { params }) {
           WHERE id = ? AND status = 'aguardando_pagamento'`,
         [pagamento.id_solicitacao]
       );
+
+      // RN048 — o fornecedor perdeu a contratação sem ter feito nada
+      // errado; é o mínimo que ele precisa saber para liberar a data.
+      const partes = await partesDaSolicitacao(pagamento.id_solicitacao, conexao);
+      if (partes) {
+        await notificar({
+          idUsuario: partes.cliente,
+          tipo: 'pagamento',
+          titulo: 'Pagamento recusado três vezes',
+          mensagem: `A solicitação de ${partes.servico} foi cancelada após o limite `
+            + 'de tentativas de pagamento.',
+          idSolicitacao: pagamento.id_solicitacao,
+        }, conexao);
+        await notificar({
+          idUsuario: partes.fornecedor,
+          tipo: 'pagamento',
+          titulo: 'Contratação cancelada por falta de pagamento',
+          mensagem: `${partes.servico}: o pagamento não foi concluído e a data está livre.`,
+          idSolicitacao: pagamento.id_solicitacao,
+        }, conexao);
+      }
     }
     // ---------- fim do trecho que um gateway real substituiria ----------
 

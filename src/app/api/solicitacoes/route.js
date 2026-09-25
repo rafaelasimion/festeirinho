@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { pool } from '@/lib/db';
+import { notificar, partesDaSolicitacao } from '@/lib/notificacao-servidor';
 import { obterClienteLogado } from '@/lib/autorizacao';
 import { obterConfiguracoes } from '@/lib/configuracao';
 import { calcularValorFinal } from '@/lib/solicitacao';
@@ -59,7 +60,7 @@ export async function POST(request) {
   const nomeAniversariante = String(corpo.nomeAniversariante ?? '').trim();
   const idadeAniversariante =
     corpo.idadeAniversariante === '' || corpo.idadeAniversariante === null ||
-    corpo.idadeAniversariante === undefined
+      corpo.idadeAniversariante === undefined
       ? null
       : Number(corpo.idadeAniversariante);
   const observacoes = String(corpo.observacoes ?? '').trim();
@@ -113,7 +114,7 @@ export async function POST(request) {
   if (tema.length > 100) erros.tema = 'Tema muito longo.';
   if (nomeAniversariante.length > 150) erros.nomeAniversariante = 'Nome muito longo.';
   if (idadeAniversariante !== null &&
-      (!Number.isInteger(idadeAniversariante) || idadeAniversariante < 0 || idadeAniversariante > 255)) {
+    (!Number.isInteger(idadeAniversariante) || idadeAniversariante < 0 || idadeAniversariante > 255)) {
     erros.idadeAniversariante = 'Idade inválida.';
   }
 
@@ -186,10 +187,22 @@ export async function POST(request) {
 
     await conexao.commit();
 
-    return NextResponse.json(
-      { id: resultadoSolicitacao.insertId, valorFinal },
-      { status: 201 }
-    );
+    // RN065 — o fornecedor precisa saber que há uma solicitação esperando
+    // resposta dele, e que o relógio da RN035 começou a correr.
+    const idSolicitacao = resultadoSolicitacao.insertId;
+    const partes = await partesDaSolicitacao(idSolicitacao);
+    if (partes) {
+      await notificar({
+        idUsuario: partes.fornecedor,
+        tipo: 'solicitacao',
+        titulo: 'Nova solicitação recebida',
+        mensagem: `${partes.nome_cliente} quer contratar ${partes.servico}. `
+          + `Responda dentro do prazo para não perder a contratação.`,
+        idSolicitacao,
+      });
+    }
+
+    return NextResponse.json({ id: idSolicitacao, valorFinal }, { status: 201 });
   } catch (erro) {
     await conexao.rollback();
 
