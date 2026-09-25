@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { lerSessao } from '@/lib/sessao';
 import { pool } from '@/lib/db';
+import SinoNotificacoes from '@/componentes/sino-notificacoes';
 
 // Componente de servidor: lê a sessão antes de renderizar, então o menu
 // já chega no navegador com os links certos. Não existe um instante em
@@ -42,6 +43,7 @@ export default async function Cabecalho() {
 
           {sessao && (
             <>
+            <SinoNotificacoes />
               {ehFornecedor && (
                 <>
                   <Link href="/fornecedor/servicos" className="hover:text-festa-700">
