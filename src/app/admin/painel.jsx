@@ -18,6 +18,7 @@ import {
 import AbaFinanceiro from './aba-financeiro';
 import AbaConfiguracoes from './aba-configuracoes';
 import AbaContas from './aba-contas';
+import AbaDenuncias from './aba-denuncias';
 
 function formatarDataHora(valor) {
   if (!valor) return '';
@@ -30,6 +31,7 @@ function formatarDataHora(valor) {
 export default function PainelVerificacao({
   nomeAdministrador, fornecedores, servicos, contestacoes = [],
   dadosPendentes = [], processamentos = [], configuracoes = [], contas = [],
+  denuncias = [],
 }) {
   const router = useRouter();
   const [aba, setAba] = useState('fornecedores');
@@ -44,6 +46,7 @@ export default function PainelVerificacao({
   const pendentesContestacao = contestacoes.filter((c) => c.status_contestacao === 'pendente').length;
   const pendentesFinanceiro = dadosPendentes.length + processamentos.length;
   const pendentesContas = contas.filter((c) => c.status_solicitacao_revisao === 'pendente').length;
+  const pendentesDenuncias = denuncias.filter((d) => d.status_denuncia === 'pendente').length;
 
   async function analisar(tipo, id, acao, motivoRejeicao = null) {
     setErro('');
@@ -151,6 +154,8 @@ export default function PainelVerificacao({
           rotulo="Contestações" pendentes={pendentesContestacao} />
         <Aba ativa={aba === 'financeiro'} aoClicar={() => setAba('financeiro')}
           rotulo="Financeiro" pendentes={pendentesFinanceiro} />
+        <Aba ativa={aba === 'denuncias'} aoClicar={() => setAba('denuncias')}
+          rotulo="Denúncias" pendentes={pendentesDenuncias} />
         <Aba ativa={aba === 'contas'} aoClicar={() => setAba('contas')}
           rotulo="Contas" pendentes={pendentesContas} />
         <Aba ativa={aba === 'configuracoes'} aoClicar={() => setAba('configuracoes')}
@@ -248,6 +253,10 @@ export default function PainelVerificacao({
 
       {aba === 'financeiro' && (
         <AbaFinanceiro dadosPendentes={dadosPendentes} processamentos={processamentos} />
+      )}
+
+      {aba === 'denuncias' && (
+        <AbaDenuncias denuncias={denuncias} />
       )}
 
       {aba === 'contas' && (

@@ -187,6 +187,43 @@ export default async function Admin() {
                (status = 'suspenso') DESC, nome`
   );
 
+  // RF068 — denúncias, com o conteúdo denunciado junto. Os dois tipos vêm
+  // unidos: a denúncia de avaliação chega à solicitação pela avaliação, e a
+  // de fornecedor já aponta para ela direto.
+  const [denuncias] = await pool.query(
+    `SELECT d.id, d.tipo_denuncia, d.motivo_padrao, d.motivo, d.data_denuncia,
+            d.status_denuncia, d.resultado_analise, d.justificativa_analise,
+            d.data_analise,
+            a.nota, a.comentario, a.status_avaliacao, a.origem_ocultacao,
+            s.nome AS servico, f.nome_exibicao AS fornecedor, u.nome AS cliente
+       FROM denuncia d
+       JOIN avaliacao a    ON a.id = d.id_avaliacao
+       JOIN solicitacao so ON so.id = a.id_solicitacao
+       JOIN servico s      ON s.id  = so.id_servico
+       JOIN fornecedor f   ON f.id  = s.id_fornecedor
+       JOIN cliente c      ON c.id  = so.id_cliente
+       JOIN usuario u      ON u.id  = c.id_usuario
+      WHERE d.tipo_denuncia = 'avaliacao'
+
+      UNION ALL
+
+     SELECT d.id, d.tipo_denuncia, d.motivo_padrao, d.motivo, d.data_denuncia,
+            d.status_denuncia, d.resultado_analise, d.justificativa_analise,
+            d.data_analise,
+            NULL AS nota, NULL AS comentario, NULL AS status_avaliacao,
+            NULL AS origem_ocultacao,
+            s.nome AS servico, f.nome_exibicao AS fornecedor, u.nome AS cliente
+       FROM denuncia d
+       JOIN solicitacao so ON so.id = d.id_solicitacao
+       JOIN servico s      ON s.id  = so.id_servico
+       JOIN fornecedor f   ON f.id  = s.id_fornecedor
+       JOIN cliente c      ON c.id  = so.id_cliente
+       JOIN usuario u      ON u.id  = c.id_usuario
+      WHERE d.tipo_denuncia = 'fornecedor'
+
+      ORDER BY (status_denuncia = 'pendente') DESC, data_denuncia DESC`
+  );
+
   const iso = (valor) => (valor ? valor.toISOString() : null);
 
   return (
@@ -207,6 +244,11 @@ export default async function Admin() {
         duracao: Number(c.duracao),
         valor_final: Number(c.valor_final),
         valor_bruto: c.valor_bruto === null ? null : Number(c.valor_bruto),
+      }))}
+      denuncias={denuncias.map((d) => ({
+        ...d,
+        data_denuncia: iso(d.data_denuncia),
+        data_analise: iso(d.data_analise),
       }))}
       contas={contas.map((c) => ({
         ...c,
