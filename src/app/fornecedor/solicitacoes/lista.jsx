@@ -410,33 +410,26 @@ export default function ListaSolicitacoesRecebidas({
                     continua acessível depois de encerrado o canal. */}
                 {['aguardando_pagamento', 'confirmado', 'concluido', 'cancelado']
                   .includes(solicitacao.status) && (
-                  <div className="mt-4 border-t border-slate-200 pt-4">
-                    {conversando === solicitacao.id ? (
-                      <>
-                        <div className="mb-3 flex items-center justify-between gap-3">
-                          <p className="text-sm font-medium text-slate-700">
-                            Conversa com {solicitacao.cliente}
-                          </p>
-                          <button type="button" onClick={() => setConversando(null)}
-                            className="text-sm font-medium text-slate-600 hover:underline">
-                            Fechar
-                          </button>
-                        </div>
-                        <Chat idSolicitacao={solicitacao.id} aoAlterar={() => router.refresh()} />
-                      </>
-                    ) : (
-                      <button type="button" onClick={() => setConversando(solicitacao.id)}
-                        className="inline-flex items-center gap-2 rounded-lg border border-festa-600 px-4 py-2 text-sm font-medium text-festa-700 transition-colors hover:bg-festa-50">
-                        Conversar com o cliente
-                        {solicitacao.nao_lidas > 0 && (
-                          <span className="rounded-full bg-festa-600 px-2 py-0.5 text-xs text-white">
-                            {solicitacao.nao_lidas}
-                          </span>
-                        )}
-                      </button>
-                    )}
-                  </div>
-                )}
+                    <div className="mt-4 border-t border-slate-200 pt-4">
+                      {conversando === solicitacao.id ? (
+                        <Chat
+                          idSolicitacao={solicitacao.id}
+                          titulo={`Conversa com ${solicitacao.cliente}`}
+                          aoFechar={() => setConversando(null)}
+                          aoAlterar={() => router.refresh()} />
+                      ) : (
+                        <button type="button" onClick={() => setConversando(solicitacao.id)}
+                          className="inline-flex items-center gap-2 rounded-lg border border-festa-600 px-4 py-2 text-sm font-medium text-festa-700 transition-colors hover:bg-festa-50">
+                          Conversar com o cliente
+                          {solicitacao.nao_lidas > 0 && (
+                            <span className="rounded-full bg-festa-600 px-2 py-0.5 text-xs text-white">
+                              {solicitacao.nao_lidas}
+                            </span>
+                          )}
+                        </button>
+                      )}
+                    </div>
+                  )}
 
                 {/* UC 022 — pedir cancelamento */}
                 {podeCancelar && (
@@ -459,6 +452,17 @@ export default function ListaSolicitacoesRecebidas({
                         Cancelar solicitação
                       </button>
                     )}
+                  </div>
+                )}
+                {/* RF058 / UC 034 — comprovante não fiscal, disponível a
+                    partir do pagamento confirmado. */}
+                {solicitacao.status_pagamento === 'pago' && (
+                  <div className="mt-4 border-t border-slate-200 pt-4">
+                    <a href={`/api/comprovantes/${solicitacao.id}`}
+                      target="_blank" rel="noreferrer"
+                      className="text-sm font-medium text-festa-700 hover:underline">
+                      Baixar comprovante de contratação
+                    </a>
                   </div>
                 )}
               </li>
