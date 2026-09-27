@@ -85,6 +85,32 @@ export async function PATCH(request, { params }) {
           WHERE id = ? AND status = 'aguardando_pagamento'`,
         [pagamento.id_solicitacao]
       );
+
+      // RN025/RN065 — este caminho é a corrida entre o prazo e o clique: a
+      // data-limite venceu depois que a tela carregou, então a rotina de
+      // expiração em lote ainda não passou por aqui e é este trecho que
+      // cancela. Sem os avisos, seria o único cancelamento do sistema a
+      // acontecer em silêncio — o fornecedor não saberia que a data ficou
+      // livre.
+      const partes = await partesDaSolicitacao(pagamento.id_solicitacao, conexao);
+      if (partes) {
+        await notificar({
+          idUsuario: partes.cliente,
+          tipo: 'pagamento',
+          titulo: 'Prazo de pagamento esgotado',
+          mensagem: `A solicitação de ${partes.servico} foi cancelada por falta de `
+            + 'pagamento dentro do prazo.',
+          idSolicitacao: pagamento.id_solicitacao,
+        }, conexao);
+        await notificar({
+          idUsuario: partes.fornecedor,
+          tipo: 'pagamento',
+          titulo: 'Contratação cancelada por falta de pagamento',
+          mensagem: `${partes.servico}: o prazo do cliente venceu e a data está livre.`,
+          idSolicitacao: pagamento.id_solicitacao,
+        }, conexao);
+      }
+
       await conexao.commit();
     } catch (erroTransacao) {
       await conexao.rollback();
