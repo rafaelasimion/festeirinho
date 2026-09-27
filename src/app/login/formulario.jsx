@@ -153,7 +153,11 @@ export default function FormularioLogin() {
               </p>
               <p className="mt-1 whitespace-pre-line text-slate-700">{revisao.resultado}</p>
               <p className="mt-2 text-xs text-slate-500">
-                Em caso de dúvida, entre em contato pelo suporte da plataforma.
+                Em caso de dúvida,{' '}
+                <Link href="/suporte?assunto=conta&origem=conta"
+                  className="font-medium text-festa-700 hover:underline">
+                  fale com o suporte
+                </Link>.
               </p>
             </div>
           )}

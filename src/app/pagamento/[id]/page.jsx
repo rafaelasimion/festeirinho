@@ -55,6 +55,7 @@ export default async function Pagamento({ params }) {
         formaPagamento: pagamento.forma_pagamento,
         idTransacao: pagamento.id_transacao_gateway,
         statusSolicitacao: pagamento.status_solicitacao,
+        idSolicitacao: pagamento.id_solicitacao,
         servico: pagamento.servico,
         fornecedor: pagamento.fornecedor,
         dataHoraEvento: pagamento.data_hora_evento.toISOString(),

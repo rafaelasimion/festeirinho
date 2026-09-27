@@ -178,6 +178,18 @@ export default function FormularioPagamento({
           </button>
         </div>
       </div>
+
+      {/* RF063 / UC 039 — a tela de pagamento é o ponto citado no
+          requisito. O número da solicitação vai na URL e vira o contexto
+          pré-preenchido da mensagem. */}
+      <p className="mt-6 text-center text-sm text-slate-600">
+        Algum problema com o pagamento?{' '}
+        <Link
+          href={`/suporte?assunto=pagamento&origem=pagamento&solicitacao=${pagamento.idSolicitacao}`}
+          className="font-medium text-festa-700 hover:underline">
+          Falar com o suporte
+        </Link>
+      </p>
     </main>
   );
 }
