@@ -2,10 +2,18 @@ import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { pool } from '@/lib/db';
 import { criarSessao } from '@/lib/sessao';
+import {
+  chavesDaTentativa,
+  segundosDeBloqueio,
+  registrarFalha,
+  limparFalhasDaConta,
+  mensagemDeBloqueio,
+} from '@/lib/tentativas';
 
 // UC 003 — Autenticação.
 // Cenário principal: valida credenciais, verifica status, autentica.
-// Alternativos: 5a credencial inválida, 6a suspenso, 6b excluído, 6c inativo.
+// Alternativos: 5a credencial inválida, 5b excesso de tentativas,
+// 6a suspenso, 6b excluído, 6c inativo.
 
 export async function POST(request) {
   let corpo;
@@ -26,6 +34,32 @@ export async function POST(request) {
 
   if (identificador === '' || senha === '') return CREDENCIAL_INVALIDA;
 
+  // UC 003, 5b / RNF020 — a conferência vem antes de tocar no banco, e
+  // principalmente antes do bcrypt.compare: a comparação é lenta de
+  // propósito, e é essa lentidão que um ataque em volume transformaria
+  // em sobrecarga do servidor.
+  const chaves = chavesDaTentativa(request, identificador);
+  const segundos = segundosDeBloqueio(chaves);
+  if (segundos > 0) {
+    return NextResponse.json(
+      { erro: mensagemDeBloqueio(segundos) },
+      { status: 429 }
+    );
+  }
+
+  // Toda recusa por credencial passa por aqui. Quando é esta falha que
+  // estoura o limite, a resposta já avisa do bloqueio em vez de repetir
+  // a mensagem genérica: sem isso, o usuário só descobriria que está
+  // bloqueado na tentativa seguinte, e teria a impressão de que a mesma
+  // mensagem apareceu duas vezes sem motivo.
+  function recusar() {
+    registrarFalha(chaves);
+    const espera = segundosDeBloqueio(chaves);
+    return espera > 0
+      ? NextResponse.json({ erro: mensagemDeBloqueio(espera) }, { status: 429 })
+      : CREDENCIAL_INVALIDA;
+  }
+
   try {
     const [usuarios] = await pool.execute(
       `SELECT id, tipo_usuario, nome, senha_hash
@@ -35,14 +69,20 @@ export async function POST(request) {
       [identificador.toLowerCase(), identificador]
     );
 
-    if (usuarios.length === 0) return CREDENCIAL_INVALIDA;
+    if (usuarios.length === 0) return recusar();
 
     const usuario = usuarios[0];
 
     // Compara o hash da senha digitada com o hash guardado.
     // A senha original nunca é recuperada de volta.
     const senhaConfere = await bcrypt.compare(senha, usuario.senha_hash);
-    if (!senhaConfere) return CREDENCIAL_INVALIDA;
+    if (!senhaConfere) return recusar();
+
+    // Credencial correta: a série de erros desta conta deixa de existir.
+    // Vem aqui, e não no fim, porque o que se conta é credencial errada —
+    // conta suspensa ou excluída não é erro de senha e não deve manter
+    // um bloqueio de pé.
+    limparFalhasDaConta(chaves);
 
     // ---------- UC 003, passo 6: verificação do status ----------
     const ehCliente = usuario.tipo_usuario === 'cliente';
