@@ -16,7 +16,7 @@ import { notificar, partesDaSolicitacao } from '@/lib/notificacao-servidor';
 // substituir apenas o bloco marcado abaixo.
 // ---------------------------------------------------------------------
 
-const FORMAS_ACEITAS = ['pix', 'boleto'];
+const FORMAS_ACEITAS = ['pix', 'boleto', 'cartao'];
 const LIMITE_TENTATIVAS = 3; // RN048 — fixo de propósito, não parametrizável
 
 export async function PATCH(request, { params }) {
@@ -142,6 +142,34 @@ export async function PATCH(request, { params }) {
     }
   }
 
+  // RF032 / RN018 — o cartão é obrigatório quando a forma é cartão, e
+  // proibido nas demais. A CHECK chk_pagamento_cartao exige exatamente
+  // isso no banco; aqui a conferência acontece antes, para devolver uma
+  // mensagem em vez de um erro de constraint.
+  //
+  // O cartão também precisa ser DESTE cliente e estar ativo: o RF032 diz
+  // que "o cartão utilizado em um pagamento deve pertencer
+  // obrigatoriamente ao cliente da solicitação correspondente". Sem esta
+  // consulta, mandar o id de um cartão alheio passaria.
+  let idCartao = null;
+  if (formaPagamento === 'cartao') {
+    idCartao = Number(corpo.idCartao);
+    if (!Number.isInteger(idCartao)) {
+      return NextResponse.json({ erro: 'Selecione um cartão.' }, { status: 400 });
+    }
+
+    const [cartoes] = await pool.execute(
+      `SELECT id FROM cartao_credito
+        WHERE id = ? AND id_cliente = ? AND status = 'ativo'
+        LIMIT 1`,
+      [idCartao, cliente.id]
+    );
+
+    if (cartoes.length === 0) {
+      return NextResponse.json({ erro: 'Cartão não encontrado.' }, { status: 404 });
+    }
+  }
+
   if (pagamento.numero_tentativas >= LIMITE_TENTATIVAS) {
     return NextResponse.json(
       { erro: 'Limite de tentativas atingido para esta solicitação.' },
@@ -174,12 +202,13 @@ export async function PATCH(request, { params }) {
       await conexao.execute(
         `UPDATE pagamento
             SET forma_pagamento = ?,
+                id_cartao_credito = ?,
                 status = 'pago',
                 data_pagamento = NOW(),
                 id_transacao_gateway = ?,
                 categoria_falha = NULL
           WHERE id = ? AND status = 'pendente'`,
-        [formaPagamento, idTransacao, idPagamento]
+        [formaPagamento, idCartao, idTransacao, idPagamento]
       );
 
       // RN023 — pagamento confirmado, a solicitação está fechada.
@@ -218,9 +247,10 @@ export async function PATCH(request, { params }) {
     if (resultado === 'erro_tecnico') {
       await conexao.execute(
         `UPDATE pagamento
-            SET forma_pagamento = ?, categoria_falha = 'erro_tecnico'
+            SET forma_pagamento = ?, id_cartao_credito = ?,
+                categoria_falha = 'erro_tecnico'
           WHERE id = ? AND status = 'pendente'`,
-        [formaPagamento, idPagamento]
+        [formaPagamento, idCartao, idPagamento]
       );
       await conexao.commit();
       return NextResponse.json(
@@ -239,11 +269,13 @@ export async function PATCH(request, { params }) {
     await conexao.execute(
       `UPDATE pagamento
           SET forma_pagamento = ?,
+              id_cartao_credito = ?,
               numero_tentativas = ?,
               categoria_falha = 'recusa',
               status = ?
         WHERE id = ? AND status = 'pendente'`,
-      [formaPagamento, tentativas, atingiuLimite ? 'recusado' : 'pendente', idPagamento]
+      [formaPagamento, idCartao, tentativas,
+       atingiuLimite ? 'recusado' : 'pendente', idPagamento]
     );
 
     // RN048 — na terceira recusa, a solicitação é cancelada automaticamente.

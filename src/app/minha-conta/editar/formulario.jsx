@@ -3,8 +3,9 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, KeyRound } from 'lucide-react';
+import { ArrowLeft, KeyRound, Trash2 } from 'lucide-react';
 import Campo from '@/componentes/campo';
+import { SecaoMenu, ItemMenu } from '@/componentes/menu-conta';
 import {
   UFS, validarEmail, validarTelefone, validarNomeUsuario,
 } from '@/lib/validacao';
@@ -197,14 +198,12 @@ export default function FormularioConta({ dados, documento, ehFornecedor }) {
         </button>
       </div>
 
-      <section className="mt-10 border-t border-slate-200 pt-6">
-        <h2 className="flex items-center gap-2 font-medium text-slate-900">
-          <KeyRound className="h-5 w-5 text-festa-600" aria-hidden="true" />
-          Senha
-        </h2>
-
+      {/* Trocar senha e excluir conta moram aqui, e não na primeira tela
+          do perfil: são ações raras e de peso. Usam os mesmos cartões do
+          menu da conta, para a pessoa reconhecer o formato. */}
+      <SecaoMenu titulo="Segurança">
         {trocandoSenha ? (
-          <div className="mt-4 space-y-4">
+          <div className="space-y-4 rounded-xl border border-slate-200 bg-white p-4">
             <Campo label="Senha atual" name="senhaAtual" type="password"
               value={senhas.senhaAtual} onChange={aoDigitarSenha} erro={errosSenha.senhaAtual} />
 
@@ -231,32 +230,19 @@ export default function FormularioConta({ dados, documento, ehFornecedor }) {
             </div>
           </div>
         ) : (
-          <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
-            <p className="text-sm text-slate-600">
-              Para trocar a senha é preciso informar a atual.
-            </p>
-            <button type="button" onClick={() => setTrocandoSenha(true)}
-              className="rounded-lg border border-festa-600 px-4 py-2 text-sm font-medium text-festa-700 transition-colors hover:bg-festa-50">
-              Trocar senha
-            </button>
-          </div>
+          <ItemMenu type="button" onClick={() => setTrocandoSenha(true)}
+            Icone={KeyRound} titulo="Trocar senha"
+            descricao="Para trocar é preciso informar a senha atual" />
         )}
-      </section>
+      </SecaoMenu>
 
       {/* UC 007 — a exclusão fica no fim da tela, separada, e não repete o
           aviso: a tela própria explica o que acontece. */}
-      <section className="mt-10 border-t border-slate-200 pt-6">
-        <h2 className="font-medium text-slate-900">Excluir conta</h2>
-        <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
-          <p className="text-sm text-slate-600">
-            Remove seus dados pessoais em caráter definitivo.
-          </p>
-          <Link href="/minha-conta/excluir"
-            className="rounded-lg border border-perigo-600 px-4 py-2 text-sm font-medium text-perigo-700 transition-colors hover:bg-perigo-50">
-            Excluir minha conta
-          </Link>
-        </div>
-      </section>
+      <SecaoMenu titulo="Ações permanentes">
+        <ItemMenu href="/minha-conta/excluir" Icone={Trash2} tom="perigo"
+          titulo="Excluir conta"
+          descricao="Remove seus dados pessoais em caráter definitivo" />
+      </SecaoMenu>
     </main>
   );
 }

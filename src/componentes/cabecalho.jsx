@@ -1,6 +1,5 @@
 import Link from 'next/link';
 import { lerSessao } from '@/lib/sessao';
-import { pool } from '@/lib/db';
 import SinoNotificacoes from '@/componentes/sino-notificacoes';
 
 // Componente de servidor: lê a sessão antes de renderizar, então o menu
@@ -9,15 +8,6 @@ import SinoNotificacoes from '@/componentes/sino-notificacoes';
 
 export default async function Cabecalho() {
   const sessao = await lerSessao();
-
-  let nome = null;
-  if (sessao) {
-    const [linhas] = await pool.execute(
-      'SELECT nome FROM usuario WHERE id = ?',
-      [sessao.id]
-    );
-    nome = linhas[0]?.nome ?? null;
-  }
 
   const ehFornecedor = sessao?.tipoUsuario === 'fornecedor';
 
@@ -81,16 +71,13 @@ export default async function Cabecalho() {
                 </>
               )}
 
-              <Link href="/minha-conta" className="hover:text-festa-700">
-                {nome ?? 'Minha conta'}
+              {/* Sair mora no perfil, junto das outras ações da conta.
+                  Aqui em cima ele disputava espaço com a navegação e
+                  ficava perigosamente perto dos links de uso diário. */}
+              <Link href="/minha-conta"
+                className="inline-flex items-center rounded-lg bg-festa-600 px-3 py-1.5 font-medium text-white transition-colors hover:bg-festa-700">
+                Meu perfil
               </Link>
-
-              <form action="/api/logout" method="post">
-                <button type="submit"
-                  className="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-1.5 font-medium text-slate-700 transition-colors hover:bg-slate-50">
-                  Sair
-                </button>
-              </form>
             </>
           )}
         </div>

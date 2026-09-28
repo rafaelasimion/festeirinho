@@ -47,3 +47,15 @@ body {
   color: #0F172A;
   font-family: var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
 }
+
+/* O Tailwind v4 deixou de aplicar cursor: pointer em <button> — o padrão
+   do CSS para botão é a seta, e a v4 passou a respeitá-lo. Como o sistema
+   inteiro espera a mãozinha, a regra volta aqui, uma vez, em vez de uma
+   classe repetida em cada botão. Botão desabilitado fica de fora: ali a
+   seta é a informação certa. */
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+}

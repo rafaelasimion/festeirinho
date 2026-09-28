@@ -16,9 +16,11 @@ export default function FormularioPagamento({
   pagamento,
   boletoDisponivel,
   diasMinimosBoleto,
+  cartoes = [],
 }) {
   const router = useRouter();
   const [forma, setForma] = useState('pix');
+  const [idCartao, setIdCartao] = useState(cartoes[0]?.id ?? '');
   const [processando, setProcessando] = useState(false);
   const [erro, setErro] = useState('');
   const [aviso, setAviso] = useState('');
@@ -74,7 +76,11 @@ export default function FormularioPagamento({
       const resposta = await fetch(`/api/pagamentos/${pagamento.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ formaPagamento: forma, resultado }),
+        body: JSON.stringify({
+          formaPagamento: forma,
+          resultado,
+          idCartao: forma === 'cartao' ? Number(idCartao) : undefined,
+        }),
       });
 
       const dados = await resposta.json();
@@ -137,9 +143,44 @@ export default function FormularioPagamento({
           </span>
         </label>
 
-        <p className="text-xs text-gray-500">
-          Cartão de crédito estará disponível após o cadastro de cartões.
-        </p>
+        {/* RF031 / RF032 — cartão só entra como opção se o cliente tiver
+            algum salvo. Oferecer a forma sem cartão cadastrado levaria a
+            um beco sem saída dentro da tela de pagamento. */}
+        {cartoes.length > 0 ? (
+          <>
+            <label className="flex items-center gap-2 text-sm">
+              <input type="radio" name="forma" value="cartao"
+                checked={forma === 'cartao'} onChange={(e) => setForma(e.target.value)} />
+              Cartão de crédito
+            </label>
+
+            {forma === 'cartao' && (
+              <div className="ml-6">
+                <label htmlFor="cartao" className="mb-1.5 block text-sm font-medium text-slate-700">
+                  Cartão
+                </label>
+                <select id="cartao" value={idCartao}
+                  onChange={(e) => setIdCartao(e.target.value)}
+                  className="w-full rounded-xl border border-festa-200 bg-white px-4 py-3 text-slate-900 focus:border-festa-600 focus:outline-none focus:ring-2 focus:ring-festa-600/25">
+                  {cartoes.map((cartao) => (
+                    <option key={cartao.id} value={cartao.id}>
+                      {cartao.bandeira} •••• {cartao.ultimos_quatro_num}
+                      {cartao.apelido ? ` · ${cartao.apelido}` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </>
+        ) : (
+          <p className="text-xs text-gray-500">
+            Nenhum cartão salvo.{' '}
+            <Link href="/minha-conta/cartoes" className="font-medium text-festa-700 hover:underline">
+              Cadastrar cartão
+            </Link>{' '}
+            para pagar com cartão de crédito.
+          </p>
+        )}
       </div>
 
       {pagamento.numeroTentativas > 0 && (

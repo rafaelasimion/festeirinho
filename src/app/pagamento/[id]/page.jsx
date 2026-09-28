@@ -39,6 +39,17 @@ export default async function Pagamento({ params }) {
 
   const configuracoes = await obterConfiguracoes();
 
+  // RF032 — os cartões que o cliente já salvou. A tela só oferece a forma
+  // "cartão" se houver ao menos um; sem cartão, o caminho é cadastrar.
+  const [cartoes] = await pool.execute(
+    `SELECT c.id, c.bandeira, c.ultimos_quatro_num, c.apelido
+       FROM cartao_credito c
+       JOIN cliente cl ON cl.id = c.id_cliente
+      WHERE cl.id_usuario = ? AND c.status = 'ativo'
+      ORDER BY c.id DESC`,
+    [sessao.id]
+  );
+
   // RN012 — o boleto só entra na lista de opções se houver antecedência.
   const limiteBoleto = new Date();
   limiteBoleto.setDate(limiteBoleto.getDate() + configuracoes.antecedencia_minima_boleto_dias);
@@ -62,6 +73,7 @@ export default async function Pagamento({ params }) {
       }}
       boletoDisponivel={boletoDisponivel}
       diasMinimosBoleto={configuracoes.antecedencia_minima_boleto_dias}
+      cartoes={cartoes}
     />
   );
 }
