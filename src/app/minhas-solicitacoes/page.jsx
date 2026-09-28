@@ -36,6 +36,9 @@ export default async function MinhasSolicitacoes() {
             so.resultado_contestacao, so.justificativa_contestacao,
             so.data_analise_contestacao,
             s.nome AS servico, f.nome_exibicao AS fornecedor,
+            -- Miniatura do serviço no cabeçalho do cartão: a foto é o
+            -- que identifica a contratação de relance, antes do nome.
+            fp.imagem_url AS foto_principal,
             e.cidade, e.estado,
             p.id AS id_pagamento, p.status AS status_pagamento,
             p.data_limite, p.valor_bruto, p.forma_pagamento,
@@ -62,6 +65,7 @@ export default async function MinhasSolicitacoes() {
        JOIN servico s     ON s.id  = so.id_servico
        JOIN fornecedor f  ON f.id  = s.id_fornecedor
        JOIN endereco e    ON e.id  = so.id_endereco
+       LEFT JOIN foto_servico fp ON fp.id_servico = s.id AND fp.principal = TRUE
        LEFT JOIN pagamento p     ON p.id_solicitacao  = so.id
        LEFT JOIN cancelamento ca ON ca.id_solicitacao = so.id
        LEFT JOIN avaliacao av    ON av.id_solicitacao = so.id

@@ -90,3 +90,12 @@ export const ROTULO_MOTIVO_RECUSA = {
   inviabilidade: 'Inviabilidade técnica, operacional ou logística',
   outro: 'Outro motivo',
 };
+
+// As três formas do enum forma_pagamento. Vira mapa porque a tela de
+// pagamento decidia com um ternário "é pix? senão boleto", e pagamento por
+// cartão aparecia rotulado como boleto no comprovante da tela.
+export const ROTULO_FORMA_PAGAMENTO = {
+  pix: 'Pix',
+  cartao: 'Cartão de crédito',
+  boleto: 'Boleto',
+};

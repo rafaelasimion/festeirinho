@@ -42,6 +42,8 @@ export default async function SolicitacoesRecebidas() {
             so.data_contestacao_cliente, so.status_contestacao,
             so.resultado_contestacao, so.justificativa_contestacao,
             s.nome AS servico,
+            -- Miniatura do serviço no cabeçalho do cartão.
+            fp.imagem_url AS foto_principal,
             u.nome AS cliente,
             tl.descricao AS tipo_local,
             e.rua, e.numero, e.complemento, e.bairro,
@@ -63,6 +65,7 @@ export default async function SolicitacoesRecebidas() {
             dn.resultado_analise, dn.justificativa_analise
        FROM solicitacao so
        JOIN servico s     ON s.id  = so.id_servico
+       LEFT JOIN foto_servico fp ON fp.id_servico = s.id AND fp.principal = TRUE
        JOIN cliente c     ON c.id  = so.id_cliente
        JOIN usuario u     ON u.id  = c.id_usuario
        JOIN endereco e    ON e.id  = so.id_endereco

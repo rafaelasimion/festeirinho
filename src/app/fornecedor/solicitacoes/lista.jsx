@@ -2,9 +2,13 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Star } from 'lucide-react';
+import {
+  Star, Check, X, MessageCircle, CheckCircle2, XCircle, Download, Flag,
+} from 'lucide-react';
 import Etiqueta from '@/componentes/etiqueta';
 import DialogoCancelamento from '@/componentes/dialogo-cancelamento';
+import CartaoSolicitacao, { AvisoCartao } from '@/componentes/cartao-solicitacao';
+import { BarraAcoes, BotaoAcao, LinkAcao } from '@/componentes/acoes-solicitacao';
 import {
   formatarPreco,
   ROTULO_STATUS_SOLICITACAO,
@@ -20,6 +24,10 @@ import { ROTULO_MOTIVO_CONTESTACAO } from '@/lib/contestacao';
 import Chat from '@/componentes/chat';
 import DialogoDenuncia from '@/componentes/dialogo-denuncia';
 import { ROTULO_RESULTADO_DENUNCIA } from '@/lib/denuncia';
+
+const CLASSE_SELECT =
+  'w-full rounded-lg border border-slate-300 bg-white pl-3.5 py-2.5 text-slate-900 ' +
+  'focus:border-festa-600 focus:outline-none focus:ring-2 focus:ring-festa-600/30';
 
 function formatarDataHora(valor) {
   if (!valor) return '';
@@ -90,7 +98,7 @@ export default function ListaSolicitacoesRecebidas({
       <h1 className="mb-6 text-2xl font-semibold text-slate-900">Solicitações recebidas</h1>
 
       {mensagem && <p className="mb-4 text-sm text-sucesso-700">{mensagem}</p>}
-      {erroGeral && <p className="mb-4 text-sm text-red-600">{erroGeral}</p>}
+      {erroGeral && <p className="mb-4 text-sm text-perigo-600">{erroGeral}</p>}
 
       {solicitacoes.length === 0 ? (
         <p className="text-sm text-slate-600">Você ainda não recebeu solicitações.</p>
@@ -118,44 +126,53 @@ export default function ListaSolicitacoesRecebidas({
             });
             const podeCancelar = impedimento === null;
 
+            const temChat = ['aguardando_pagamento', 'confirmado', 'concluido', 'cancelado']
+              .includes(solicitacao.status);
+
             const pagamento = solicitacao.status_pagamento ? {
               status: solicitacao.status_pagamento,
               valor_bruto: solicitacao.valor_bruto,
             } : null;
 
+            // RN009 — antes de aprovar, o fornecedor vê só a região; o
+            // endereço completo aparece quando a contratação existe.
             const mostrarEnderecoCompleto =
               !aberta && !['recusado', 'expirado'].includes(solicitacao.status);
 
-            return (
-              <li key={solicitacao.id} className="rounded-xl border border-slate-200 bg-white p-5">
-                <div className="flex flex-wrap items-start justify-between gap-4">
-                  <div>
-                    <h2 className="font-medium text-slate-900">{solicitacao.servico}</h2>
-                    <p className="text-sm text-slate-600">Cliente: {solicitacao.cliente}</p>
-                    <p className="mt-2 text-sm text-slate-700">
-                      {formatarDataHora(solicitacao.data_hora_evento)} ·{' '}
-                      {solicitacao.duracao}h · {solicitacao.numero_convidados} convidados
-                    </p>
-                    <p className="text-sm text-slate-600">
-                      {solicitacao.tipo_local} · {solicitacao.bairro},{' '}
-                      {solicitacao.cidade}/{solicitacao.estado}
-                    </p>
-                  </div>
+            // Um painel de cada vez, como na tela do cliente.
+            const painel =
+              conversando === solicitacao.id ? 'conversar'
+                : recusando === solicitacao.id ? 'recusar'
+                  : cancelando === solicitacao.id ? 'cancelar'
+                    : denunciando === solicitacao.id ? 'denunciar'
+                      : null;
 
-                  <div className="shrink-0 text-right">
-                    <p className="font-semibold text-slate-900">
-                      {formatarPreco(solicitacao.valor_final)}
-                    </p>
-                    <div className="mt-1.5">
-                      <Etiqueta tom={TOM_STATUS_SOLICITACAO[solicitacao.status]}>
-                        {ROTULO_STATUS_SOLICITACAO[solicitacao.status]}
-                      </Etiqueta>
-                    </div>
-                  </div>
-                </div>
+            return (
+              <CartaoSolicitacao key={solicitacao.id}
+                titulo={solicitacao.servico}
+                subtitulo={`Cliente: ${solicitacao.cliente}`}
+                preco={formatarPreco(solicitacao.valor_final)}
+                foto={solicitacao.foto_principal}
+                etiquetas={
+                  <>
+                    <Etiqueta tom={TOM_STATUS_SOLICITACAO[solicitacao.status]}>
+                      {ROTULO_STATUS_SOLICITACAO[solicitacao.status]}
+                    </Etiqueta>
+                    {solicitacao.status_contestacao === 'pendente' && (
+                      <Etiqueta tom="atencao" contorno>em contestação</Etiqueta>
+                    )}
+                  </>
+                }
+                quando={`${formatarDataHora(solicitacao.data_hora_evento)} · ${solicitacao.duracao}h`}
+                convidados={`${solicitacao.numero_convidados} convidados · ${solicitacao.tipo_local}`}
+                local={mostrarEnderecoCompleto
+                  ? `${solicitacao.rua}, ${solicitacao.numero}${
+                    solicitacao.complemento ? ` — ${solicitacao.complemento}` : ''
+                  } · ${solicitacao.bairro} · ${solicitacao.cidade}/${solicitacao.estado} · CEP ${solicitacao.cep}`
+                  : `${solicitacao.bairro}, ${solicitacao.cidade}/${solicitacao.estado}`}>
 
                 {(solicitacao.tema || solicitacao.nome_aniversariante || solicitacao.observacoes) && (
-                  <div className="mt-3 space-y-1 text-sm text-slate-700">
+                  <div className="mt-4 space-y-1 rounded-lg bg-slate-50 p-3 text-sm text-slate-700">
                     {solicitacao.tema && (
                       <p><span className="font-medium">Tema: </span>{solicitacao.tema}</p>
                     )}
@@ -176,19 +193,51 @@ export default function ListaSolicitacoesRecebidas({
                   </div>
                 )}
 
-                {mostrarEnderecoCompleto && (
-                  <p className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-2 text-sm text-slate-700">
-                    <span className="font-medium">Endereço: </span>
-                    {solicitacao.rua}, {solicitacao.numero}
-                    {solicitacao.complemento && ` — ${solicitacao.complemento}`}
-                    {' · '}{solicitacao.bairro} · CEP {solicitacao.cep}
-                  </p>
+                {aberta && (
+                  <AvisoCartao tom="atencao">
+                    Responda até {formatarDataHora(solicitacao.data_limite_resposta_fornecedor)}.
+                    Sem resposta, a solicitação expira automaticamente.
+                  </AvisoCartao>
                 )}
 
                 {solicitacao.status === 'recusado' && solicitacao.motivo_recusa && (
-                  <p className="mt-3 text-sm text-slate-600">
-                    Motivo informado: {ROTULO_MOTIVO_RECUSA[solicitacao.motivo_recusa]}
-                  </p>
+                  <AvisoCartao>
+                    <span className="font-medium">Motivo informado: </span>
+                    {ROTULO_MOTIVO_RECUSA[solicitacao.motivo_recusa]}
+                  </AvisoCartao>
+                )}
+
+                {/* UC 019 — janela para registrar a conclusão. */}
+                {solicitacao.status === 'confirmado' && !aguardandoCliente && (
+                  podeRegistrarConclusao ? (
+                    <AvisoCartao tom="festa">
+                      Registre a conclusão até{' '}
+                      {formatarDataHora(somarDias(solicitacao.termino_previsto, prazoRegistroDias))}.
+                      Sem registro, a solicitação é cancelada com reembolso ao cliente.
+                    </AvisoCartao>
+                  ) : (
+                    <AvisoCartao>
+                      A conclusão poderá ser registrada após o término previsto do evento, em{' '}
+                      {formatarDataHora(solicitacao.termino_previsto)}.
+                    </AvisoCartao>
+                  )
+                )}
+
+                {/* UC 020 — aguardando o cliente */}
+                {aguardandoCliente && (
+                  <AvisoCartao tom="festa">
+                    Conclusão registrada em{' '}
+                    {formatarDataHora(solicitacao.data_registro_conclusao_fornecedor)}.
+                    Aguardando confirmação do cliente; sem resposta em {prazoConfirmacaoHoras}h,
+                    o sistema confirma automaticamente.
+                  </AvisoCartao>
+                )}
+
+                {solicitacao.status === 'concluido' && (
+                  <AvisoCartao tom="sucesso">
+                    Serviço concluído e confirmado em{' '}
+                    {formatarDataHora(solicitacao.data_confirmacao_conclusao_cliente)}.
+                  </AvisoCartao>
                 )}
 
                 {/* UC 042 — o fornecedor é informado da contestação. */}
@@ -231,241 +280,191 @@ export default function ListaSolicitacoesRecebidas({
                   </div>
                 )}
 
-                {/* UC 015 — aprovar ou recusar */}
-                {aberta && (
-                  <div className="mt-4 border-t border-slate-200 pt-4">
-                    <p className="mb-3 text-xs text-slate-500">
-                      Responda até {formatarDataHora(solicitacao.data_limite_resposta_fornecedor)}.
-                      Sem resposta, a solicitação expira automaticamente.
-                    </p>
+                {/* RF037 — a avaliação recebida. RN062: a nota conta na
+                    média mesmo quando o comentário é privado ou foi ocultado
+                    pela moderação; só o texto deixa de aparecer. */}
+                {solicitacao.id_avaliacao && (
+                  <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="flex" aria-label={`Nota ${solicitacao.nota} de 5`}>
+                        {[1, 2, 3, 4, 5].map((posicao) => (
+                          <Star key={posicao} aria-hidden="true"
+                            className={`h-4 w-4 ${posicao <= solicitacao.nota
+                              ? 'fill-atencao-600 text-atencao-600'
+                              : 'text-slate-300'}`} />
+                        ))}
+                      </span>
+                      <span className="text-sm text-slate-600">
+                        Avaliação de {solicitacao.cliente}
+                        {solicitacao.status_avaliacao === 'oculta'
+                          && solicitacao.origem_ocultacao === 'usuario'
+                          && ' · comentário privado'}
+                        {solicitacao.status_avaliacao === 'oculta'
+                          && solicitacao.origem_ocultacao === 'moderacao'
+                          && ' · comentário removido pela moderação'}
+                      </span>
+                    </div>
 
-                    {recusando === solicitacao.id ? (
-                      <div className="space-y-3">
-                        <div>
-                          <label htmlFor={`motivo-${solicitacao.id}`}
-                            className="mb-1.5 block text-sm font-medium text-slate-700">
-                            Motivo da recusa
-                          </label>
-                          <select id={`motivo-${solicitacao.id}`} value={motivo}
-                            onChange={(e) => setMotivo(e.target.value)}
-                            className="w-full rounded-lg border border-slate-300 bg-white pl-3.5 py-2.5 text-slate-900 focus:border-festa-600 focus:outline-none focus:ring-2 focus:ring-festa-600/30">
-                            <option value="">Selecione</option>
-                            <option value="agenda_indisponivel">Agenda indisponível</option>
-                            <option value="fora_da_area">Fora da área de atendimento</option>
-                            <option value="inviabilidade">Inviabilidade técnica ou logística</option>
-                            <option value="outro">Outro motivo</option>
-                          </select>
-                        </div>
-                        <div className="flex gap-2">
-                          <button type="button" disabled={processando || motivo === ''}
-                            onClick={() => acionar(
-                              solicitacao.id,
-                              { acao: 'recusar', motivoRecusa: motivo },
-                              'Solicitação recusada.'
-                            )}
-                            className="rounded-lg bg-perigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-perigo-700 disabled:opacity-50">
-                            Confirmar recusa
-                          </button>
-                          <button type="button"
-                            onClick={() => { setRecusando(null); setMotivo(''); }}
-                            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50">
-                            Voltar
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex flex-wrap gap-2">
-                        <button type="button" disabled={processando}
-                          onClick={() => acionar(
-                            solicitacao.id,
-                            { acao: 'aprovar' },
-                            'Solicitação aprovada. O cliente foi encaminhado para o pagamento.'
-                          )}
-                          className="rounded-lg bg-festa-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-festa-700 disabled:opacity-50">
-                          Aprovar
-                        </button>
-                        <button type="button" disabled={processando}
-                          onClick={() => setRecusando(solicitacao.id)}
-                          className="rounded-lg border border-perigo-600 px-4 py-2 text-sm font-medium text-perigo-700 transition-colors hover:bg-perigo-50 disabled:opacity-50">
-                          Recusar
-                        </button>
-                      </div>
+                    {solicitacao.comentario && (
+                      <p className="mt-2 whitespace-pre-line text-sm text-slate-700">
+                        {solicitacao.comentario}
+                      </p>
                     )}
-                  </div>
-                )}
 
-                {/* UC 019 — registrar conclusão */}
-                {solicitacao.status === 'confirmado' && !aguardandoCliente && (
-                  <div className="mt-4 border-t border-slate-200 pt-4">
-                    {podeRegistrarConclusao ? (
-                      <div className="flex flex-wrap items-center justify-between gap-3">
-                        <p className="text-sm text-slate-600">
-                          Registre a conclusão até{' '}
-                          {formatarDataHora(
-                            somarDias(solicitacao.termino_previsto, prazoRegistroDias)
-                          )}. Sem registro, a solicitação é cancelada com reembolso ao cliente.
-                        </p>
-                        <button type="button" disabled={processando}
-                          onClick={() => acionar(
-                            solicitacao.id,
-                            { acao: 'registrar_conclusao' },
-                            'Conclusão registrada. O cliente foi avisado para confirmar.'
-                          )}
-                          className="shrink-0 rounded-lg bg-festa-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-festa-700 disabled:opacity-50">
-                          Registrar conclusão
-                        </button>
-                      </div>
-                    ) : (
-                      <p className="text-sm text-slate-600">
-                        A conclusão poderá ser registrada após o término previsto do evento, em{' '}
-                        {formatarDataHora(solicitacao.termino_previsto)}.
+                    {solicitacao.comentario && solicitacao.id_denuncia && (
+                      <p className="mt-3 border-t border-slate-200 pt-3 text-sm text-slate-600">
+                        Comentário denunciado
+                        {solicitacao.status_denuncia === 'analisada'
+                          ? `: ${ROTULO_RESULTADO_DENUNCIA[solicitacao.resultado_analise]}. ${solicitacao.justificativa_analise}`
+                          : '. A administração vai analisar.'}
                       </p>
                     )}
                   </div>
                 )}
 
-                {/* UC 020 — aguardando o cliente */}
-                {aguardandoCliente && (
+                {/* ---------- rodapé: um painel aberto OU a barra de ações ---------- */}
+
+                {painel === 'conversar' && (
                   <div className="mt-4 border-t border-slate-200 pt-4">
-                    <p className="text-sm text-slate-600">
-                      Conclusão registrada em{' '}
-                      {formatarDataHora(solicitacao.data_registro_conclusao_fornecedor)}.
-                      Aguardando confirmação do cliente; sem resposta em {prazoConfirmacaoHoras}h,
-                      o sistema confirma automaticamente.
-                    </p>
+                    <Chat
+                      idSolicitacao={solicitacao.id}
+                      titulo={`Conversa com ${solicitacao.cliente}`}
+                      aoFechar={() => setConversando(null)}
+                      aoAlterar={() => router.refresh()} />
                   </div>
                 )}
 
-                {solicitacao.status === 'concluido' && (
-                  <p className="mt-4 border-t border-slate-200 pt-4 text-sm text-sucesso-700">
-                    Serviço concluído e confirmado em{' '}
-                    {formatarDataHora(solicitacao.data_confirmacao_conclusao_cliente)}.
-                  </p>
-                )}
-
-                {/* RF037 — a avaliação recebida. RN062: a nota conta na
-                    média mesmo quando o comentário é privado ou foi ocultado
-                    pela moderação; só o texto deixa de aparecer. */}
-                {solicitacao.id_avaliacao && (
-                  <div className="mt-4 border-t border-slate-200 pt-4">
-                    <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="flex" aria-label={`Nota ${solicitacao.nota} de 5`}>
-                          {[1, 2, 3, 4, 5].map((posicao) => (
-                            <Star key={posicao} aria-hidden="true"
-                              className={`h-4 w-4 ${posicao <= solicitacao.nota
-                                ? 'fill-atencao-600 text-atencao-600'
-                                : 'text-slate-300'}`} />
-                          ))}
-                        </span>
-                        <span className="text-sm text-slate-600">
-                          Avaliação de {solicitacao.cliente}
-                          {solicitacao.status_avaliacao === 'oculta'
-                            && solicitacao.origem_ocultacao === 'usuario'
-                            && ' · comentário privado'}
-                          {solicitacao.status_avaliacao === 'oculta'
-                            && solicitacao.origem_ocultacao === 'moderacao'
-                            && ' · comentário removido pela moderação'}
-                        </span>
-                      </div>
-
-                      {solicitacao.comentario && (
-                        <p className="mt-2 whitespace-pre-line text-sm text-slate-700">
-                          {solicitacao.comentario}
-                        </p>
-                      )}
-
-                      {solicitacao.comentario && (
-                        <div className="mt-3 border-t border-slate-200 pt-3">
-                          {solicitacao.id_denuncia ? (
-                            <p className="text-sm text-slate-600">
-                              Comentário denunciado
-                              {solicitacao.status_denuncia === 'analisada'
-                                ? `: ${ROTULO_RESULTADO_DENUNCIA[solicitacao.resultado_analise]}. ${solicitacao.justificativa_analise}`
-                                : '. A administração vai analisar.'}
-                            </p>
-                          ) : denunciando === solicitacao.id ? (
-                            <DialogoDenuncia
-                              tipo="avaliacao"
-                              alvo={{ idAvaliacao: solicitacao.id_avaliacao }}
-                              aoVoltar={() => setDenunciando(null)}
-                              aoConcluir={() => {
-                                setDenunciando(null);
-                                setMensagem('Denúncia registrada. A administração vai analisar.');
-                                router.refresh();
-                              }} />
-                          ) : (
-                            <button type="button" onClick={() => setDenunciando(solicitacao.id)}
-                              className="text-sm font-medium text-perigo-700 hover:underline">
-                              Denunciar comentário
-                            </button>
-                          )}
-                        </div>
-                      )}
+                {/* UC 015 — recusar exige motivo. */}
+                {painel === 'recusar' && (
+                  <div className="mt-4 space-y-3 border-t border-slate-200 pt-4">
+                    <div>
+                      <label htmlFor={`motivo-${solicitacao.id}`}
+                        className="mb-1.5 block text-sm font-medium text-slate-700">
+                        Motivo da recusa
+                      </label>
+                      <select id={`motivo-${solicitacao.id}`} value={motivo}
+                        onChange={(e) => setMotivo(e.target.value)}
+                        className={CLASSE_SELECT}>
+                        <option value="">Selecione</option>
+                        <option value="agenda_indisponivel">Agenda indisponível</option>
+                        <option value="fora_da_area">Fora da área de atendimento</option>
+                        <option value="inviabilidade">Inviabilidade técnica ou logística</option>
+                        <option value="outro">Outro motivo</option>
+                      </select>
                     </div>
-                  </div>
-                )}
-
-                {/* UC 016 / RN022 — chat da solicitação. O histórico
-                    continua acessível depois de encerrado o canal. */}
-                {['aguardando_pagamento', 'confirmado', 'concluido', 'cancelado']
-                  .includes(solicitacao.status) && (
-                    <div className="mt-4 border-t border-slate-200 pt-4">
-                      {conversando === solicitacao.id ? (
-                        <Chat
-                          idSolicitacao={solicitacao.id}
-                          titulo={`Conversa com ${solicitacao.cliente}`}
-                          aoFechar={() => setConversando(null)}
-                          aoAlterar={() => router.refresh()} />
-                      ) : (
-                        <button type="button" onClick={() => setConversando(solicitacao.id)}
-                          className="inline-flex items-center gap-2 rounded-lg border border-festa-600 px-4 py-2 text-sm font-medium text-festa-700 transition-colors hover:bg-festa-50">
-                          Conversar com o cliente
-                          {solicitacao.nao_lidas > 0 && (
-                            <span className="rounded-full bg-festa-600 px-2 py-0.5 text-xs text-white">
-                              {solicitacao.nao_lidas}
-                            </span>
-                          )}
-                        </button>
-                      )}
-                    </div>
-                  )}
-
-                {/* UC 022 — pedir cancelamento */}
-                {podeCancelar && (
-                  <div className="mt-4 border-t border-slate-200 pt-4">
-                    {cancelando === solicitacao.id ? (
-                      <DialogoCancelamento
-                        solicitadoPor="fornecedor"
-                        dataEvento={solicitacao.data_hora_evento}
-                        pagamento={pagamento}
-                        processando={processando}
-                        aoVoltar={() => setCancelando(null)}
-                        aoCancelar={(motivoTexto) => acionar(
+                    <div className="flex flex-wrap gap-2">
+                      <button type="button" disabled={processando || motivo === ''}
+                        onClick={() => acionar(
                           solicitacao.id,
-                          { acao: 'cancelar', motivo: motivoTexto },
-                          'Cancelamento registrado. O cliente será reembolsado integralmente.'
-                        )} />
-                    ) : (
-                      <button type="button" onClick={() => setCancelando(solicitacao.id)}
-                        className="rounded-lg border border-perigo-600 px-4 py-2 text-sm font-medium text-perigo-700 transition-colors hover:bg-perigo-50">
-                        Cancelar solicitação
+                          { acao: 'recusar', motivoRecusa: motivo },
+                          'Solicitação recusada.'
+                        )}
+                        className="rounded-lg bg-perigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-perigo-700 disabled:opacity-50">
+                        Confirmar recusa
                       </button>
-                    )}
+                      <button type="button"
+                        onClick={() => { setRecusando(null); setMotivo(''); }}
+                        className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50">
+                        Voltar
+                      </button>
+                    </div>
                   </div>
                 )}
-                {/* RF058 / UC 034 — comprovante não fiscal, disponível a
-                    partir do pagamento confirmado. */}
-                {solicitacao.status_pagamento === 'pago' && (
+
+                {painel === 'cancelar' && (
                   <div className="mt-4 border-t border-slate-200 pt-4">
-                    <a href={`/api/comprovantes/${solicitacao.id}`}
-                      target="_blank" rel="noreferrer"
-                      className="text-sm font-medium text-festa-700 hover:underline">
-                      Baixar comprovante de contratação
-                    </a>
+                    <DialogoCancelamento
+                      solicitadoPor="fornecedor"
+                      dataEvento={solicitacao.data_hora_evento}
+                      pagamento={pagamento}
+                      processando={processando}
+                      aoVoltar={() => setCancelando(null)}
+                      aoCancelar={(motivoTexto) => acionar(
+                        solicitacao.id,
+                        { acao: 'cancelar', motivo: motivoTexto },
+                        'Cancelamento registrado. O cliente será reembolsado integralmente.'
+                      )} />
                   </div>
                 )}
-              </li>
+
+                {painel === 'denunciar' && (
+                  <div className="mt-4 border-t border-slate-200 pt-4">
+                    <DialogoDenuncia
+                      tipo="avaliacao"
+                      alvo={{ idAvaliacao: solicitacao.id_avaliacao }}
+                      aoVoltar={() => setDenunciando(null)}
+                      aoConcluir={() => {
+                        setDenunciando(null);
+                        setMensagem('Denúncia registrada. A administração vai analisar.');
+                        router.refresh();
+                      }} />
+                  </div>
+                )}
+
+                {painel === null && (
+                  <BarraAcoes>
+                    {aberta && (
+                      <BotaoAcao tom="principal" Icone={Check} disabled={processando}
+                        onClick={() => acionar(
+                          solicitacao.id,
+                          { acao: 'aprovar' },
+                          'Solicitação aprovada. O cliente foi encaminhado para o pagamento.'
+                        )}>
+                        Aprovar
+                      </BotaoAcao>
+                    )}
+
+                    {podeRegistrarConclusao && (
+                      <BotaoAcao tom="principal" Icone={CheckCircle2} disabled={processando}
+                        onClick={() => acionar(
+                          solicitacao.id,
+                          { acao: 'registrar_conclusao' },
+                          'Conclusão registrada. O cliente foi avisado para confirmar.'
+                        )}>
+                        Registrar conclusão
+                      </BotaoAcao>
+                    )}
+
+                    {temChat && (
+                      <BotaoAcao tom="secundario" Icone={MessageCircle}
+                        contador={solicitacao.nao_lidas}
+                        onClick={() => setConversando(solicitacao.id)}>
+                        Conversar
+                      </BotaoAcao>
+                    )}
+
+                    {aberta && (
+                      <BotaoAcao tom="perigo" Icone={X} disabled={processando}
+                        onClick={() => setRecusando(solicitacao.id)}>
+                        Recusar
+                      </BotaoAcao>
+                    )}
+
+                    {podeCancelar && (
+                      <BotaoAcao tom="perigo" Icone={XCircle}
+                        onClick={() => setCancelando(solicitacao.id)}>
+                        Cancelar
+                      </BotaoAcao>
+                    )}
+
+                    {/* RF058 / UC 034 — comprovante não fiscal. */}
+                    {solicitacao.status_pagamento === 'pago' && (
+                      <LinkAcao href={`/api/comprovantes/${solicitacao.id}`} Icone={Download}>
+                        Comprovante
+                      </LinkAcao>
+                    )}
+
+                    {/* RN052 — denúncia do comentário, não da nota. */}
+                    {solicitacao.id_avaliacao && solicitacao.comentario
+                      && !solicitacao.id_denuncia && (
+                        <BotaoAcao tom="discreto" Icone={Flag}
+                          onClick={() => setDenunciando(solicitacao.id)}>
+                          Denunciar comentário
+                        </BotaoAcao>
+                      )}
+                  </BarraAcoes>
+                )}
+              </CartaoSolicitacao>
             );
           })}
         </ul>

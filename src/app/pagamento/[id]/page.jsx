@@ -23,12 +23,19 @@ export default async function Pagamento({ params }) {
             p.id_transacao_gateway,
             so.id AS id_solicitacao, so.status AS status_solicitacao,
             so.data_hora_evento, so.numero_convidados, so.duracao,
-            s.nome AS servico, f.nome_exibicao AS fornecedor
+            s.nome AS servico, f.nome_exibicao AS fornecedor,
+            e.cidade, e.estado,
+            -- Mesmo resumo do cartão de "Minhas solicitações": quem chega
+            -- aqui precisa reconhecer o que está pagando antes de escolher
+            -- a forma, e o nome sozinho não faz isso.
+            fp.imagem_url AS foto_principal
        FROM pagamento p
        JOIN solicitacao so ON so.id = p.id_solicitacao
        JOIN cliente c      ON c.id  = so.id_cliente
        JOIN servico s      ON s.id  = so.id_servico
        JOIN fornecedor f   ON f.id  = s.id_fornecedor
+       JOIN endereco e     ON e.id  = so.id_endereco
+       LEFT JOIN foto_servico fp ON fp.id_servico = s.id AND fp.principal = TRUE
       WHERE p.id = ? AND c.id_usuario = ?
       LIMIT 1`,
     [idPagamento, sessao.id]
@@ -70,6 +77,11 @@ export default async function Pagamento({ params }) {
         servico: pagamento.servico,
         fornecedor: pagamento.fornecedor,
         dataHoraEvento: pagamento.data_hora_evento.toISOString(),
+        duracao: pagamento.duracao,
+        numeroConvidados: pagamento.numero_convidados,
+        cidade: pagamento.cidade,
+        estado: pagamento.estado,
+        fotoPrincipal: pagamento.foto_principal,
       }}
       boletoDisponivel={boletoDisponivel}
       diasMinimosBoleto={configuracoes.antecedencia_minima_boleto_dias}
