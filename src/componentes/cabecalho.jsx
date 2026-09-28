@@ -27,14 +27,13 @@ export default async function Cabecalho() {
   const sessao = await lerSessao();
   const ehFornecedor = sessao?.tipoUsuario === 'fornecedor';
 
-  const links = !sessao ? [] : (ehFornecedor ? LINKS_FORNECEDOR : LINKS_CLIENTE);
-
-  const botaoPerfil = (
-    <Link href="/minha-conta"
-      className="inline-flex items-center justify-center rounded-lg bg-festa-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-festa-700">
-      Meu perfil
-    </Link>
-  );
+  // "Meu perfil" é mais um destino, não a ação principal da barra. Como
+  // botão ele pesava no desktop e, no menu do celular, ficava sozinho com
+  // cara de botão no meio de uma lista de links. Entra na mesma lista.
+  const links = !sessao ? [] : [
+    ...(ehFornecedor ? LINKS_FORNECEDOR : LINKS_CLIENTE),
+    { href: '/minha-conta', rotulo: 'Meu perfil' },
+  ];
 
   return (
     // relative é o que ancora o painel do menu logo abaixo da barra.
@@ -67,7 +66,7 @@ export default async function Cabecalho() {
             {/* O sino fica fora do menu: um aviso não lido precisa ser
                 visto sem ninguém precisar abrir nada. */}
             <SinoNotificacoes />
-            <MenuNavegacao links={links} acao={botaoPerfil} />
+            <MenuNavegacao links={links} />
           </div>
         )}
       </nav>

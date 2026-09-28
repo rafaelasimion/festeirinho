@@ -17,7 +17,7 @@ import { Menu, X } from 'lucide-react';
 // links, porém, vêm prontos do servidor: quem decide o que cada papel vê
 // continua sendo o cabeçalho.
 
-export default function MenuNavegacao({ links, acao }) {
+export default function MenuNavegacao({ links }) {
   const [aberto, setAberto] = useState(false);
   const caminho = usePathname();
 
@@ -35,7 +35,6 @@ export default function MenuNavegacao({ links, acao }) {
             {rotulo}
           </Link>
         ))}
-        {acao}
       </div>
 
       {/* Celular e tablet: botão que abre a lista embaixo da barra. */}
@@ -61,7 +60,6 @@ export default function MenuNavegacao({ links, acao }) {
                 {rotulo}
               </Link>
             ))}
-            {acao && <div className="pt-2" onClick={() => setAberto(false)}>{acao}</div>}
           </div>
         </div>
       )}
