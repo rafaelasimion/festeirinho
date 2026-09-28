@@ -30,7 +30,7 @@ const CAMPOS_INICIAIS = {
 };
 
 const CLASSE_SELECT =
-  'w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 text-slate-900 ' +
+  'w-full rounded-lg border border-slate-300 bg-white pl-3.5 py-2.5 text-slate-900 ' +
   'focus:border-festa-600 focus:outline-none focus:ring-2 focus:ring-festa-600/30';
 
 // Data mínima que o calendário aceita, conforme a antecedência do serviço.

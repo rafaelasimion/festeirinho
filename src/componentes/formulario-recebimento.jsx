@@ -17,7 +17,7 @@ import {
 // dados da própria conta, porque a RN061 exige que os dados pertençam a ele.
 
 const CLASSE_SELECT =
-  'w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 text-slate-900 ' +
+  'w-full rounded-lg border border-slate-300 bg-white pl-3.5 py-2.5 text-slate-900 ' +
   'focus:border-festa-600 focus:outline-none focus:ring-2 focus:ring-festa-600/30';
 
 export default function FormularioRecebimento({

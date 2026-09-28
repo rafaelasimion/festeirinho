@@ -161,7 +161,7 @@ export default function FormularioPagamento({
                 </label>
                 <select id="cartao" value={idCartao}
                   onChange={(e) => setIdCartao(e.target.value)}
-                  className="w-full rounded-xl border border-festa-200 bg-white px-4 py-3 text-slate-900 focus:border-festa-600 focus:outline-none focus:ring-2 focus:ring-festa-600/25">
+                  className="w-full rounded-xl border border-festa-200 bg-white pl-4 py-3 text-slate-900 focus:border-festa-600 focus:outline-none focus:ring-2 focus:ring-festa-600/25">
                   {cartoes.map((cartao) => (
                     <option key={cartao.id} value={cartao.id}>
                       {cartao.bandeira} •••• {cartao.ultimos_quatro_num}

@@ -248,7 +248,7 @@ export default function ListaSolicitacoesRecebidas({
                           </label>
                           <select id={`motivo-${solicitacao.id}`} value={motivo}
                             onChange={(e) => setMotivo(e.target.value)}
-                            className="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 text-slate-900 focus:border-festa-600 focus:outline-none focus:ring-2 focus:ring-festa-600/30">
+                            className="w-full rounded-lg border border-slate-300 bg-white pl-3.5 py-2.5 text-slate-900 focus:border-festa-600 focus:outline-none focus:ring-2 focus:ring-festa-600/30">
                             <option value="">Selecione</option>
                             <option value="agenda_indisponivel">Agenda indisponível</option>
                             <option value="fora_da_area">Fora da área de atendimento</option>
