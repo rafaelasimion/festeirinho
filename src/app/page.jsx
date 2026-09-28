@@ -1,5 +1,27 @@
 import Link from 'next/link';
+import { BadgeCheck, CalendarClock, ShieldCheck } from 'lucide-react';
 import { lerSessao } from '@/lib/sessao';
+
+// Os três pilares que o sistema realmente cumpre: verificação (RF014,
+// RF025), antecedência mínima por serviço (RN019) e retenção do valor até
+// a conclusão (RN057). Não é propaganda — é o que o código faz.
+const DESTAQUES = [
+  {
+    titulo: 'Fornecedores verificados',
+    texto: 'Cada perfil e cada serviço passa por verificação antes de aparecer para os clientes.',
+    Icone: BadgeCheck,
+  },
+  {
+    titulo: 'Contratação com prazo',
+    texto: 'Cada serviço define a antecedência mínima necessária, para dar tempo de resposta e de pagamento.',
+    Icone: CalendarClock,
+  },
+  {
+    titulo: 'Pagamento pela plataforma',
+    texto: 'O valor fica retido até a conclusão do serviço, com regras claras de cancelamento e reembolso.',
+    Icone: ShieldCheck,
+  },
+];
 
 export default async function Inicio() {
   const sessao = await lerSessao();
@@ -50,28 +72,17 @@ export default async function Inicio() {
         </div>
       )}
 
-      <section className="mt-16 grid gap-8 sm:grid-cols-3">
-        <div>
-          <h2 className="font-medium">Fornecedores verificados</h2>
-          <p className="mt-1 text-sm text-gray-600">
-            Cada perfil e cada serviço passa por verificação antes de aparecer
-            para os clientes.
-          </p>
-        </div>
-        <div>
-          <h2 className="font-medium">Contratação com prazo</h2>
-          <p className="mt-1 text-sm text-gray-600">
-            Cada serviço define a antecedência mínima necessária, para dar tempo
-            de resposta e de pagamento.
-          </p>
-        </div>
-        <div>
-          <h2 className="font-medium">Pagamento pela plataforma</h2>
-          <p className="mt-1 text-sm text-gray-600">
-            O valor fica retido até a conclusão do serviço, com regras claras de
-            cancelamento e reembolso.
-          </p>
-        </div>
+      <section className="mt-14 grid gap-4 sm:grid-cols-3">
+        {DESTAQUES.map(({ titulo, texto, Icone }) => (
+          <div key={titulo}
+            className="rounded-2xl border border-festa-200 bg-festa-100 p-5">
+            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white">
+              <Icone className="h-5 w-5 text-festa-600" aria-hidden="true" />
+            </span>
+            <h2 className="mt-3 font-medium text-slate-900">{titulo}</h2>
+            <p className="mt-1 text-sm text-slate-600">{texto}</p>
+          </div>
+        ))}
       </section>
     </main>
   );

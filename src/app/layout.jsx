@@ -33,8 +33,7 @@ export default function RootLayout({ children }) {
             sem login. O cabeçalho já está cheio; o rodapé cobre tudo
             sem disputar espaço. */}
         <footer className="mt-16 border-t border-slate-200">
-          <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-3 px-6 py-6 text-sm text-slate-500">
-            <span>Festeirinho</span>
+          <div className="mx-auto flex max-w-4xl justify-center px-6 py-6 text-sm">
             <Link href="/suporte" className="font-medium text-festa-700 hover:underline">
               Falar com o suporte
             </Link>

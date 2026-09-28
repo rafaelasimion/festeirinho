@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ShieldAlert } from 'lucide-react';
 import Campo from '@/componentes/campo';
+import MolduraAuth from '@/componentes/moldura-auth';
 
 function formatarData(valor) {
   if (!valor) return '';
@@ -101,10 +102,16 @@ export default function FormularioLogin() {
   // UC 003, fluxo 6b — conta excluída: bloqueio definitivo, sem revisão.
   if (bloqueio?.codigo === 'CONTA_EXCLUIDA') {
     return (
-      <main className="mx-auto max-w-md p-6">
-        <h1 className="mb-4 text-2xl font-semibold text-slate-900">Conta excluída</h1>
-        <p className="text-sm text-slate-700">{bloqueio.mensagem}</p>
-      </main>
+      <MolduraAuth>
+        <h1 className="text-center text-2xl font-semibold text-slate-900">
+          Conta excluída
+        </h1>
+        <p className="mt-3 text-center text-slate-600">{bloqueio.mensagem}</p>
+        <Link href="/"
+          className="mt-8 flex w-full items-center justify-center rounded-xl border border-festa-600 px-4 py-3.5 font-semibold text-festa-700 transition-colors hover:bg-festa-50">
+          Voltar ao início
+        </Link>
+      </MolduraAuth>
     );
   }
 
@@ -116,137 +123,158 @@ export default function FormularioLogin() {
     const podePedirRevisao = revisao.situacao === 'nenhuma' && !revisaoEnviada;
 
     return (
-      <main className="mx-auto max-w-md p-6">
-        <div className="rounded-2xl border border-slate-200 bg-white p-6">
-          <div className="flex items-start gap-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-perigo-50">
-              <ShieldAlert className="h-5 w-5 text-perigo-600" aria-hidden="true" />
-            </span>
-            <div>
-              <h1 className="text-lg font-semibold text-slate-900">Conta suspensa</h1>
-              <p className="text-sm text-slate-600">
-                Suspensa em {formatarData(bloqueio.dataSuspensao)}
-              </p>
-            </div>
+      <MolduraAuth>
+        <div className="flex flex-col items-center text-center">
+          <span className="flex h-14 w-14 items-center justify-center rounded-full bg-perigo-50">
+            <ShieldAlert className="h-7 w-7 text-perigo-600" aria-hidden="true" />
+          </span>
+          <h1 className="mt-4 text-2xl font-semibold text-slate-900">Conta suspensa</h1>
+          <p className="mt-1 text-sm text-slate-600">
+            Suspensa em {formatarData(bloqueio.dataSuspensao)}
+          </p>
+        </div>
+
+        <div className="mt-6 rounded-xl bg-perigo-50 p-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-perigo-700">
+            Motivo
+          </p>
+          <p className="mt-1 whitespace-pre-line text-sm text-slate-700">
+            {bloqueio.motivo}
+          </p>
+        </div>
+
+        {/* 6a.3 — pedido em análise */}
+        {revisao.situacao === 'pendente' && (
+          <p className="mt-4 text-sm text-slate-700">
+            Sua solicitação de revisão enviada em {formatarData(revisao.dataEnvio)} está
+            em análise. Você será informado do resultado nesta tela.
+          </p>
+        )}
+
+        {/* 6a.4 — análise concluída com manutenção da suspensão */}
+        {revisao.situacao === 'analisada' && (
+          <div className="mt-4 rounded-xl border border-festa-100 bg-festa-50 p-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">
+              Resultado da revisão
+            </p>
+            <p className="mt-1 whitespace-pre-line text-sm text-slate-700">
+              {revisao.resultado}
+            </p>
+            <p className="mt-2 text-xs text-slate-500">
+              Em caso de dúvida,{' '}
+              <Link href="/suporte?assunto=conta&origem=conta"
+                className="font-medium text-festa-700 hover:underline">
+                fale com o suporte
+              </Link>.
+            </p>
           </div>
+        )}
 
-          <div className="mt-4 rounded-lg bg-perigo-50 p-3 text-sm">
-            <p className="text-xs font-semibold uppercase tracking-wide text-perigo-700">
-              Motivo
-            </p>
-            <p className="mt-1 whitespace-pre-line text-slate-700">{bloqueio.motivo}</p>
-          </div>
+        {revisaoEnviada && (
+          <p className="mt-4 rounded-xl bg-sucesso-50 p-4 text-sm text-sucesso-800">
+            Solicitação enviada. A administração vai analisar e o resultado aparece
+            nesta tela na próxima tentativa de acesso.
+          </p>
+        )}
 
-          {/* 6a.3 — pedido em análise */}
-          {revisao.situacao === 'pendente' && (
-            <p className="mt-4 text-sm text-slate-700">
-              Sua solicitação de revisão enviada em {formatarData(revisao.dataEnvio)} está
-              em análise. Você será informado do resultado nesta tela.
-            </p>
-          )}
-
-          {/* 6a.4 — análise concluída com manutenção da suspensão */}
-          {revisao.situacao === 'analisada' && (
-            <div className="mt-4 rounded-lg border border-slate-200 p-3 text-sm">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">
-                Resultado da revisão
+        {/* UC 006 — formulário de revisão */}
+        {podePedirRevisao && (
+          pedindoRevisao ? (
+            <div className="mt-6 space-y-3 border-t border-slate-200 pt-6">
+              <label htmlFor="justificativa"
+                className="block text-sm font-medium text-slate-700">
+                Justificativa
+              </label>
+              <textarea id="justificativa" rows={4} value={justificativa}
+                onChange={(e) => { setJustificativa(e.target.value); setErroRevisao(''); }}
+                placeholder="Explique por que a suspensão deve ser revista."
+                className="w-full rounded-xl border border-festa-200 bg-white px-4 py-3 text-slate-900 placeholder:text-slate-400 focus:border-festa-600 focus:outline-none focus:ring-2 focus:ring-festa-600/25" />
+              <p className="text-xs text-slate-500">
+                {justificativa.trim().length}/20 caracteres mínimos.
               </p>
-              <p className="mt-1 whitespace-pre-line text-slate-700">{revisao.resultado}</p>
-              <p className="mt-2 text-xs text-slate-500">
-                Em caso de dúvida,{' '}
-                <Link href="/suporte?assunto=conta&origem=conta"
-                  className="font-medium text-festa-700 hover:underline">
-                  fale com o suporte
-                </Link>.
-              </p>
-            </div>
-          )}
-
-          {revisaoEnviada && (
-            <p className="mt-4 rounded-lg bg-sucesso-50 p-3 text-sm text-sucesso-800">
-              Solicitação enviada. A administração vai analisar e o resultado aparece
-              nesta tela na próxima tentativa de acesso.
-            </p>
-          )}
-
-          {/* UC 006 — formulário de revisão */}
-          {podePedirRevisao && (
-            pedindoRevisao ? (
-              <div className="mt-5 space-y-3 border-t border-slate-200 pt-5">
-                <label htmlFor="justificativa"
-                  className="block text-sm font-medium text-slate-700">
-                  Justificativa
-                </label>
-                <textarea id="justificativa" rows={4} value={justificativa}
-                  onChange={(e) => { setJustificativa(e.target.value); setErroRevisao(''); }}
-                  placeholder="Explique por que a suspensão deve ser revista."
-                  className="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 text-slate-900 placeholder:text-slate-400 focus:border-festa-600 focus:outline-none focus:ring-2 focus:ring-festa-600/30" />
-                <p className="text-xs text-slate-500">
-                  {justificativa.trim().length}/20 caracteres mínimos.
-                </p>
-                {erroRevisao && <p className="text-sm text-red-600">{erroRevisao}</p>}
-                <div className="flex flex-wrap gap-2">
-                  <button type="button" onClick={enviarRevisao}
-                    disabled={entrando || justificativa.trim().length < 20}
-                    className="rounded-lg bg-festa-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-festa-700 disabled:opacity-50">
-                    {entrando ? 'Enviando...' : 'Enviar solicitação'}
-                  </button>
-                  <button type="button" onClick={() => setPedindoRevisao(false)}
-                    className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50">
-                    Voltar
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="mt-5 border-t border-slate-200 pt-5">
-                <p className="mb-3 text-sm text-slate-600">
-                  Se você acredita que houve engano, pode pedir que a administração
-                  revise esta suspensão.
-                </p>
-                <button type="button" onClick={() => setPedindoRevisao(true)}
-                  className="rounded-lg border border-festa-600 px-4 py-2 text-sm font-medium text-festa-700 transition-colors hover:bg-festa-50">
-                  Solicitar revisão
+              {erroRevisao && <p className="text-sm text-perigo-600">{erroRevisao}</p>}
+              <div className="space-y-3 pt-1">
+                <button type="button" onClick={enviarRevisao}
+                  disabled={entrando || justificativa.trim().length < 20}
+                  className="w-full rounded-xl bg-festa-600 px-4 py-3.5 font-semibold text-white transition-colors hover:bg-festa-700 disabled:cursor-not-allowed disabled:opacity-50">
+                  {entrando ? 'Enviando...' : 'Enviar solicitação'}
+                </button>
+                <button type="button" onClick={() => setPedindoRevisao(false)}
+                  className="w-full rounded-xl border border-festa-600 px-4 py-3.5 font-semibold text-festa-700 transition-colors hover:bg-festa-50">
+                  Voltar
                 </button>
               </div>
-            )
-          )}
+            </div>
+          ) : (
+            <div className="mt-6 border-t border-slate-200 pt-6">
+              <p className="mb-4 text-sm text-slate-600">
+                Se você acredita que houve engano, pode pedir que a administração
+                revise esta suspensão.
+              </p>
+              <button type="button" onClick={() => setPedindoRevisao(true)}
+                className="w-full rounded-xl border border-festa-600 px-4 py-3.5 font-semibold text-festa-700 transition-colors hover:bg-festa-50">
+                Solicitar revisão
+              </button>
+            </div>
+          )
+        )}
 
-          <button type="button"
-            onClick={() => { setBloqueio(null); setRevisaoEnviada(false); setPedindoRevisao(false); }}
-            className="mt-5 text-sm font-medium text-slate-600 hover:underline">
-            Voltar ao login
-          </button>
-        </div>
-      </main>
+        <button type="button"
+          onClick={() => { setBloqueio(null); setRevisaoEnviada(false); setPedindoRevisao(false); }}
+          className="mt-6 w-full text-sm font-medium text-slate-600 hover:underline">
+          Voltar ao login
+        </button>
+      </MolduraAuth>
     );
   }
 
   return (
-    <main className="mx-auto max-w-md p-6">
-      <h1 className="mb-6 text-2xl font-semibold text-slate-900">Entrar</h1>
+    <MolduraAuth>
+      <div className="text-center">
+        {/* Sem aumento no desktop: o cartão tem largura fixa, então um
+            corpo maior só faria o título quebrar em duas linhas. */}
+        <h1 className="text-2xl font-semibold text-slate-900">
+          Bem-vindo de volta!
+        </h1>
+        <p className="mt-1.5 text-slate-600">Entre para continuar planejando</p>
+      </div>
 
-      <div className="space-y-4">
-        <Campo label="E-mail ou nome de usuário" name="identificador" value={identificador}
+      <div className="mt-8 space-y-5">
+        <Campo label="E-mail ou nome de usuário" name="identificador"
+          value={identificador} placeholder="nome@email.com"
+          autoComplete="username"
           onChange={(e) => setIdentificador(e.target.value)} />
 
         <Campo label="Senha" name="senha" type="password" value={senha}
+          placeholder="Sua senha" autoComplete="current-password"
           onChange={(e) => setSenha(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') entrar(); }} />
 
-        {erro && <p className="text-sm text-red-600">{erro}</p>}
+        {erro && (
+          <p className="rounded-xl bg-perigo-50 px-4 py-3 text-sm text-perigo-700">
+            {erro}
+          </p>
+        )}
 
         <button type="button" onClick={entrar} disabled={entrando}
-          className="w-full rounded-lg bg-festa-600 px-4 py-2.5 font-medium text-white transition-colors hover:bg-festa-700 disabled:opacity-50">
+          className="w-full rounded-xl bg-festa-600 px-4 py-3.5 font-semibold text-white transition-colors hover:bg-festa-700 disabled:cursor-not-allowed disabled:opacity-50">
           {entrando ? 'Entrando...' : 'Entrar'}
         </button>
-
-        <p className="pt-2 text-center text-sm text-slate-600">
-          Ainda não tem conta?{' '}
-          <Link href="/cadastro" className="font-medium text-festa-700 hover:underline">
-            Criar conta
-          </Link>
-        </p>
       </div>
-    </main>
+
+      {/* Separador: a linha é decorativa, então fica em aria-hidden e o
+          "ou" não é lido como se fosse conteúdo. */}
+      <div aria-hidden="true" className="my-7 flex items-center gap-4">
+        <span className="h-px flex-1 bg-slate-200" />
+        <span className="text-sm text-slate-400">ou</span>
+        <span className="h-px flex-1 bg-slate-200" />
+      </div>
+
+      <p className="text-center text-slate-600">Ainda não tem uma conta?</p>
+      <Link href="/cadastro"
+        className="mt-3 flex w-full items-center justify-center rounded-xl border border-festa-600 px-4 py-3.5 font-semibold text-festa-700 transition-colors hover:bg-festa-50">
+        Cadastre-se
+      </Link>
+    </MolduraAuth>
   );
 }

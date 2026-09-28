@@ -156,8 +156,12 @@ export default function FormularioCadastroFornecedor({ raioPadrao }) {
             {TIPOS_PESSOA.map(({ valor, rotulo, detalhe, Icone }) => {
               const selecionado = campos.tipoPessoa === valor;
               return (
+                // Tudo em coluna: o ícone numa linha própria, depois o
+                // rótulo, depois o detalhe. Lado a lado, o ícone roubava
+                // largura e "Pessoa jurídica" quebrava em duas linhas
+                // enquanto o selo de selecionado passava por cima.
                 <label key={valor}
-                  className={`relative flex cursor-pointer items-start gap-3 rounded-xl border p-4
+                  className={`relative flex cursor-pointer flex-col rounded-xl border p-4
                     transition-colors focus-within:ring-2 focus-within:ring-festa-600/40
                     ${selecionado
                       ? 'border-festa-600 bg-festa-50'
@@ -165,17 +169,17 @@ export default function FormularioCadastroFornecedor({ raioPadrao }) {
                   <input type="radio" name="tipoPessoa" value={valor}
                     checked={selecionado} onChange={aoDigitar} className="sr-only" />
 
-                  <Icone aria-hidden="true"
-                    className={`mt-0.5 h-5 w-5 shrink-0 ${
-                      selecionado ? 'text-festa-600' : 'text-slate-400'}`} />
-
-                  <span className="min-w-0">
-                    <span className={`block text-sm font-medium ${
-                      selecionado ? 'text-festa-800' : 'text-slate-800'}`}>
-                      {rotulo}
-                    </span>
-                    <span className="mt-0.5 block text-xs text-slate-500">{detalhe}</span>
+                  <span className={`flex h-9 w-9 items-center justify-center rounded-full ${
+                    selecionado ? 'bg-white' : 'bg-slate-100'}`}>
+                    <Icone aria-hidden="true"
+                      className={`h-5 w-5 ${selecionado ? 'text-festa-600' : 'text-slate-400'}`} />
                   </span>
+
+                  <span className={`mt-3 block text-sm font-medium ${
+                    selecionado ? 'text-festa-800' : 'text-slate-800'}`}>
+                    {rotulo}
+                  </span>
+                  <span className="mt-0.5 block text-xs text-slate-500">{detalhe}</span>
 
                   {selecionado && (
                     <span aria-hidden="true"

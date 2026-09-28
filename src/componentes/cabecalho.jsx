@@ -24,8 +24,14 @@ export default async function Cabecalho() {
   return (
     <header className="border-b border-gray-200">
       <nav className="mx-auto flex max-w-4xl items-center justify-between gap-4 px-6 py-4">
-        <Link href="/" className="text-lg font-semibold">
-          Festeirinho
+        {/* A logo é o nome escrito, então o alt é o nome — e não "logo do
+            Festeirinho", que faria o leitor de tela anunciar duas vezes.
+            Largura e altura declaradas evitam que o menu "pule" quando a
+            imagem termina de carregar. */}
+        <Link href="/" className="shrink-0">
+          <img src="/logo-festeirinho.webp" alt="Festeirinho"
+            width={640} height={184}
+            className="h-7 w-auto sm:h-8" />
         </Link>
 
         <div className="flex items-center gap-4 text-sm">
