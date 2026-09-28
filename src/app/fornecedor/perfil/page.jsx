@@ -127,29 +127,10 @@ export default function PerfilFornecedor() {
     }
   }
 
-  async function alterarDisponibilidade(acao) {
-    setErroGeral('');
-    try {
-      const resposta = await fetch('/api/fornecedor/status', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ acao }),
-      });
-      const dados = await resposta.json();
-      if (!resposta.ok) {
-        setErroGeral(dados.erro ?? 'Não foi possível alterar o status.');
-        return;
-      }
-      setStatus((anterior) => ({ ...anterior, fornecedor: dados.statusFornecedor }));
-      setMensagem(
-        dados.statusFornecedor === 'pausado'
-          ? 'Seu perfil está pausado e não aparece para novos clientes.'
-          : 'Seu perfil voltou a aparecer para os clientes.'
-      );
-    } catch {
-      setErroGeral('Falha de conexão. Tente novamente.');
-    }
-  }
+  // A chave de disponibilidade saiu daqui e foi para a primeira tela do
+  // perfil (/minha-conta), onde o protótipo a coloca. Ficou em um lugar
+  // só de propósito: dois controles para o mesmo estado, em telas
+  // diferentes, mais cedo ou mais tarde discordam entre si.
 
   if (erroGeral && !campos) {
     return <main className="mx-auto max-w-xl p-6"><p className="text-sm text-red-600">{erroGeral}</p></main>;
@@ -301,18 +282,6 @@ export default function PerfilFornecedor() {
           {salvando ? 'Salvando...' : 'Salvar alterações'}
         </button>
 
-        <div className="mt-8 border-t border-slate-200 pt-6">
-          <p className="text-sm font-medium text-slate-700">Disponibilidade</p>
-          <p className="mt-1 text-sm text-slate-600">
-            Pausar esconde seu perfil de novos clientes. Seus dados, serviços e
-            histórico continuam guardados.
-          </p>
-          <button type="button"
-            onClick={() => alterarDisponibilidade(status.fornecedor === 'pausado' ? 'reativar' : 'pausar')}
-            className="mt-3 rounded-lg border border-festa-600 px-3 py-1.5 text-sm font-medium text-festa-700 transition-colors hover:bg-festa-50">
-            {status.fornecedor === 'pausado' ? 'Reativar meu perfil' : 'Pausar meu perfil'}
-          </button>
-        </div>
       </div>
     </main>
   );

@@ -8,6 +8,7 @@ import { pool } from '@/lib/db';
 import FotoPerfil from '@/componentes/foto-perfil';
 import MinhaLocalizacao from '@/componentes/minha-localizacao';
 import Etiqueta from '@/componentes/etiqueta';
+import DisponibilidadeFornecedor from '@/componentes/disponibilidade-fornecedor';
 import { SecaoMenu, ItemMenu } from '@/componentes/menu-conta';
 
 // Esta página roda no servidor. Ela lê a sessão ANTES de renderizar
@@ -85,6 +86,10 @@ export default async function MinhaConta() {
           {usuario.email} · {usuario.cidade}/{usuario.estado}
         </p>
       </header>
+
+      {/* A chave de disponibilidade é a única coisa desta tela que se
+          mexe com frequência, então fica antes das seções de navegação. */}
+      {ehFornecedor && <DisponibilidadeFornecedor statusInicial={usuario.status} />}
 
       <SecaoMenu titulo="Conta">
         <ItemMenu href="/minha-conta/editar" Icone={UserPen}

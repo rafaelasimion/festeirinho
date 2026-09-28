@@ -1,19 +1,45 @@
 import Link from 'next/link';
 import { lerSessao } from '@/lib/sessao';
 import SinoNotificacoes from '@/componentes/sino-notificacoes';
+import MenuNavegacao from '@/componentes/menu-navegacao';
 
 // Componente de servidor: lê a sessão antes de renderizar, então o menu
 // já chega no navegador com os links certos. Não existe um instante em
-// que o visitante vê "Sair" antes de a página descobrir quem ele é.
+// que o visitante vê links de fornecedor antes de a página descobrir
+// quem ele é.
+//
+// Aqui só se decide O QUE cada papel vê. COMO isso aparece — em linha no
+// desktop, atrás de um botão no celular — é com o MenuNavegacao.
+
+const LINKS_CLIENTE = [
+  { href: '/servicos', rotulo: 'Serviços' },
+  { href: '/favoritos', rotulo: 'Favoritos' },
+  { href: '/minhas-solicitacoes', rotulo: 'Minhas solicitações' },
+];
+
+const LINKS_FORNECEDOR = [
+  { href: '/fornecedor/servicos', rotulo: 'Meus serviços' },
+  { href: '/fornecedor/solicitacoes', rotulo: 'Solicitações' },
+  { href: '/fornecedor/financeiro', rotulo: 'Financeiro' },
+];
 
 export default async function Cabecalho() {
   const sessao = await lerSessao();
-
   const ehFornecedor = sessao?.tipoUsuario === 'fornecedor';
 
+  const links = !sessao ? [] : (ehFornecedor ? LINKS_FORNECEDOR : LINKS_CLIENTE);
+
+  const botaoPerfil = (
+    <Link href="/minha-conta"
+      className="inline-flex items-center justify-center rounded-lg bg-festa-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-festa-700">
+      Meu perfil
+    </Link>
+  );
+
   return (
-    <header className="border-b border-gray-200">
-      <nav className="mx-auto flex max-w-4xl items-center justify-between gap-4 px-6 py-4">
+    // relative é o que ancora o painel do menu logo abaixo da barra.
+    <header className="relative border-b border-gray-200">
+      <nav className="mx-auto flex max-w-4xl items-center justify-between gap-3 px-6 py-4">
         {/* A logo é o nome escrito, então o alt é o nome — e não "logo do
             Festeirinho", que faria o leitor de tela anunciar duas vezes.
             Largura e altura declaradas evitam que o menu "pule" quando a
@@ -24,63 +50,26 @@ export default async function Cabecalho() {
             className="h-7 w-auto sm:h-8" />
         </Link>
 
-        <div className="flex items-center gap-4 text-sm">
-          {!sessao && (
-            <>
-              <Link href="/cadastro" className="hover:text-festa-700">
-                Criar conta
-              </Link>
-              <Link href="/login"
-                className="inline-flex items-center rounded-lg bg-festa-600 px-3 py-1.5 font-medium text-white transition-colors hover:bg-festa-700">
-                Entrar
-              </Link>
-            </>
-          )}
+        {!sessao && (
+          <div className="flex items-center gap-3 text-sm">
+            <Link href="/cadastro" className="text-slate-700 transition-colors hover:text-festa-700">
+              Criar conta
+            </Link>
+            <Link href="/login"
+              className="inline-flex items-center rounded-lg bg-festa-600 px-3 py-1.5 font-medium text-white transition-colors hover:bg-festa-700">
+              Entrar
+            </Link>
+          </div>
+        )}
 
-          {sessao && (
-            <>
-              <SinoNotificacoes />
-              {ehFornecedor && (
-                <>
-                  <Link href="/fornecedor/servicos" className="hover:text-festa-700">
-                    Meus serviços
-                  </Link>
-                  <Link href="/fornecedor/solicitacoes" className="hover:text-festa-700">
-                    Solicitações recebidas
-                  </Link>
-                  <Link href="/fornecedor/financeiro" className="hover:text-festa-700">
-                    Financeiro
-                  </Link>
-                  <Link href="/fornecedor/perfil" className="hover:text-festa-700">
-                    Meu perfil
-                  </Link>
-                </>
-              )}
-
-              {!ehFornecedor && (
-                <>
-                  <Link href="/servicos" className="hover:text-festa-700">
-                    Serviços
-                  </Link>
-                  <Link href="/favoritos" className="hover:text-festa-700">
-                    Favoritos
-                  </Link>
-                  <Link href="/minhas-solicitacoes" className="hover:text-festa-700">
-                    Minhas solicitações
-                  </Link>
-                </>
-              )}
-
-              {/* Sair mora no perfil, junto das outras ações da conta.
-                  Aqui em cima ele disputava espaço com a navegação e
-                  ficava perigosamente perto dos links de uso diário. */}
-              <Link href="/minha-conta"
-                className="inline-flex items-center rounded-lg bg-festa-600 px-3 py-1.5 font-medium text-white transition-colors hover:bg-festa-700">
-                Meu perfil
-              </Link>
-            </>
-          )}
-        </div>
+        {sessao && (
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* O sino fica fora do menu: um aviso não lido precisa ser
+                visto sem ninguém precisar abrir nada. */}
+            <SinoNotificacoes />
+            <MenuNavegacao links={links} acao={botaoPerfil} />
+          </div>
+        )}
       </nav>
     </header>
   );
