@@ -59,3 +59,30 @@ body {
     cursor: pointer;
   }
 }
+
+/* A seta do <select> é desenhada pelo navegador, cada um no seu lugar e
+   no seu estilo — o Chrome encosta a dele na borda, ignorando o padding
+   do campo, e Firefox e Safari desenham outra coisa (RNF012 pede as
+   quatro). Aqui a nativa é desligada e entra um chevron nosso, o mesmo
+   traço do lucide que o resto da interface usa, a 14px da borda: a mesma
+   distância que o px-3.5 dá ao texto do outro lado.
+
+   O padding à direita abre espaço para ele; sem isso uma opção comprida
+   passaria por baixo da seta. Como é regra de base, vale para os catorze
+   selects do sistema sem repetir classe em nenhum. */
+@layer base {
+  select {
+    appearance: none;
+    padding-right: 2.5rem;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748B' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.875rem center;
+    background-size: 1rem 1rem;
+  }
+
+  /* Campo desligado: a seta acompanha o texto e desbota junto, senão ela
+     fica escura sobre um campo apagado, sugerindo que ainda abre. */
+  select:disabled {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2394A3B8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  }
+}

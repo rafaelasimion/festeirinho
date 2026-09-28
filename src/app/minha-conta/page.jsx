@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import {
-  UserPen, Bell, Heart, ClipboardList, Store, Package, Wallet,
-  CreditCard, LifeBuoy, LogOut, BadgeCheck,
+  UserPen, Bell, Heart, ClipboardList, Store, Wallet,
+  CreditCard, LifeBuoy, LogOut, BadgeCheck, FileText,
 } from 'lucide-react';
 import { lerSessao } from '@/lib/sessao';
 import { pool } from '@/lib/db';
@@ -97,11 +97,12 @@ export default async function MinhaConta() {
 
         {ehFornecedor ? (
           <>
-            <ItemMenu href="/fornecedor/perfil" Icone={Store}
-              titulo="Perfil do negócio"
-              descricao="Nome de exibição, descrição, disponibilidade e raio de atendimento" />
-            <ItemMenu href="/fornecedor/servicos" Icone={Package}
-              titulo="Meus serviços" descricao="Cadastre e gerencie o que você oferece" />
+            <ItemMenu href="/fornecedor/vitrine" Icone={Store}
+              titulo="Minha vitrine"
+              descricao="Como os clientes veem você, seus serviços e suas avaliações" />
+            <ItemMenu href="/fornecedor/perfil" Icone={FileText}
+              titulo="Dados do negócio"
+              descricao="Documento, razão social e raio de atendimento" />
             <ItemMenu href="/fornecedor/solicitacoes" Icone={ClipboardList}
               titulo="Solicitações recebidas" descricao="Aprove, recuse e acompanhe" />
             <ItemMenu href="/fornecedor/financeiro" Icone={Wallet}

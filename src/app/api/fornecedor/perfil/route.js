@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { pool } from '@/lib/db';
 import { obterFornecedorLogado } from '@/lib/autorizacao';
+import { mudouDadoDaVitrine } from '@/lib/fornecedor';
 import {
   somenteDigitos,
   normalizarCNPJ,
@@ -137,13 +138,16 @@ export async function PUT(request) {
     // "pendente". Telefone, cidade, senha e raio de atendimento NÃO entram
     // nessa lista. O motivo de rejeição anterior é preservado: ele continua
     // visível ao fornecedor até a nova análise.
+    //
+    // A comparação dos cinco campos da vitrine vem de lib/fornecedor, a
+    // mesma que o painel de edição da vitrine usa. A razão social fica de
+    // fora dela porque é exclusiva desta tela — o painel da vitrine não a
+    // edita —, mas conta igual para a RN067.
     const mudouDadoRelevante =
-      atual.nome_exibicao !== nomeExibicao ||
-      atual.descricao !== descricao ||
-      (atual.razao_social ?? '') !== (razaoSocial ?? '') ||
-      (atual.instagram_url ?? '') !== instagramUrl ||
-      (atual.whatsapp_url ?? '') !== whatsappUrl ||
-      (atual.site ?? '') !== site;
+      mudouDadoDaVitrine(atual, {
+        nomeExibicao, descricao, instagramUrl, whatsappUrl, site,
+      })
+      || (atual.razao_social ?? '') !== (razaoSocial ?? '');
 
     const novoStatusVerificacao = mudouDadoRelevante
       ? 'pendente'

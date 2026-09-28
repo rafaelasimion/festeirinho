@@ -18,7 +18,9 @@ const LINKS_CLIENTE = [
 ];
 
 const LINKS_FORNECEDOR = [
-  { href: '/fornecedor/servicos', rotulo: 'Meus serviços' },
+  // "Meus serviços" saiu: a vitrine passou a ser a única lista, e o
+  // cadastro e a edição se alcançam pelos botões de lá.
+  { href: '/fornecedor/vitrine', rotulo: 'Minha vitrine' },
   { href: '/fornecedor/solicitacoes', rotulo: 'Solicitações' },
   { href: '/fornecedor/financeiro', rotulo: 'Financeiro' },
 ];

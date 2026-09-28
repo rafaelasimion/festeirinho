@@ -213,7 +213,7 @@ export default async function Vitrine({ searchParams }) {
             <label htmlFor="busca-categoria" className="sr-only">Categoria</label>
             <select id="busca-categoria" name="categoria"
               defaultValue={temCategoria ? String(idCategoria) : ''}
-              className="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 text-slate-900 focus:border-festa-600 focus:outline-none focus:ring-2 focus:ring-festa-600/30">
+              className="w-full rounded-lg border border-slate-300 bg-white pl-3.5 py-2.5 text-slate-900 focus:border-festa-600 focus:outline-none focus:ring-2 focus:ring-festa-600/30">
               <option value="">Todas as categorias</option>
               {categorias.map((categoria) => (
                 <option key={categoria.id} value={categoria.id}>{categoria.nome}</option>
@@ -230,7 +230,7 @@ export default async function Vitrine({ searchParams }) {
           <div>
             <label htmlFor="busca-ordem" className="sr-only">Ordenar por</label>
             <select id="busca-ordem" name="ordem" defaultValue={ordem}
-              className="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 text-slate-900 focus:border-festa-600 focus:outline-none focus:ring-2 focus:ring-festa-600/30">
+              className="w-full rounded-lg border border-slate-300 bg-white pl-3.5 py-2.5 text-slate-900 focus:border-festa-600 focus:outline-none focus:ring-2 focus:ring-festa-600/30">
               {Object.entries(ordensDisponiveis).map(([valor, { rotulo }]) => (
                 <option key={valor} value={valor}>{rotulo}</option>
               ))}
@@ -278,7 +278,7 @@ export default async function Vitrine({ searchParams }) {
               {/* Foto principal do serviço (RF012). Sem foto, o espaço fica
                   reservado com o ícone: a proporção fixa mantém a grade
                   alinhada nos dois casos. */}
-              <div className="relative flex aspect-[16/10] items-center justify-center overflow-hidden bg-festa-100">
+              <div className="relative flex aspect-[4/3] items-center justify-center overflow-hidden bg-festa-100">
                 {servico.foto_principal ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={servico.foto_principal} alt={servico.nome}

@@ -201,12 +201,17 @@ export default async function DetalheServico({ params }) {
             )}
 
             <div className="min-w-0 flex-1">
-              <h3 className="flex flex-wrap items-center gap-1.5 text-lg font-medium text-slate-900">
-                {servico.nome_exibicao}
-                {servico.verificacao_fornecedor === 'aprovado' && (
-                  <BadgeCheck className="h-5 w-5 shrink-0 text-festa-600"
-                    aria-label="Fornecedor verificado" />
-                )}
+              {/* UC 045 — o nome leva à vitrine do fornecedor, onde estão
+                  os outros serviços dele e todas as avaliações. */}
+              <h3 className="text-lg font-medium text-slate-900">
+                <Link href={`/fornecedores/${servico.id_fornecedor}`}
+                  className="flex flex-wrap items-center gap-1.5 hover:underline">
+                  {servico.nome_exibicao}
+                  {servico.verificacao_fornecedor === 'aprovado' && (
+                    <BadgeCheck className="h-5 w-5 shrink-0 text-festa-600"
+                      aria-label="Fornecedor verificado" />
+                  )}
+                </Link>
               </h3>
               <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-sm text-slate-600">
                 <MapPin className="h-4 w-4 shrink-0 text-festa-600" aria-hidden="true" />

@@ -52,9 +52,9 @@ export default async function Inicio() {
 
       {sessao?.tipoUsuario === 'fornecedor' && (
         <div className="mt-8 flex flex-wrap gap-3">
-          <Link href="/fornecedor/servicos"
+          <Link href="/fornecedor/vitrine"
             className="inline-flex items-center rounded-lg bg-festa-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-festa-700">
-            Gerenciar meus serviços
+            Minha vitrine
           </Link>
           <Link href="/fornecedor/perfil"
             className="inline-flex items-center rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50">
