@@ -45,7 +45,10 @@ const FORMATOS = {
   // tirar esses 2px do respiro a caixa ficaria mais alta que a linha de
   // text-sm ao lado, que é justamente o que ela veio consertar.
   caixa: 'rounded-md px-1.5 py-px text-xs',
-  ponto: 'rounded-full bg-white px-2.5 py-1 text-sm',
+  // O "border" aqui é a LARGURA da borda, e precisa estar nesta string
+  // porque o formato ponto tem <span> próprio: o tom só traz a cor
+  // (border-atencao-600), e cor sem largura não desenha borda nenhuma.
+  ponto: 'rounded-full border bg-white px-2.5 py-1 text-sm',
 };
 
 export default function Etiqueta({
