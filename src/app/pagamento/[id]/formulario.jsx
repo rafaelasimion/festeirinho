@@ -124,7 +124,7 @@ export default function FormularioPagamento({
         </p>
 
         <ResumoDaContratacao pagamento={pagamento}
-          etiqueta={<Etiqueta tom="sucesso">Pago</Etiqueta>}>
+          etiqueta={<Etiqueta tom="sucesso" formato="ponto">Pago</Etiqueta>}>
           {/* Forma e identificador ficam abaixo do resumo: são o recibo,
               não a identificação da contratação. O valor não se repete
               aqui, já está no cabeçalho do resumo. */}
@@ -169,7 +169,7 @@ export default function FormularioPagamento({
         </p>
 
         <ResumoDaContratacao pagamento={pagamento}
-          etiqueta={<Etiqueta tom="perigo">
+          etiqueta={<Etiqueta tom="perigo" formato="ponto">
             {pagamento.status === 'expirado' ? 'Expirado' : 'Recusado'}
           </Etiqueta>} />
 
@@ -226,7 +226,7 @@ export default function FormularioPagamento({
       <h1 className="mb-6 text-2xl font-semibold text-slate-900">Pagamento</h1>
 
       <ResumoDaContratacao pagamento={pagamento}
-        etiqueta={<Etiqueta tom="atencao">Aguardando pagamento</Etiqueta>}>
+        etiqueta={<Etiqueta tom="atencao" formato="ponto">Aguardando pagamento</Etiqueta>}>
         <AvisoCartao tom="atencao">
           Pague até {formatarDataHora(pagamento.dataLimite)}. Sem confirmação até lá,
           a solicitação é cancelada automaticamente.

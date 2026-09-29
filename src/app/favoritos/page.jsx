@@ -1,10 +1,11 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { Store, MapPin, BadgeCheck, Image as ImageIcon, Star, Heart } from 'lucide-react';
+import { Store, MapPin, BadgeCheck, Star, Heart } from 'lucide-react';
 import { pool } from '@/lib/db';
 import { lerSessao } from '@/lib/sessao';
 import { formatarPreco, SUFIXO_PRECO } from '@/lib/solicitacao';
 import Etiqueta from '@/componentes/etiqueta';
+import MolduraFoto from '@/componentes/moldura-foto';
 import BotaoFavorito from '@/componentes/botao-favorito';
 
 // RF015 / RF016 — lista de favoritos do cliente.
@@ -99,18 +100,15 @@ export default async function Favoritos() {
                   return (
                     <li key={servico.id}
                       className="flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white">
-                      <div className="relative flex aspect-[4/3] items-center justify-center overflow-hidden bg-festa-100">
-                        {servico.foto_principal ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={servico.foto_principal} alt={servico.nome}
-                            className={`h-full w-full object-cover ${disponivel ? '' : 'opacity-50'}`} />
-                        ) : (
-                          <ImageIcon className="h-10 w-10 text-festa-600" aria-hidden="true" />
-                        )}
+                      {/* O favorito indisponível desbota — e agora desbota
+                          também quando não tem foto, porque o padrão está
+                          na mesma camada que a imagem. */}
+                      <MolduraFoto foto={servico.foto_principal} alt={servico.nome}
+                        esmaecida={!disponivel} className="aspect-[4/3]">
                         <span className="absolute right-3 top-3">
                           <Etiqueta tom="roxo">{servico.categoria}</Etiqueta>
                         </span>
-                      </div>
+                      </MolduraFoto>
 
                       <div className="flex flex-1 flex-col gap-3 p-5">
                         <div className="flex items-start justify-between gap-2">

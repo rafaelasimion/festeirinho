@@ -4,10 +4,11 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
-  MapPin, Target, Star, SquarePen, Plus, ImageOff,
+  MapPin, Target, Star, SquarePen, Plus,
   Phone, AtSign, Globe, BadgeCheck,
 } from 'lucide-react';
 import Etiqueta from '@/componentes/etiqueta';
+import MolduraFoto from '@/componentes/moldura-foto';
 import BotaoFavorito from '@/componentes/botao-favorito';
 import Campo from '@/componentes/campo';
 import {
@@ -316,15 +317,8 @@ function CartaoServico({ servico, ehDono, alternando, aoAlternar }) {
           4:3. A regra do flexbox é que a altura mínima automática só vale
           com overflow visible; escondendo, ela vira zero e o 4:3 manda. É o
           mesmo motivo do overflow-hidden nos cards de /servicos. */}
-      <div className="flex aspect-[4/3] items-center justify-center overflow-hidden bg-festa-50">
-        {servico.foto_principal ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={servico.foto_principal} alt={`Foto de ${servico.nome}`}
-            className="h-full w-full object-cover" />
-        ) : (
-          <ImageOff className="h-10 w-10 text-festa-300" aria-hidden="true" />
-        )}
-      </div>
+      <MolduraFoto foto={servico.foto_principal} alt={`Foto de ${servico.nome}`}
+        className="aspect-[4/3]" />
 
       <div className="flex flex-1 flex-col p-4">
         <div className="flex items-start justify-between gap-2">

@@ -1,4 +1,5 @@
-import { CalendarClock, MapPin, Users, ImageOff } from 'lucide-react';
+import { CalendarClock, MapPin, Users } from 'lucide-react';
+import MolduraFoto from '@/componentes/moldura-foto';
 
 // Casca do cartão de solicitação, igual nas duas telas — a do cliente e a
 // de solicitações recebidas. Quem usa as duas reconhece a mesma peça.
@@ -17,49 +18,41 @@ export default function CartaoSolicitacao({
   titulo, subtitulo, preco, foto, etiquetas, quando, convidados, local, children,
 }) {
   return (
-    <Tag className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-      {/* Roxo cheio, e não um tom claro. As etiquetas de status são
-          pastéis, e sobre um fundo também pastel elas se dissolviam: a
-          diferença era só de matiz. Aqui a etiqueta é clara sobre escuro —
-          5,1:1 no vermelho, 5,6:1 no verde, 5,8:1 no laranja — e a
-          miniatura branca ganha moldura de graça. */}
-      <div className="bg-festa-600 px-5 py-4">
-        <div className="flex gap-3">
-          {/* Miniatura quadrada, em fundo branco: sobre o roxo do cabeçalho
-              ela se destaca sozinha, e o branco serve de moldura tanto para
-              a foto quanto para o ícone de quando não há nenhuma. */}
-          <span className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white">
-            {foto ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={foto} alt="" className="h-full w-full object-cover" />
-            ) : (
-              <ImageOff className="h-6 w-6 text-festa-300" aria-hidden="true" />
-            )}
-          </span>
+    // Corpo branco, e quem dá peso ao cartão é a foto.
+    //
+    // Antes daqui o cabeçalho era um bloco roxo, e foram quatro tentativas
+    // de fazer a etiqueta de status funcionar em cima dele: pastel sobre
+    // roxo claro se dissolvia, sobre roxo vivo ficava encardida, e selo
+    // colorido cheio sumia (sucesso-600 sobre festa-600 dá 1,12:1). O
+    // problema não era a cor da etiqueta — era pedir que ela vivesse sobre
+    // fundo colorido. Sem o bloco, a etiqueta de ponto resolve sozinha.
+    <Tag className="flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm sm:flex-row">
+      {/* No celular a foto é uma faixa no topo, com altura fixa: de lado
+          ali ela vira uma fita de 60px, larga demais para caber a
+          contratação e estreita demais para se enxergar a foto. Do sm
+          para cima ela volta para a lateral, sem altura própria, e
+          acompanha o cartão seja ele curto ou comprido. */}
+      <MolduraFoto foto={foto} className="h-32 w-full shrink-0 sm:h-auto sm:w-28" />
 
-          <div className="min-w-0 flex-1">
-            {/* No celular a etiqueta desce para a linha de baixo. Lado a
-                lado ali, "Aguardando pagamento" come metade da largura e um
-                nome de serviço comprido desce em uma palavra por linha. */}
-            <div className="sm:flex sm:items-start sm:justify-between sm:gap-3">
-              <div className="min-w-0">
-                <h2 className="font-semibold text-white">{titulo}</h2>
-                {/* festa-200 e não festa-300: o 300 cai para 3,5:1 sobre o
-                    festa-600, abaixo do mínimo da RNF013. */}
-                <p className="text-sm text-festa-200">{subtitulo}</p>
-              </div>
-              <div className="mt-2 flex flex-wrap gap-1.5 sm:mt-0 sm:shrink-0 sm:justify-end">
-                {etiquetas}
-              </div>
-            </div>
-
-            <p className="mt-1.5 text-lg font-semibold text-white">{preco}</p>
+      <div className="min-w-0 flex-1 p-4 sm:p-5">
+        {/* No celular a etiqueta desce para a linha de baixo. Lado a lado
+            ali, "Aguardando pagamento" come a largura toda e um nome de
+            serviço comprido desce em uma palavra por linha. */}
+        <div className="sm:flex sm:items-start sm:justify-between sm:gap-3">
+          <div className="min-w-0">
+            <h2 className="font-semibold text-slate-900">{titulo}</h2>
+            <p className="text-sm text-slate-600">{subtitulo}</p>
+          </div>
+          <div className="mt-2 flex flex-wrap gap-1.5 sm:mt-0 sm:shrink-0 sm:justify-end">
+            {etiquetas}
           </div>
         </div>
-      </div>
 
-      <div className="p-5">
-        <div className="space-y-1.5 text-sm text-slate-700">
+        <p className="mt-1.5 text-lg font-semibold text-festa-700">{preco}</p>
+
+        {/* Uma divisória só, separando o que identifica a contratação do
+            detalhe dela. */}
+        <div className="mt-4 space-y-1.5 border-t border-slate-200 pt-4 text-sm text-slate-700">
           <p className="flex items-start gap-2">
             <CalendarClock className="mt-0.5 h-4 w-4 shrink-0 text-festa-600" aria-hidden="true" />
             <span>{quando}</span>

@@ -167,11 +167,11 @@ export default function ListaMinhasSolicitacoes({ solicitacoes, prazoConfirmacao
                 foto={solicitacao.foto_principal}
                 etiquetas={
                   <>
-                    <Etiqueta tom={TOM_STATUS_SOLICITACAO[solicitacao.status]}>
+                    <Etiqueta tom={TOM_STATUS_SOLICITACAO[solicitacao.status]} formato="ponto">
                       {ROTULO_STATUS_SOLICITACAO[solicitacao.status]}
                     </Etiqueta>
                     {contestacaoPendente && (
-                      <Etiqueta tom="atencao" contorno>em contestação</Etiqueta>
+                      <Etiqueta tom="atencao" formato="ponto">em contestação</Etiqueta>
                     )}
                   </>
                 }

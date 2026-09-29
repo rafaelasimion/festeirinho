@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Image as ImageIcon } from 'lucide-react';
+import MolduraFoto from '@/componentes/moldura-foto';
 
 // Galeria das fotos do serviço (RF012).
 //
@@ -13,10 +13,9 @@ export default function GaleriaFotos({ fotos, nomeServico }) {
 
   if (fotos.length === 0) {
     return (
-      <div className="flex aspect-[16/9] items-center justify-center rounded-2xl bg-festa-100">
-        <ImageIcon className="h-12 w-12 text-festa-600" aria-hidden="true" />
+      <MolduraFoto className="aspect-[16/9] rounded-2xl">
         <span className="sr-only">Este serviço ainda não tem fotos.</span>
-      </div>
+      </MolduraFoto>
     );
   }
 
