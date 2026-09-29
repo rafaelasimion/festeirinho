@@ -15,12 +15,16 @@
 // fundo claro ela rendia 3,2:1 no laranja e 3,6:1 no vermelho, abaixo do
 // mínimo de 4,5:1 que a RNF013 assume ao citar a WCAG 2.1 AA. O laranja é
 // o único que precisa descer até o 800: no 700 ele para em 4,49:1.
+// O preenchido leva uma borda no tom 200 — um degrau acima do fundo, não a
+// cor do texto: com a borda forte do contornado, o preenchido ficaria
+// pesado demais, com duas cores fortes disputando num selo de 20px. Assim
+// ela só fecha o contorno da etiqueta, que era o que faltava.
 const TONS = {
-  roxo:    { cheio: 'bg-festa-100 text-festa-700',     contorno: 'border-festa-600 text-festa-700',     ponto: 'bg-festa-600' },
-  atencao: { cheio: 'bg-atencao-100 text-atencao-800', contorno: 'border-atencao-600 text-atencao-700', ponto: 'bg-atencao-600' },
-  sucesso: { cheio: 'bg-sucesso-100 text-sucesso-700', contorno: 'border-sucesso-600 text-sucesso-700', ponto: 'bg-sucesso-600' },
-  perigo:  { cheio: 'bg-perigo-100 text-perigo-700',   contorno: 'border-perigo-600 text-perigo-700',   ponto: 'bg-perigo-600' },
-  neutro:  { cheio: 'bg-slate-100 text-slate-700',     contorno: 'border-slate-400 text-slate-600',     ponto: 'bg-slate-400' },
+  roxo:    { cheio: 'border-festa-200 bg-festa-100 text-festa-700',       contorno: 'border-festa-600 text-festa-700',     ponto: 'bg-festa-600' },
+  atencao: { cheio: 'border-atencao-200 bg-atencao-100 text-atencao-800', contorno: 'border-atencao-600 text-atencao-700', ponto: 'bg-atencao-600' },
+  sucesso: { cheio: 'border-sucesso-200 bg-sucesso-100 text-sucesso-700', contorno: 'border-sucesso-600 text-sucesso-700', ponto: 'bg-sucesso-600' },
+  perigo:  { cheio: 'border-perigo-200 bg-perigo-100 text-perigo-700',    contorno: 'border-perigo-600 text-perigo-700',   ponto: 'bg-perigo-600' },
+  neutro:  { cheio: 'border-slate-300 bg-slate-100 text-slate-700',       contorno: 'border-slate-400 text-slate-600',     ponto: 'bg-slate-400' },
 };
 
 // O formato "caixa" é para etiquetas que aparecem dentro de um cartão, ao
@@ -37,8 +41,11 @@ const TONS = {
 // borda e o texto vêm do mesmo tom, então a etiqueta lê como uma peça só.
 const FORMATOS = {
   pilula: 'rounded-full px-2 py-1 text-sm',
-  caixa: 'rounded-md px-1.5 py-0.5 text-xs',
-  ponto: 'rounded-full border bg-white px-2.5 py-1 text-sm',
+  // py-px, e não py-0.5: a borda que entrou agora soma 2px na altura, e sem
+  // tirar esses 2px do respiro a caixa ficaria mais alta que a linha de
+  // text-sm ao lado, que é justamente o que ela veio consertar.
+  caixa: 'rounded-md px-1.5 py-px text-xs',
+  ponto: 'rounded-full bg-white px-2.5 py-1 text-sm',
 };
 
 export default function Etiqueta({
@@ -61,8 +68,8 @@ export default function Etiqueta({
 
   return (
     <span
-      className={`inline-flex items-center font-medium ${medida}
-        ${contorno ? `border bg-white ${estilo.contorno}` : estilo.cheio}`}
+      className={`inline-flex items-center border font-medium ${medida}
+        ${contorno ? `bg-white ${estilo.contorno}` : estilo.cheio}`}
     >
       {children}
     </span>

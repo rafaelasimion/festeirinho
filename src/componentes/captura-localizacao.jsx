@@ -44,17 +44,23 @@ export default function CapturaLocalizacao({ coordenadas, aoAlterar, descricao }
   // largura inteira do cartão. Antes o ícone abria uma coluna à esquerda e
   // empurrava texto e botão para uma faixa estreita — no celular sobrava
   // pouco mais da metade do cartão, e tudo quebrava em muitas linhas.
+  //
+  // Registrada fica em roxo, não em verde. O verde do sistema é desfecho de
+  // negócio — pagamento aprovado, serviço concluído —, e ter a localização
+  // guardada não é conquista nenhuma: é um campo opcional preenchido. Quem
+  // diz que deu certo é o ícone de confirmação; o cartão continua da cor da
+  // plataforma, igual ao do cadastro.
   return (
-    <div className={`rounded-xl border p-4 transition-colors ${capturada ? 'border-sucesso-200 bg-sucesso-50' : 'border-slate-200 bg-slate-50'
+    <div className={`rounded-xl border p-4 transition-colors ${capturada ? 'border-festa-200 bg-festa-50' : 'border-slate-200 bg-slate-50'
       }`}>
       <div className="flex items-center gap-2.5">
-        <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${capturada ? 'bg-sucesso-600' : 'bg-festa-100'
+        <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${capturada ? 'bg-festa-600' : 'bg-festa-100'
           }`}>
           {capturada
             ? <Check className="h-5 w-5 text-white" aria-hidden="true" />
             : <MapPin className="h-5 w-5 text-festa-600" aria-hidden="true" />}
         </span>
-        <p className={`text-sm font-medium ${capturada ? 'text-sucesso-800' : 'text-slate-800'}`}>
+        <p className={`text-sm font-medium ${capturada ? 'text-festa-800' : 'text-slate-800'}`}>
           {capturada ? 'Localização registrada' : 'Localização'}
         </p>
       </div>

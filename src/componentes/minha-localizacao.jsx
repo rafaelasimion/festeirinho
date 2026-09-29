@@ -66,8 +66,8 @@ export default function MinhaLocalizacao({ coordenadas: iniciais, descricao }) {
         aoAlterar={persistir}
         descricao={descricao} />
       {salvando && <p className="text-xs text-slate-500">Salvando...</p>}
-      {mensagem && <p className="text-sm text-sucesso-700">{mensagem}</p>}
-      {erro && <p className="text-sm text-red-600">{erro}</p>}
+      {mensagem && <p className="text-sm text-festa-700">{mensagem}</p>}
+      {erro && <p className="text-sm text-perigo-600">{erro}</p>}
     </div>
   );
 }
