@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { pool } from '@/lib/db';
 import { lerSessao } from '@/lib/sessao';
+import { chatAberto } from '@/lib/solicitacao';
 
 // UC 016 / RN022 — chat vinculado à solicitação.
 //   GET   lista as mensagens e marca como lidas as recebidas
@@ -32,12 +33,14 @@ async function participantes(idSolicitacao) {
   return linhas[0] ?? null;
 }
 
-// RN022 — o canal abre com a aprovação do fornecedor (RN023) e fecha no
-// registro da conclusão. Fora dessa janela o histórico continua visível,
-// mas não se escreve mais nele.
-function chatAberto(solicitacao) {
-  return ['aguardando_pagamento', 'confirmado'].includes(solicitacao.status)
-    && solicitacao.data_registro_conclusao_fornecedor === null;
+// RN022 — a janela do canal está em lib/solicitacao, porque a tela usa a
+// mesma regra para decidir o rótulo do botão. Aqui só se adapta o formato
+// da linha do banco.
+function canalAberto(solicitacao) {
+  return chatAberto({
+    status: solicitacao.status,
+    conclusaoRegistrada: solicitacao.data_registro_conclusao_fornecedor !== null,
+  });
 }
 
 async function contexto(params) {
@@ -88,7 +91,7 @@ export async function GET(request, { params }) {
     );
 
     return NextResponse.json({
-      aberto: chatAberto(solicitacao),
+      aberto: canalAberto(solicitacao),
       idUsuarioAtual: sessao.id,
       // Quem é quem, para a tela rotular cada lado sem adivinhar.
       nomeCliente: solicitacao.nome_cliente,
@@ -109,7 +112,7 @@ export async function POST(request, { params }) {
   const { erro, sessao, idSolicitacao, solicitacao } = await contexto(params);
   if (erro) return erro;
 
-  if (!chatAberto(solicitacao)) {
+  if (!canalAberto(solicitacao)) {
     return NextResponse.json(
       { erro: 'Este canal está encerrado. Ele fica disponível da aprovação até o registro da conclusão.' },
       { status: 409 }

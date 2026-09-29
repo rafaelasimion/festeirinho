@@ -99,3 +99,16 @@ export const ROTULO_FORMA_PAGAMENTO = {
   cartao: 'Cartão de crédito',
   boleto: 'Boleto',
 };
+
+// RN022 — a janela do chat: abre com a aprovação do fornecedor (RN023) e
+// fecha no registro da conclusão. Fora dela o histórico continua visível,
+// mas não se escreve mais.
+//
+// Mora aqui, e não só na rota, porque a TELA também precisa da regra: é ela
+// que decide se o botão convida a conversar ou a ler o que já foi dito. Com
+// a regra escrita em dois lugares, um dia um deles muda sozinho e o botão
+// passa a prometer o que o servidor recusa.
+export function chatAberto({ status, conclusaoRegistrada }) {
+  return ['aguardando_pagamento', 'confirmado'].includes(status)
+    && !conclusaoRegistrada;
+}

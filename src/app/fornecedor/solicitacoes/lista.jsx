@@ -14,6 +14,7 @@ import {
   ROTULO_STATUS_SOLICITACAO,
   TOM_STATUS_SOLICITACAO,
   ROTULO_MOTIVO_RECUSA,
+  chatAberto,
 } from '@/lib/solicitacao';
 import {
   ROTULO_STATUS_CANCELAMENTO,
@@ -126,8 +127,15 @@ export default function ListaSolicitacoesRecebidas({
             });
             const podeCancelar = impedimento === null;
 
+            // O histórico continua acessível com o canal encerrado: é nele
+            // que ficou combinada a execução, e é o que sustenta uma
+            // contestação depois. Escrever, só dentro da janela da RN022.
             const temChat = ['aguardando_pagamento', 'confirmado', 'concluido', 'cancelado']
               .includes(solicitacao.status);
+            const podeEscrever = chatAberto({
+              status: solicitacao.status,
+              conclusaoRegistrada: Boolean(solicitacao.data_registro_conclusao_fornecedor),
+            });
 
             const pagamento = solicitacao.status_pagamento ? {
               status: solicitacao.status_pagamento,
@@ -146,6 +154,90 @@ export default function ListaSolicitacoesRecebidas({
                   : cancelando === solicitacao.id ? 'cancelar'
                     : denunciando === solicitacao.id ? 'denunciar'
                       : null;
+
+            // O painel aberto vai por fora da linha da foto (prop "painel"):
+            // dentro dela, um chat de 500px esticava a faixa lateral junto.
+            const conteudoPainel = painel === null ? null : (
+              <>
+
+                {painel === 'conversar' && (
+                  <>
+                    <Chat
+                      idSolicitacao={solicitacao.id}
+                      titulo={`Conversa com ${solicitacao.cliente}`}
+                      aoFechar={() => setConversando(null)}
+                      aoAlterar={() => router.refresh()} />
+                  </>
+                )}
+
+                {/* UC 015 — recusar exige motivo. */}
+                {painel === 'recusar' && (
+                  <div className="space-y-3">
+                    <div>
+                      <label htmlFor={`motivo-${solicitacao.id}`}
+                        className="mb-1.5 block text-sm font-medium text-slate-700">
+                        Motivo da recusa
+                      </label>
+                      <select id={`motivo-${solicitacao.id}`} value={motivo}
+                        onChange={(e) => setMotivo(e.target.value)}
+                        className={CLASSE_SELECT}>
+                        <option value="">Selecione</option>
+                        <option value="agenda_indisponivel">Agenda indisponível</option>
+                        <option value="fora_da_area">Fora da área de atendimento</option>
+                        <option value="inviabilidade">Inviabilidade técnica ou logística</option>
+                        <option value="outro">Outro motivo</option>
+                      </select>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <button type="button" disabled={processando || motivo === ''}
+                        onClick={() => acionar(
+                          solicitacao.id,
+                          { acao: 'recusar', motivoRecusa: motivo },
+                          'Solicitação recusada.'
+                        )}
+                        className="rounded-lg bg-perigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-perigo-700 disabled:opacity-50">
+                        Confirmar recusa
+                      </button>
+                      <button type="button"
+                        onClick={() => { setRecusando(null); setMotivo(''); }}
+                        className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50">
+                        Voltar
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {painel === 'cancelar' && (
+                  <>
+                    <DialogoCancelamento
+                      solicitadoPor="fornecedor"
+                      dataEvento={solicitacao.data_hora_evento}
+                      pagamento={pagamento}
+                      processando={processando}
+                      aoVoltar={() => setCancelando(null)}
+                      aoCancelar={(motivoTexto) => acionar(
+                        solicitacao.id,
+                        { acao: 'cancelar', motivo: motivoTexto },
+                        'Cancelamento registrado. O cliente será reembolsado integralmente.'
+                      )} />
+                  </>
+                )}
+
+                {painel === 'denunciar' && (
+                  <>
+                    <DialogoDenuncia
+                      tipo="avaliacao"
+                      alvo={{ idAvaliacao: solicitacao.id_avaliacao }}
+                      aoVoltar={() => setDenunciando(null)}
+                      aoConcluir={() => {
+                        setDenunciando(null);
+                        setMensagem('Denúncia registrada. A administração vai analisar.');
+                        router.refresh();
+                      }} />
+                  </>
+                )}
+              </>
+            );
 
             return (
               <CartaoSolicitacao key={solicitacao.id}
@@ -169,7 +261,8 @@ export default function ListaSolicitacoesRecebidas({
                   ? `${solicitacao.rua}, ${solicitacao.numero}${
                     solicitacao.complemento ? ` — ${solicitacao.complemento}` : ''
                   } · ${solicitacao.bairro} · ${solicitacao.cidade}/${solicitacao.estado} · CEP ${solicitacao.cep}`
-                  : `${solicitacao.bairro}, ${solicitacao.cidade}/${solicitacao.estado}`}>
+                  : `${solicitacao.bairro}, ${solicitacao.cidade}/${solicitacao.estado}`}
+                painel={conteudoPainel}>
 
                 {(solicitacao.tema || solicitacao.nome_aniversariante || solicitacao.observacoes) && (
                   <div className="mt-4 space-y-1 rounded-lg bg-slate-50 p-3 text-sm text-slate-700">
@@ -322,85 +415,6 @@ export default function ListaSolicitacoesRecebidas({
                   </div>
                 )}
 
-                {/* ---------- rodapé: um painel aberto OU a barra de ações ---------- */}
-
-                {painel === 'conversar' && (
-                  <div className="mt-4 border-t border-slate-200 pt-4">
-                    <Chat
-                      idSolicitacao={solicitacao.id}
-                      titulo={`Conversa com ${solicitacao.cliente}`}
-                      aoFechar={() => setConversando(null)}
-                      aoAlterar={() => router.refresh()} />
-                  </div>
-                )}
-
-                {/* UC 015 — recusar exige motivo. */}
-                {painel === 'recusar' && (
-                  <div className="mt-4 space-y-3 border-t border-slate-200 pt-4">
-                    <div>
-                      <label htmlFor={`motivo-${solicitacao.id}`}
-                        className="mb-1.5 block text-sm font-medium text-slate-700">
-                        Motivo da recusa
-                      </label>
-                      <select id={`motivo-${solicitacao.id}`} value={motivo}
-                        onChange={(e) => setMotivo(e.target.value)}
-                        className={CLASSE_SELECT}>
-                        <option value="">Selecione</option>
-                        <option value="agenda_indisponivel">Agenda indisponível</option>
-                        <option value="fora_da_area">Fora da área de atendimento</option>
-                        <option value="inviabilidade">Inviabilidade técnica ou logística</option>
-                        <option value="outro">Outro motivo</option>
-                      </select>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <button type="button" disabled={processando || motivo === ''}
-                        onClick={() => acionar(
-                          solicitacao.id,
-                          { acao: 'recusar', motivoRecusa: motivo },
-                          'Solicitação recusada.'
-                        )}
-                        className="rounded-lg bg-perigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-perigo-700 disabled:opacity-50">
-                        Confirmar recusa
-                      </button>
-                      <button type="button"
-                        onClick={() => { setRecusando(null); setMotivo(''); }}
-                        className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50">
-                        Voltar
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {painel === 'cancelar' && (
-                  <div className="mt-4 border-t border-slate-200 pt-4">
-                    <DialogoCancelamento
-                      solicitadoPor="fornecedor"
-                      dataEvento={solicitacao.data_hora_evento}
-                      pagamento={pagamento}
-                      processando={processando}
-                      aoVoltar={() => setCancelando(null)}
-                      aoCancelar={(motivoTexto) => acionar(
-                        solicitacao.id,
-                        { acao: 'cancelar', motivo: motivoTexto },
-                        'Cancelamento registrado. O cliente será reembolsado integralmente.'
-                      )} />
-                  </div>
-                )}
-
-                {painel === 'denunciar' && (
-                  <div className="mt-4 border-t border-slate-200 pt-4">
-                    <DialogoDenuncia
-                      tipo="avaliacao"
-                      alvo={{ idAvaliacao: solicitacao.id_avaliacao }}
-                      aoVoltar={() => setDenunciando(null)}
-                      aoConcluir={() => {
-                        setDenunciando(null);
-                        setMensagem('Denúncia registrada. A administração vai analisar.');
-                        router.refresh();
-                      }} />
-                  </div>
-                )}
-
                 {painel === null && (
                   <BarraAcoes>
                     {aberta && (
@@ -429,7 +443,7 @@ export default function ListaSolicitacoesRecebidas({
                       <BotaoAcao tom="secundario" Icone={MessageCircle}
                         contador={solicitacao.nao_lidas}
                         onClick={() => setConversando(solicitacao.id)}>
-                        Conversar
+                        {podeEscrever ? 'Conversar' : 'Ver conversa'}
                       </BotaoAcao>
                     )}
 

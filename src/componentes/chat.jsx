@@ -154,7 +154,12 @@ export default function Chat({ idSolicitacao, titulo, aoFechar, aoAlterar }) {
           </p>
         ) : dados.mensagens.length === 0 ? (
           <p className="py-10 text-center text-sm text-slate-500">
-            Nenhuma mensagem ainda. Escreva a primeira abaixo.
+            {/* Com o canal encerrado não há "abaixo": o campo de escrita já
+                deu lugar ao aviso. Convidar a escrever ali era mandar a
+                pessoa procurar um campo que não existe mais. */}
+            {dados.aberto
+              ? 'Nenhuma mensagem ainda. Escreva a primeira abaixo.'
+              : 'Nenhuma mensagem foi trocada nesta solicitação.'}
           </p>
         ) : (
           <ul className="space-y-2">

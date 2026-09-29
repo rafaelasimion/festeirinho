@@ -20,6 +20,7 @@ import {
   ROTULO_STATUS_SOLICITACAO,
   TOM_STATUS_SOLICITACAO,
   ROTULO_MOTIVO_RECUSA,
+  chatAberto,
 } from '@/lib/solicitacao';
 import { ROTULO_RESULTADO_DENUNCIA } from '@/lib/denuncia';
 import {
@@ -135,8 +136,17 @@ export default function ListaMinhasSolicitacoes({ solicitacoes, prazoConfirmacao
             });
             const podeCancelar = impedimento === null;
 
+            // O histórico fica acessível mesmo depois de encerrado o canal:
+            // é nele que ficou combinado horário de chegada e acesso ao
+            // local, e é o que sustenta uma contestação ou denúncia depois.
             const temChat = ['aguardando_pagamento', 'confirmado', 'concluido', 'cancelado']
               .includes(solicitacao.status);
+            // RN022 — mas escrever, só dentro da janela. O rótulo segue a
+            // mesma regra do servidor para não prometer o que ele recusa.
+            const podeEscrever = chatAberto({
+              status: solicitacao.status,
+              conclusaoRegistrada: Boolean(solicitacao.data_registro_conclusao_fornecedor),
+            });
             const podeDenunciar = ['confirmado', 'concluido', 'cancelado']
               .includes(solicitacao.status);
 
@@ -159,6 +169,124 @@ export default function ListaMinhasSolicitacoes({ solicitacoes, prazoConfirmacao
                     : contestando === solicitacao.id ? 'contestar'
                       : null;
 
+            // O painel aberto vai por fora da linha da foto (prop "painel"):
+            // dentro dela, um chat de 500px esticava a faixa lateral junto.
+            const conteudoPainel = painel === null ? null : (
+              <>
+
+                {painel === 'conversar' && (
+                  <>
+                    <Chat
+                      idSolicitacao={solicitacao.id}
+                      titulo={`Conversa com ${solicitacao.fornecedor}`}
+                      aoFechar={() => setConversando(null)}
+                      aoAlterar={() => router.refresh()} />
+                  </>
+                )}
+
+                {painel === 'cancelar' && (
+                  <>
+                    <DialogoCancelamento
+                      solicitadoPor="cliente"
+                      dataEvento={solicitacao.data_hora_evento}
+                      pagamento={pagamento}
+                      processando={processando}
+                      aoVoltar={() => setCancelando(null)}
+                      aoCancelar={(motivo) => acionar(
+                        solicitacao.id,
+                        { acao: 'cancelar', motivo },
+                        'Cancelamento registrado.'
+                      )} />
+                  </>
+                )}
+
+                {painel === 'denunciar' && (
+                  <>
+                    <DialogoDenuncia
+                      tipo="fornecedor"
+                      alvo={{ idSolicitacao: solicitacao.id }}
+                      aoVoltar={() => setDenunciando(null)}
+                      aoConcluir={() => {
+                        setDenunciando(null);
+                        setMensagem('Denúncia registrada. A administração vai analisar.');
+                        router.refresh();
+                      }} />
+                  </>
+                )}
+
+                {/* UC 042 — formulário de contestação */}
+                {painel === 'contestar' && (
+                  <div className="space-y-4 rounded-lg border border-atencao-200 bg-atencao-50 p-4">
+                    <p className="text-sm text-slate-700">
+                      A contestação suspende a confirmação automática e é analisada pela
+                      administração da plataforma, que decide sobre o reembolso.
+                    </p>
+
+                    <fieldset className="space-y-2">
+                      <legend className="mb-1 text-sm font-medium text-slate-700">
+                        O que aconteceu?
+                      </legend>
+                      {MOTIVOS_CONTESTACAO.map(({ valor, rotulo, detalhe }) => (
+                        <label key={valor}
+                          className={`flex cursor-pointer gap-3 rounded-lg border p-3 transition-colors ${motivoContestacao === valor
+                            ? 'border-atencao-600 bg-white'
+                            : 'border-slate-200 bg-white hover:border-slate-300'}`}>
+                          <input type="radio" name={`motivo-contestacao-${solicitacao.id}`}
+                            value={valor} checked={motivoContestacao === valor}
+                            onChange={(e) => setMotivoContestacao(e.target.value)}
+                            className="mt-0.5" />
+                          <span>
+                            <span className="block text-sm font-medium text-slate-800">
+                              {rotulo}
+                            </span>
+                            <span className="block text-xs text-slate-500">{detalhe}</span>
+                          </span>
+                        </label>
+                      ))}
+                    </fieldset>
+
+                    <div>
+                      <label htmlFor={`descricao-${solicitacao.id}`}
+                        className="mb-1.5 block text-sm font-medium text-slate-700">
+                        Descreva o ocorrido
+                      </label>
+                      <textarea id={`descricao-${solicitacao.id}`} rows={4}
+                        value={descricaoContestacao}
+                        onChange={(e) => setDescricaoContestacao(e.target.value)}
+                        placeholder="Conte o que foi combinado e o que de fato aconteceu. A administração usará este texto para decidir."
+                        className="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 text-slate-900 placeholder:text-slate-400 focus:border-festa-600 focus:outline-none focus:ring-2 focus:ring-festa-600/30" />
+                      <p className="mt-1 text-xs text-slate-500">
+                        {descricaoContestacao.trim().length}/20 caracteres mínimos.
+                      </p>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      <button type="button"
+                        disabled={processando || motivoContestacao === ''
+                          || descricaoContestacao.trim().length < 20}
+                        onClick={() => acionar(
+                          solicitacao.id,
+                          {
+                            acao: 'contestar',
+                            motivoContestacao,
+                            descricao: descricaoContestacao,
+                          },
+                          'Contestação registrada. A administração vai analisar.'
+                        )}
+                        className="rounded-lg bg-atencao-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-atencao-700 disabled:opacity-50">
+                        Enviar contestação
+                      </button>
+                      <button type="button" onClick={() => setContestando(null)}
+                        disabled={processando}
+                        className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50">
+                        Voltar
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
+            );
+
             return (
               <CartaoSolicitacao key={solicitacao.id}
                 titulo={solicitacao.servico}
@@ -177,7 +305,8 @@ export default function ListaMinhasSolicitacoes({ solicitacoes, prazoConfirmacao
                 }
                 quando={`${formatarDataHora(solicitacao.data_hora_evento)} · ${solicitacao.duracao}h`}
                 convidados={`${solicitacao.numero_convidados} convidados`}
-                local={`${solicitacao.cidade}/${solicitacao.estado}`}>
+                local={`${solicitacao.cidade}/${solicitacao.estado}`}
+                painel={conteudoPainel}>
 
                 {solicitacao.status === 'aguardando_analise' && (
                   <AvisoCartao>
@@ -364,119 +493,6 @@ export default function ListaMinhasSolicitacoes({ solicitacoes, prazoConfirmacao
                     }} />
                 )}
 
-                {/* ---------- rodapé: um painel aberto OU a barra de ações ---------- */}
-
-                {painel === 'conversar' && (
-                  <div className="mt-4 border-t border-slate-200 pt-4">
-                    <Chat
-                      idSolicitacao={solicitacao.id}
-                      titulo={`Conversa com ${solicitacao.fornecedor}`}
-                      aoFechar={() => setConversando(null)}
-                      aoAlterar={() => router.refresh()} />
-                  </div>
-                )}
-
-                {painel === 'cancelar' && (
-                  <div className="mt-4 border-t border-slate-200 pt-4">
-                    <DialogoCancelamento
-                      solicitadoPor="cliente"
-                      dataEvento={solicitacao.data_hora_evento}
-                      pagamento={pagamento}
-                      processando={processando}
-                      aoVoltar={() => setCancelando(null)}
-                      aoCancelar={(motivo) => acionar(
-                        solicitacao.id,
-                        { acao: 'cancelar', motivo },
-                        'Cancelamento registrado.'
-                      )} />
-                  </div>
-                )}
-
-                {painel === 'denunciar' && (
-                  <div className="mt-4 border-t border-slate-200 pt-4">
-                    <DialogoDenuncia
-                      tipo="fornecedor"
-                      alvo={{ idSolicitacao: solicitacao.id }}
-                      aoVoltar={() => setDenunciando(null)}
-                      aoConcluir={() => {
-                        setDenunciando(null);
-                        setMensagem('Denúncia registrada. A administração vai analisar.');
-                        router.refresh();
-                      }} />
-                  </div>
-                )}
-
-                {/* UC 042 — formulário de contestação */}
-                {painel === 'contestar' && (
-                  <div className="mt-4 space-y-4 rounded-lg border border-atencao-200 bg-atencao-50 p-4">
-                    <p className="text-sm text-slate-700">
-                      A contestação suspende a confirmação automática e é analisada pela
-                      administração da plataforma, que decide sobre o reembolso.
-                    </p>
-
-                    <fieldset className="space-y-2">
-                      <legend className="mb-1 text-sm font-medium text-slate-700">
-                        O que aconteceu?
-                      </legend>
-                      {MOTIVOS_CONTESTACAO.map(({ valor, rotulo, detalhe }) => (
-                        <label key={valor}
-                          className={`flex cursor-pointer gap-3 rounded-lg border p-3 transition-colors ${motivoContestacao === valor
-                            ? 'border-atencao-600 bg-white'
-                            : 'border-slate-200 bg-white hover:border-slate-300'}`}>
-                          <input type="radio" name={`motivo-contestacao-${solicitacao.id}`}
-                            value={valor} checked={motivoContestacao === valor}
-                            onChange={(e) => setMotivoContestacao(e.target.value)}
-                            className="mt-0.5" />
-                          <span>
-                            <span className="block text-sm font-medium text-slate-800">
-                              {rotulo}
-                            </span>
-                            <span className="block text-xs text-slate-500">{detalhe}</span>
-                          </span>
-                        </label>
-                      ))}
-                    </fieldset>
-
-                    <div>
-                      <label htmlFor={`descricao-${solicitacao.id}`}
-                        className="mb-1.5 block text-sm font-medium text-slate-700">
-                        Descreva o ocorrido
-                      </label>
-                      <textarea id={`descricao-${solicitacao.id}`} rows={4}
-                        value={descricaoContestacao}
-                        onChange={(e) => setDescricaoContestacao(e.target.value)}
-                        placeholder="Conte o que foi combinado e o que de fato aconteceu. A administração usará este texto para decidir."
-                        className="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 text-slate-900 placeholder:text-slate-400 focus:border-festa-600 focus:outline-none focus:ring-2 focus:ring-festa-600/30" />
-                      <p className="mt-1 text-xs text-slate-500">
-                        {descricaoContestacao.trim().length}/20 caracteres mínimos.
-                      </p>
-                    </div>
-
-                    <div className="flex flex-wrap gap-2">
-                      <button type="button"
-                        disabled={processando || motivoContestacao === ''
-                          || descricaoContestacao.trim().length < 20}
-                        onClick={() => acionar(
-                          solicitacao.id,
-                          {
-                            acao: 'contestar',
-                            motivoContestacao,
-                            descricao: descricaoContestacao,
-                          },
-                          'Contestação registrada. A administração vai analisar.'
-                        )}
-                        className="rounded-lg bg-atencao-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-atencao-700 disabled:opacity-50">
-                        Enviar contestação
-                      </button>
-                      <button type="button" onClick={() => setContestando(null)}
-                        disabled={processando}
-                        className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50">
-                        Voltar
-                      </button>
-                    </div>
-                  </div>
-                )}
-
                 {painel === null && (
                   <BarraAcoes>
                     {solicitacao.status === 'aguardando_pagamento' && solicitacao.id_pagamento && (
@@ -501,7 +517,7 @@ export default function ListaMinhasSolicitacoes({ solicitacoes, prazoConfirmacao
                       <BotaoAcao tom="secundario" Icone={MessageCircle}
                         contador={solicitacao.nao_lidas}
                         onClick={() => setConversando(solicitacao.id)}>
-                        Conversar
+                        {podeEscrever ? 'Conversar' : 'Ver conversa'}
                       </BotaoAcao>
                     )}
 

@@ -15,7 +15,8 @@ import MolduraFoto from '@/componentes/moldura-foto';
 // HTML inválido. O padrão continua sendo o <li> das duas listas.
 export default function CartaoSolicitacao({
   como: Tag = 'li',
-  titulo, subtitulo, preco, foto, etiquetas, quando, convidados, local, children,
+  titulo, subtitulo, preco, foto, etiquetas, quando, convidados, local,
+  painel, children,
 }) {
   return (
     // Corpo branco, e quem dá peso ao cartão é a foto.
@@ -26,15 +27,16 @@ export default function CartaoSolicitacao({
     // colorido cheio sumia (sucesso-600 sobre festa-600 dá 1,12:1). O
     // problema não era a cor da etiqueta — era pedir que ela vivesse sobre
     // fundo colorido. Sem o bloco, a etiqueta de ponto resolve sozinha.
-    <Tag className="flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm sm:flex-row">
-      {/* No celular a foto é uma faixa no topo, com altura fixa: de lado
-          ali ela vira uma fita de 60px, larga demais para caber a
-          contratação e estreita demais para se enxergar a foto. Do sm
-          para cima ela volta para a lateral, sem altura própria, e
-          acompanha o cartão seja ele curto ou comprido. */}
-      <MolduraFoto foto={foto} className="h-32 w-full shrink-0 sm:h-auto sm:w-28" />
+    <Tag className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="flex flex-col sm:flex-row">
+        {/* No celular a foto é uma faixa no topo, com altura fixa: de lado
+            ali ela vira uma fita de 60px, larga demais para caber a
+            contratação e estreita demais para se enxergar a foto. Do sm
+            para cima ela volta para a lateral, sem altura própria, e
+            acompanha esta linha. */}
+        <MolduraFoto foto={foto} className="h-32 w-full shrink-0 sm:h-auto sm:w-28" />
 
-      <div className="min-w-0 flex-1 p-4 sm:p-5">
+        <div className="min-w-0 flex-1 p-4 sm:p-5">
         {/* No celular a etiqueta desce para a linha de baixo. Lado a lado
             ali, "Aguardando pagamento" come a largura toda e um nome de
             serviço comprido desce em uma palavra por linha. */}
@@ -69,8 +71,18 @@ export default function CartaoSolicitacao({
           </p>
         </div>
 
-        {children}
+          {children}
+        </div>
       </div>
+
+      {/* O painel aberto — conversa, cancelamento, recusa, denúncia,
+          contestação — mora FORA da linha da foto, em largura cheia.
+          Dentro dela, um chat de 500px de altura esticava a faixa lateral
+          junto, e a foto virava uma tira comprida e deformada. Aqui o
+          cartão cresce para baixo e a faixa continua do tamanho do resumo. */}
+      {painel && (
+        <div className="border-t border-slate-200 p-4 sm:p-5">{painel}</div>
+      )}
     </Tag>
   );
 }
