@@ -12,18 +12,23 @@ import Link from 'next/link';
 //               É uma por cartão, no máximo — se houver duas, uma delas
 //               não é principal.
 //   secundario  usada com frequência, mas não avança nada (conversar).
+//   sucesso     dá ganho de causa a quem reclamou (julgar procedente).
 //   atencao     abre uma disputa que a administração vai julgar.
-//   perigo      desfaz (cancelar, recusar).
+//   perigo      desfaz (cancelar, recusar, rejeitar).
 //   discreto    consulta, sem consequência (comprovante, denunciar).
 //
-// A ordem na linha é essa mesma, e vale para as duas telas: quem usa as
-// duas não precisa reaprender onde ficam as coisas.
+// A ordem na linha é essa mesma, e vale para todas as telas: quem usa
+// mais de uma não precisa reaprender onde ficam as coisas. O painel
+// administrativo usa o mesmo vocabulário — decidir ali é o equivalente do
+// avançar aqui.
 
 const TONS = {
   principal: 'bg-festa-600 text-white hover:bg-festa-700',
   secundario: 'border border-festa-600 text-festa-700 hover:bg-festa-50',
+  sucesso: 'border border-sucesso-600 text-sucesso-700 hover:bg-sucesso-50',
   atencao: 'border border-atencao-600 text-atencao-800 hover:bg-atencao-50',
   perigo: 'border border-perigo-600 text-perigo-700 hover:bg-perigo-50',
+  perigoCheio: 'bg-perigo-600 text-white hover:bg-perigo-700',
   discreto: 'text-slate-600 hover:bg-slate-100',
 };
 

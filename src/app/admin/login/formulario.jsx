@@ -47,29 +47,34 @@ export default function FormularioLoginAdmin() {
 
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6 py-12">
-      <div className="rounded-2xl border border-slate-200 bg-white p-8">
-        <div className="mb-6 flex items-center gap-3">
-          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-festa-100">
-            <ShieldCheck className="h-5 w-5 text-festa-600" aria-hidden="true" />
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+        {/* O selo centralizado, e não numa linha com o título: esta tela não
+            faz parte do fluxo de ninguém que use a plataforma, e o escudo
+            centrado avisa disso antes de a pessoa ler qualquer palavra. */}
+        <div className="flex flex-col items-center text-center">
+          <span className="flex h-14 w-14 items-center justify-center rounded-full bg-festa-100">
+            <ShieldCheck className="h-7 w-7 text-festa-600" aria-hidden="true" />
           </span>
-          <div>
-            <h1 className="text-lg font-semibold text-slate-900">Painel administrativo</h1>
-            <p className="text-sm text-slate-600">Acesso restrito à administração</p>
-          </div>
+          <h1 className="mt-4 text-xl font-semibold text-slate-900">Painel administrativo</h1>
+          <p className="mt-1 text-sm text-slate-600">Acesso restrito à administração</p>
         </div>
 
-        <div className="space-y-4">
+        <div className="mt-8 space-y-5">
           <Campo label="E-mail" name="email" type="email" value={email}
+            autoComplete="username"
             onChange={(e) => setEmail(e.target.value)} />
 
           <Campo label="Senha" name="senha" type="password" value={senha}
+            autoComplete="current-password"
             onChange={(e) => setSenha(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') entrar(); }} />
 
-          {erro && <p className="text-sm text-red-600">{erro}</p>}
+          {erro && (
+            <p className="rounded-xl bg-perigo-50 px-4 py-3 text-sm text-perigo-700">{erro}</p>
+          )}
 
           <button type="button" onClick={entrar} disabled={entrando}
-            className="w-full rounded-lg bg-festa-600 px-4 py-2.5 font-medium text-white transition-colors hover:bg-festa-700 disabled:opacity-50">
+            className="w-full rounded-xl bg-festa-600 px-4 py-3.5 font-semibold text-white transition-colors hover:bg-festa-700 disabled:cursor-not-allowed disabled:opacity-50">
             {entrando ? 'Entrando...' : 'Entrar'}
           </button>
         </div>

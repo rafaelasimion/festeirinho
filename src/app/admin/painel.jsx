@@ -2,8 +2,13 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ShieldCheck, Image as ImageIcon } from 'lucide-react';
+import { ShieldCheck, Image as ImageIcon, Check, X, Pencil, Gavel } from 'lucide-react';
 import Etiqueta from '@/componentes/etiqueta';
+import CartaoAdmin, {
+  Fatos, Fato, Bloco, AcoesAdmin, PeDecidido,
+} from '@/componentes/cartao-admin';
+import { BotaoAcao } from '@/componentes/acoes-solicitacao';
+import { CampoTexto } from '@/componentes/campo';
 import {
   formatarPreco,
   SUFIXO_PRECO,
@@ -125,10 +130,10 @@ export default function PainelVerificacao({
   }
 
   return (
-    <main className="mx-auto max-w-4xl px-6 py-8">
-      <header className="mb-8 flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-6">
+    <main className="mx-auto w-full max-w-4xl px-4 py-8 sm:px-6">
+      <header className="mb-6 flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-6">
         <div className="flex items-center gap-3">
-          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-festa-100">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-festa-100">
             <ShieldCheck className="h-5 w-5 text-festa-600" aria-hidden="true" />
           </span>
           <div>
@@ -139,7 +144,7 @@ export default function PainelVerificacao({
 
         <form action="/api/admin/logout" method="post">
           <button type="submit"
-            className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50">
+            className="rounded-lg border border-slate-300 px-3.5 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50">
             Sair
           </button>
         </form>
@@ -162,8 +167,16 @@ export default function PainelVerificacao({
           rotulo="Configurações" pendentes={0} />
       </div>
 
-      {mensagem && <p className="mb-4 text-sm text-sucesso-700">{mensagem}</p>}
-      {erro && <p className="mb-4 text-sm text-red-600">{erro}</p>}
+      {mensagem && (
+        <p className="mb-4 rounded-xl bg-sucesso-50 px-4 py-3 text-sm text-sucesso-800">
+          {mensagem}
+        </p>
+      )}
+      {erro && (
+        <p className="mb-4 rounded-xl bg-perigo-50 px-4 py-3 text-sm text-perigo-700">
+          {erro}
+        </p>
+      )}
 
       {aba === 'fornecedores' && (
         <Lista vazio="Nenhum fornecedor cadastrado.">
@@ -186,20 +199,38 @@ export default function PainelVerificacao({
               aoAbrirRejeicao={() => { setRejeitando(`fornecedor:${f.id}`); setMotivo(''); }}
               aoCancelarRejeicao={() => { setRejeitando(null); setMotivo(''); }}
               aoRejeitar={() => analisar('fornecedor', f.id, 'rejeitar', motivo)}>
-              <dl className="mt-3 space-y-1 text-sm text-slate-600">
-                <Linha rotulo="Tipo">
-                  {f.tipo_pessoa === 'PF'
-                    ? `Pessoa física · CPF ${f.cpf ?? '—'}`
-                    : `Pessoa jurídica · CNPJ ${f.cnpj ?? '—'} · ${f.razao_social ?? '—'}`}
-                </Linha>
-                <Linha rotulo="Contato">{f.email} · {f.telefone}</Linha>
-                <Linha rotulo="Descrição" quebraLinha>{f.descricao}</Linha>
-                {(f.instagram_url || f.whatsapp_url || f.site) && (
-                  <Linha rotulo="Links">
-                    {[f.instagram_url, f.whatsapp_url, f.site].filter(Boolean).join(' · ')}
-                  </Linha>
+              <Fatos>
+                <Fato rotulo="Tipo de pessoa">
+                  {f.tipo_pessoa === 'PF' ? 'Pessoa física' : 'Pessoa jurídica'}
+                </Fato>
+                <Fato rotulo={f.tipo_pessoa === 'PF' ? 'CPF' : 'CNPJ'}>
+                  {(f.tipo_pessoa === 'PF' ? f.cpf : f.cnpj) ?? '—'}
+                </Fato>
+                {f.tipo_pessoa === 'PJ' && (
+                  <Fato rotulo="Razão social" largo>{f.razao_social ?? '—'}</Fato>
                 )}
-              </dl>
+                <Fato rotulo="E-mail">{f.email}</Fato>
+                <Fato rotulo="Telefone">{f.telefone}</Fato>
+                {(f.instagram_url || f.whatsapp_url || f.site) && (
+                  <Fato rotulo="Links" largo>
+                    {/* Links de verdade: a análise da RN031 é sobre o que
+                        há do outro lado, e copiar o endereço na mão para
+                        conferir era trabalho à toa. */}
+                    <span className="flex flex-wrap gap-x-3 gap-y-1">
+                      {[f.instagram_url, f.whatsapp_url, f.site]
+                        .filter(Boolean)
+                        .map((url) => (
+                          <a key={url} href={url} target="_blank" rel="noreferrer"
+                            className="break-all font-medium text-festa-700 hover:underline">
+                            {url}
+                          </a>
+                        ))}
+                    </span>
+                  </Fato>
+                )}
+              </Fatos>
+
+              <Bloco rotulo="Descrição do trabalho">{f.descricao}</Bloco>
             </Item>
           ))}
         </Lista>
@@ -223,16 +254,25 @@ export default function PainelVerificacao({
               aoAbrirRejeicao={() => { setRejeitando(`servico:${s.id}`); setMotivo(''); }}
               aoCancelarRejeicao={() => { setRejeitando(null); setMotivo(''); }}
               aoRejeitar={() => analisar('servico', s.id, 'rejeitar', motivo)}>
-              <dl className="mt-3 space-y-1 text-sm text-slate-600">
-                <Linha rotulo="Preço">
-                  {formatarPreco(s.preco_base)}{SUFIXO_PRECO[s.cobranca]}
-                </Linha>
-                <Linha rotulo="Condições">
-                  antecedência de {s.dias_antecedencia} dias
-                  {s.capacidade_max !== null && ` · até ${s.capacidade_max} convidados`}
-                </Linha>
-                <Linha rotulo="Descrição" quebraLinha>{s.descricao}</Linha>
-              </dl>
+              <Fatos colunas={3}>
+                {/* O preço vem em roxo e num corpo maior: numa análise de
+                    adequação ao escopo, é o dado que mais destoa quando
+                    algo está fora do lugar. */}
+                <Fato rotulo="Preço">
+                  <span className="text-base font-semibold text-festa-700">
+                    {formatarPreco(s.preco_base)}
+                  </span>
+                  <span className="text-slate-600">{SUFIXO_PRECO[s.cobranca]}</span>
+                </Fato>
+                <Fato rotulo="Antecedência">{s.dias_antecedencia} dias</Fato>
+                <Fato rotulo="Capacidade">
+                  {s.capacidade_max === null
+                    ? 'Sem limite'
+                    : `Até ${s.capacidade_max} convidados`}
+                </Fato>
+              </Fatos>
+
+              <Bloco rotulo="Descrição">{s.descricao}</Bloco>
               <FotosDoServico fotos={s.fotos ?? []} />
             </Item>
           ))}
@@ -273,13 +313,15 @@ export default function PainelVerificacao({
 function Aba({ ativa, aoClicar, rotulo, pendentes }) {
   return (
     <button type="button" role="tab" aria-selected={ativa} onClick={aoClicar}
-      className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-        ativa ? 'bg-festa-600 text-white' : 'border border-slate-300 text-slate-700 hover:bg-slate-50'
+      className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium transition-colors ${
+        ativa
+          ? 'bg-festa-600 text-white'
+          : 'border border-slate-200 bg-white text-slate-700 hover:border-festa-200 hover:bg-festa-50'
       }`}>
       {rotulo}
       {pendentes > 0 && (
-        <span className={`rounded-full px-2 py-0.5 text-xs ${
-          ativa ? 'bg-white/20 text-white' : 'bg-atencao-100 text-atencao-800'
+        <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+          ativa ? 'bg-white/25 text-white' : 'bg-atencao-100 text-atencao-800'
         }`}>
           {pendentes}
         </span>
@@ -288,21 +330,18 @@ function Aba({ ativa, aoClicar, rotulo, pendentes }) {
   );
 }
 
+// Lista vazia com moldura tracejada, e não uma frase solta no branco: sem
+// ela a aba vazia parecia uma tela que não terminou de carregar.
 function Lista({ children, vazio }) {
   const itens = Array.isArray(children) ? children : [children];
   if (itens.filter(Boolean).length === 0) {
-    return <p className="text-sm text-slate-600">{vazio}</p>;
+    return (
+      <p className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center text-sm text-slate-500">
+        {vazio}
+      </p>
+    );
   }
   return <ul className="space-y-4">{children}</ul>;
-}
-
-function Linha({ rotulo, children, quebraLinha = false }) {
-  return (
-    <div>
-      <dt className="inline font-medium text-slate-700">{rotulo}: </dt>
-      <dd className={quebraLinha ? 'inline whitespace-pre-line' : 'inline'}>{children}</dd>
-    </div>
-  );
 }
 
 function Item({
@@ -316,90 +355,66 @@ function Item({
   const [revendo, setRevendo] = useState(false);
   const analisado = status !== 'pendente';
 
+  // O formulário de rejeição ocupa o pé inteiro, então ele não divide a
+  // linha com os botões: ou se está decidindo, ou se está escrevendo por quê.
+  const rodape = rejeitando ? (
+    <div className="space-y-3">
+      <CampoTexto label="Motivo da rejeição" name={`motivo-rejeicao-${titulo}`}
+        rows={3} value={motivo} minimo={10}
+        onChange={(e) => aoMudarMotivo(e.target.value)}
+        placeholder="Explique o que precisa ser corrigido. O texto é exibido ao fornecedor." />
+      <AcoesAdmin>
+        <BotaoAcao tom="perigoCheio" Icone={X} onClick={aoRejeitar}
+          disabled={processando || motivo.trim().length < 10}>
+          Confirmar rejeição
+        </BotaoAcao>
+        <BotaoAcao tom="discreto" onClick={aoCancelarRejeicao}>Voltar</BotaoAcao>
+      </AcoesAdmin>
+    </div>
+  ) : analisado && !revendo ? (
+    <PeDecidido acao={
+      <BotaoAcao tom="discreto" Icone={Pencil} onClick={() => setRevendo(true)}>
+        Alterar decisão
+      </BotaoAcao>
+    }>
+      {status === 'aprovado'
+        ? 'Aprovado e disponível na plataforma.'
+        : 'Rejeitado. Volta para análise quando o fornecedor corrigir.'}
+    </PeDecidido>
+  ) : (
+    <AcoesAdmin>
+      <BotaoAcao tom="principal" Icone={Check} onClick={aoAprovar} disabled={processando}>
+        Aprovar
+      </BotaoAcao>
+      <BotaoAcao tom="perigo" Icone={X} onClick={aoAbrirRejeicao} disabled={processando}>
+        Rejeitar
+      </BotaoAcao>
+      {revendo && (
+        <BotaoAcao tom="discreto" onClick={() => setRevendo(false)}>Cancelar</BotaoAcao>
+      )}
+    </AcoesAdmin>
+  );
+
   return (
-    <li className="rounded-xl border border-slate-200 bg-white p-5">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-3">
-          {imagem !== undefined && (
-            <Miniatura url={imagem} forma={formaImagem} texto={textoImagem ?? titulo} />
-          )}
-          <div className="min-w-0">
-            <h2 className="font-medium text-slate-900">{titulo}</h2>
-            <p className="text-sm text-slate-600">{subtitulo}</p>
-          </div>
-        </div>
-        <Etiqueta tom={TOM_VERIFICACAO[status]} contorno>
+    <CartaoAdmin
+      titulo={titulo}
+      subtitulo={subtitulo}
+      miniatura={imagem !== undefined
+        ? <Miniatura url={imagem} forma={formaImagem} texto={textoImagem ?? titulo} />
+        : null}
+      etiqueta={
+        <Etiqueta tom={TOM_VERIFICACAO[status]} formato="ponto">
           {ROTULO_VERIFICACAO[status]}
         </Etiqueta>
-      </div>
-
+      }
+      rodape={rodape}
+    >
       {children}
 
       {motivoRejeicao && status === 'rejeitado' && (
-        <p className="mt-3 rounded-lg border border-perigo-200 bg-perigo-50 p-2 text-sm text-slate-700">
-          <span className="font-medium">Motivo registrado: </span>{motivoRejeicao}
-        </p>
+        <Bloco rotulo="Motivo registrado" tom="perigo">{motivoRejeicao}</Bloco>
       )}
-
-      <div className="mt-4 border-t border-slate-200 pt-4">
-        {rejeitando ? (
-          <div className="space-y-3">
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-slate-700">
-                Motivo da rejeição
-              </label>
-              <textarea rows={3} value={motivo}
-                onChange={(e) => aoMudarMotivo(e.target.value)}
-                placeholder="Explique o que precisa ser corrigido. O texto é exibido ao fornecedor."
-                className="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 text-slate-900 placeholder:text-slate-400 focus:border-festa-600 focus:outline-none focus:ring-2 focus:ring-festa-600/30" />
-              <p className="mt-1 text-xs text-slate-500">
-                {motivo.trim().length}/10 caracteres mínimos.
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <button type="button" onClick={aoRejeitar}
-                disabled={processando || motivo.trim().length < 10}
-                className="rounded-lg bg-perigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-perigo-700 disabled:opacity-50">
-                Confirmar rejeição
-              </button>
-              <button type="button" onClick={aoCancelarRejeicao}
-                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50">
-                Voltar
-              </button>
-            </div>
-          </div>
-        ) : analisado && !revendo ? (
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-sm text-slate-600">
-              {status === 'aprovado'
-                ? 'Aprovado e disponível na plataforma.'
-                : 'Rejeitado. Volta para análise quando o fornecedor corrigir.'}
-            </p>
-            <button type="button" onClick={() => setRevendo(true)}
-              className="rounded-lg px-3 py-1.5 text-sm font-medium text-festa-700 transition-colors hover:bg-festa-50">
-              Alterar decisão
-            </button>
-          </div>
-        ) : (
-          <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={aoAprovar} disabled={processando}
-              className="rounded-lg bg-festa-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-festa-700 disabled:opacity-50">
-              Aprovar
-            </button>
-            <button type="button" onClick={aoAbrirRejeicao} disabled={processando}
-              className="rounded-lg border border-perigo-600 px-4 py-2 text-sm font-medium text-perigo-700 transition-colors hover:bg-perigo-50 disabled:opacity-50">
-              Rejeitar
-            </button>
-            {revendo && (
-              <button type="button" onClick={() => setRevendo(false)}
-                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50">
-                Cancelar
-              </button>
-            )}
-          </div>
-        )}
-      </div>
-    </li>
+    </CartaoAdmin>
   );
 }
 
@@ -412,123 +427,107 @@ function ItemContestacao({ contestacao, processando, aoAnalisar }) {
 
   const pendente = contestacao.status_contestacao === 'pendente';
 
+  const rodape = !pendente ? (
+    <p className="text-sm text-slate-600">
+      {contestacao.resultado_contestacao === 'procedente'
+        ? 'Solicitação cancelada com reembolso integral ao cliente.'
+        : 'Solicitação concluída; a carência do repasse ao fornecedor foi iniciada.'}
+    </p>
+  ) : decidindo ? (
+    <div className="space-y-3">
+      {/* A consequência da decisão fica em cima do campo, não abaixo dos
+          botões: ela é o que a pessoa precisa reler antes de escrever, e
+          a decisão aqui é definitiva (UC 043). */}
+      <p className={`rounded-lg px-3 py-2 text-sm ${
+        decidindo === 'procedente'
+          ? 'bg-sucesso-50 text-sucesso-800'
+          : 'bg-perigo-50 text-perigo-700'}`}>
+        {decidindo === 'procedente'
+          ? 'Procedente: a solicitação será cancelada, com reembolso integral ao cliente e sem repasse ao fornecedor.'
+          : 'Improcedente: a solicitação será concluída e o repasse ao fornecedor entra em carência.'}
+      </p>
+
+      <CampoTexto label="Justificativa da decisão" name={`justificativa-${contestacao.id}`}
+        rows={4} value={justificativa} minimo={20}
+        onChange={(e) => setJustificativa(e.target.value)}
+        placeholder="Explique a decisão. O texto é exibido ao cliente e ao fornecedor." />
+
+      <AcoesAdmin>
+        <BotaoAcao tom={decidindo === 'procedente' ? 'principal' : 'perigoCheio'}
+          Icone={Gavel}
+          disabled={processando || justificativa.trim().length < 20}
+          onClick={() => aoAnalisar(decidindo, justificativa)}>
+          Confirmar decisão
+        </BotaoAcao>
+        <BotaoAcao tom="discreto" disabled={processando}
+          onClick={() => { setDecidindo(null); setJustificativa(''); }}>
+          Voltar
+        </BotaoAcao>
+      </AcoesAdmin>
+    </div>
+  ) : (
+    <AcoesAdmin>
+      <BotaoAcao tom="sucesso" Icone={Check} disabled={processando}
+        onClick={() => { setDecidindo('procedente'); setJustificativa(''); }}>
+        Julgar procedente
+      </BotaoAcao>
+      <BotaoAcao tom="perigo" Icone={X} disabled={processando}
+        onClick={() => { setDecidindo('improcedente'); setJustificativa(''); }}>
+        Julgar improcedente
+      </BotaoAcao>
+    </AcoesAdmin>
+  );
+
   return (
-    <li className="rounded-xl border border-slate-200 bg-white p-5">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2 className="font-medium text-slate-900">{contestacao.servico}</h2>
-          <p className="text-sm text-slate-600">
-            {contestacao.cliente} contestou · fornecedor {contestacao.fornecedor}
-          </p>
-        </div>
-        {pendente ? (
-          <Etiqueta tom="atencao" contorno>pendente de análise</Etiqueta>
-        ) : (
-          <Etiqueta tom={TOM_RESULTADO_CONTESTACAO[contestacao.resultado_contestacao]}>
+    <CartaoAdmin
+      titulo={contestacao.servico}
+      subtitulo={`${contestacao.cliente} contestou · fornecedor ${contestacao.fornecedor}`}
+      etiqueta={pendente
+        ? <Etiqueta tom="atencao" formato="ponto">pendente de análise</Etiqueta>
+        : (
+          <Etiqueta tom={TOM_RESULTADO_CONTESTACAO[contestacao.resultado_contestacao]}
+            formato="ponto">
             {ROTULO_RESULTADO_CONTESTACAO[contestacao.resultado_contestacao]}
           </Etiqueta>
         )}
-      </div>
-
-      <dl className="mt-3 space-y-1 text-sm text-slate-600">
-        <Linha rotulo="Evento">
-          {formatarDataHora(contestacao.data_hora_evento)} · {contestacao.duracao}h ·{' '}
-          {contestacao.numero_convidados} convidados
-        </Linha>
-        <Linha rotulo="Valor">{formatarPreco(contestacao.valor_final)}</Linha>
-        <Linha rotulo="Pagamento">
+      rodape={rodape}
+    >
+      <Fatos>
+        <Fato rotulo="Evento">
+          {formatarDataHora(contestacao.data_hora_evento)} · {contestacao.duracao}h
+        </Fato>
+        <Fato rotulo="Convidados">{contestacao.numero_convidados}</Fato>
+        <Fato rotulo="Valor">
+          <span className="text-base font-semibold text-festa-700">
+            {formatarPreco(contestacao.valor_final)}
+          </span>
+        </Fato>
+        <Fato rotulo="Pagamento">
           {contestacao.status_pagamento ?? 'sem pagamento'}
           {contestacao.forma_pagamento && ` · ${contestacao.forma_pagamento}`}
-        </Linha>
-        <Linha rotulo="Conclusão registrada em">
+        </Fato>
+        <Fato rotulo="Conclusão registrada">
           {formatarDataHora(contestacao.data_registro_conclusao_fornecedor)}
-        </Linha>
-        <Linha rotulo="Contestada em">
+        </Fato>
+        <Fato rotulo="Contestada">
           {formatarDataHora(contestacao.data_contestacao_cliente)}
-        </Linha>
-      </dl>
+        </Fato>
+      </Fatos>
 
-      <div className="mt-3 rounded-lg border border-atencao-200 bg-atencao-50 p-3 text-sm">
-        <p className="font-medium text-slate-800">
-          {ROTULO_MOTIVO_CONTESTACAO[contestacao.motivo_contestacao_cliente]}
-        </p>
-        <p className="mt-1 whitespace-pre-line text-slate-700">
-          {contestacao.descricao_contestacao_cliente}
-        </p>
-      </div>
+      <Bloco tom="atencao"
+        rotulo={ROTULO_MOTIVO_CONTESTACAO[contestacao.motivo_contestacao_cliente]}>
+        {contestacao.descricao_contestacao_cliente}
+      </Bloco>
 
       {!pendente && (
-        <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm">
-          <p className="font-medium text-slate-800">Justificativa da decisão</p>
-          <p className="mt-1 whitespace-pre-line text-slate-700">
-            {contestacao.justificativa_contestacao}
-          </p>
-          <p className="mt-1 text-xs text-slate-500">
+        <Bloco rotulo="Justificativa da decisão">
+          {contestacao.justificativa_contestacao}
+          <span className="mt-1 block text-xs text-slate-500">
             Analisada em {formatarDataHora(contestacao.data_analise_contestacao)}.
-          </p>
-        </div>
+          </span>
+        </Bloco>
       )}
-
-      <div className="mt-4 border-t border-slate-200 pt-4">
-        {!pendente ? (
-          <p className="text-sm text-slate-600">
-            {contestacao.resultado_contestacao === 'procedente'
-              ? 'Solicitação cancelada com reembolso integral ao cliente.'
-              : 'Solicitação concluída; a carência do repasse ao fornecedor foi iniciada.'}
-          </p>
-        ) : decidindo ? (
-          <div className="space-y-3">
-            <p className="text-sm text-slate-700">
-              {decidindo === 'procedente'
-                ? 'Procedente: a solicitação será cancelada, com reembolso integral ao cliente e sem repasse ao fornecedor.'
-                : 'Improcedente: a solicitação será concluída e o repasse ao fornecedor entra em carência.'}
-            </p>
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-slate-700">
-                Justificativa da decisão
-              </label>
-              <textarea rows={4} value={justificativa}
-                onChange={(e) => setJustificativa(e.target.value)}
-                placeholder="Explique a decisão. O texto é exibido ao cliente e ao fornecedor."
-                className="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 text-slate-900 placeholder:text-slate-400 focus:border-festa-600 focus:outline-none focus:ring-2 focus:ring-festa-600/30" />
-              <p className="mt-1 text-xs text-slate-500">
-                {justificativa.trim().length}/20 caracteres mínimos.
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <button type="button"
-                disabled={processando || justificativa.trim().length < 20}
-                onClick={() => aoAnalisar(decidindo, justificativa)}
-                className={`rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors disabled:opacity-50 ${
-                  decidindo === 'procedente'
-                    ? 'bg-sucesso-600 hover:bg-sucesso-700'
-                    : 'bg-perigo-600 hover:bg-perigo-700'
-                }`}>
-                Confirmar decisão
-              </button>
-              <button type="button" onClick={() => { setDecidindo(null); setJustificativa(''); }}
-                disabled={processando}
-                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50">
-                Voltar
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="flex flex-wrap gap-2">
-            <button type="button" disabled={processando}
-              onClick={() => { setDecidindo('procedente'); setJustificativa(''); }}
-              className="rounded-lg border border-sucesso-600 px-4 py-2 text-sm font-medium text-sucesso-700 transition-colors hover:bg-sucesso-50 disabled:opacity-50">
-              Julgar procedente
-            </button>
-            <button type="button" disabled={processando}
-              onClick={() => { setDecidindo('improcedente'); setJustificativa(''); }}
-              className="rounded-lg border border-perigo-600 px-4 py-2 text-sm font-medium text-perigo-700 transition-colors hover:bg-perigo-50 disabled:opacity-50">
-              Julgar improcedente
-            </button>
-          </div>
-        )}
-      </div>
-    </li>
+    </CartaoAdmin>
   );
 }
 
@@ -536,17 +535,21 @@ function ItemContestacao({ contestacao, processando, aoAnalisar }) {
 // miniatura abre a imagem em tamanho real numa nova aba, para conferir
 // detalhes que a miniatura esconde.
 function FotosDoServico({ fotos }) {
+  // Serviço sem foto não é um detalhe: a RN031 manda analisar as fotos
+  // junto com o texto, então a ausência delas é informação da análise e
+  // merece o mesmo painel que os outros blocos, não uma nota de rodapé.
   if (fotos.length === 0) {
     return (
-      <p className="mt-3 text-xs text-slate-500">Serviço sem fotos.</p>
+      <Bloco rotulo="Fotos">
+        <span className="text-slate-500">
+          Este serviço não tem nenhuma foto cadastrada.
+        </span>
+      </Bloco>
     );
   }
 
   return (
-    <div className="mt-3">
-      <p className="mb-2 text-sm font-medium text-slate-700">
-        Fotos ({fotos.length})
-      </p>
+    <Bloco rotulo={`Fotos (${fotos.length})`}>
       <ul className="flex gap-2 overflow-x-auto pb-1">
         {fotos.map((foto) => (
           <li key={foto.id} className="relative shrink-0">
@@ -554,18 +557,18 @@ function FotosDoServico({ fotos }) {
               className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-festa-600/40">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={foto.imagem_url} alt="Foto do serviço — abrir em tamanho real"
-                className={`h-24 w-32 rounded-lg object-cover ${
+                className={`h-24 w-32 rounded-lg bg-white object-cover ${
                   foto.principal ? 'ring-2 ring-festa-600' : 'border border-slate-200'}`} />
             </a>
             {foto.principal && (
-              <span className="absolute left-1.5 top-1.5 rounded bg-festa-600 px-1.5 py-0.5 text-[10px] font-medium text-white">
+              <span className="absolute left-1.5 top-1.5 rounded bg-festa-600 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
                 principal
               </span>
             )}
           </li>
         ))}
       </ul>
-    </div>
+    </Bloco>
   );
 }
 

@@ -2,8 +2,11 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { CheckCircle2, AlertTriangle } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, Check, X } from 'lucide-react';
 import Etiqueta from '@/componentes/etiqueta';
+import CartaoAdmin, { AcoesAdmin, ListaVazia } from '@/componentes/cartao-admin';
+import { BotaoAcao } from '@/componentes/acoes-solicitacao';
+import { CampoTexto } from '@/componentes/campo';
 import { formatarPreco } from '@/lib/solicitacao';
 import { descreverRecebimento, TIPOS_CHAVE_PIX } from '@/lib/recebimento';
 
@@ -61,11 +64,15 @@ export default function AbaFinanceiro({ dadosPendentes, processamentos }) {
 
   return (
     <div className="space-y-10">
-      {mensagem && <p className="text-sm text-sucesso-700">{mensagem}</p>}
-      {erro && <p className="text-sm text-red-600">{erro}</p>}
+      {mensagem && (
+        <p className="rounded-xl bg-sucesso-50 px-4 py-3 text-sm text-sucesso-800">{mensagem}</p>
+      )}
+      {erro && (
+        <p className="rounded-xl bg-perigo-50 px-4 py-3 text-sm text-perigo-700">{erro}</p>
+      )}
 
       <section>
-        <h2 className="mb-1 text-base font-medium text-slate-900">
+        <h2 className="mb-1 text-base font-semibold text-slate-900">
           Dados de recebimento para validar
         </h2>
         <p className="mb-4 text-sm text-slate-600">
@@ -73,7 +80,7 @@ export default function AbaFinanceiro({ dadosPendentes, processamentos }) {
         </p>
 
         {dadosPendentes.length === 0 ? (
-          <p className="text-sm text-slate-600">Nenhum dado aguardando validação.</p>
+          <ListaVazia>Nenhum dado aguardando validação.</ListaVazia>
         ) : (
           <ul className="space-y-4">
             {dadosPendentes.map((d) => (
@@ -90,7 +97,7 @@ export default function AbaFinanceiro({ dadosPendentes, processamentos }) {
       </section>
 
       <section>
-        <h2 className="mb-1 text-base font-medium text-slate-900">
+        <h2 className="mb-1 text-base font-semibold text-slate-900">
           Em processamento no gateway
         </h2>
         <p className="mb-4 text-sm text-slate-600">
@@ -98,7 +105,7 @@ export default function AbaFinanceiro({ dadosPendentes, processamentos }) {
         </p>
 
         {processamentos.length === 0 ? (
-          <p className="text-sm text-slate-600">Nada em processamento.</p>
+          <ListaVazia>Nada em processamento.</ListaVazia>
         ) : (
           <ul className="space-y-4">
             {processamentos.map((p) => (
@@ -131,79 +138,80 @@ function ItemValidacao({ dados, processando, aoDecidir }) {
   const documentoConfere = dados.cpf_cnpj_titular === dados.documento_conta;
   const rotuloChave = TIPOS_CHAVE_PIX.find((t) => t.valor === dados.tipo_chave_pix)?.rotulo;
 
-  return (
-    <li className="rounded-xl border border-slate-200 bg-white p-5">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="font-medium text-slate-900">
-            {dados.origem === 'saque' ? 'Saque' : 'Reembolso'} de {formatarPreco(dados.valor)}
-          </p>
-          <p className="text-sm text-slate-600">
-            {dados.origem === 'saque' ? 'Fornecedor' : 'Cliente'}: {dados.nome_conta}
-          </p>
-        </div>
-        <Etiqueta tom="atencao" contorno>aguardando validação</Etiqueta>
-      </div>
+  const rodape = rejeitando ? (
+    <div className="space-y-3">
+      <CampoTexto label="Motivo da rejeição" name={`motivo-dados-${dados.id}`}
+        rows={3} value={motivo} minimo={10}
+        onChange={(e) => setMotivo(e.target.value)}
+        placeholder="Explique o que está errado. O texto é exibido para quem enviou os dados." />
+      <AcoesAdmin>
+        <BotaoAcao tom="perigoCheio" Icone={X}
+          disabled={processando || motivo.trim().length < 10}
+          onClick={() => aoDecidir('rejeitado', motivo)}>
+          Confirmar rejeição
+        </BotaoAcao>
+        <BotaoAcao tom="discreto" onClick={() => { setRejeitando(false); setMotivo(''); }}>
+          Voltar
+        </BotaoAcao>
+      </AcoesAdmin>
+    </div>
+  ) : (
+    <AcoesAdmin>
+      <BotaoAcao tom="principal" Icone={Check} disabled={processando}
+        onClick={() => aoDecidir('validado')}>
+        Validar
+      </BotaoAcao>
+      <BotaoAcao tom="perigo" Icone={X} disabled={processando}
+        onClick={() => setRejeitando(true)}>
+        Rejeitar
+      </BotaoAcao>
+    </AcoesAdmin>
+  );
 
-      <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
-        <div className="rounded-lg border border-slate-200 p-3">
-          <dt className="mb-1 font-medium text-slate-700">Destino informado</dt>
-          <dd className="text-slate-700">
+  return (
+    <CartaoAdmin
+      titulo={`${dados.origem === 'saque' ? 'Saque' : 'Reembolso'} de ${formatarPreco(dados.valor)}`}
+      subtitulo={
+        <>
+          {dados.origem === 'saque' ? 'Fornecedor' : 'Cliente'}: {dados.nome_conta}
+          <span className="mt-0.5 block text-xs text-slate-500">
+            Enviado em {formatarDataHora(dados.data_envio)}
+          </span>
+        </>
+      }
+      etiqueta={<Etiqueta tom="atencao" formato="ponto">aguardando validação</Etiqueta>}
+      rodape={rodape}
+    >
+      {/* RN061 — a conferência é lado a lado de propósito: o painel já
+          comparou os documentos e a cor do segundo painel dá a resposta
+          antes de a pessoa ler os números. */}
+      <dl className="grid gap-3 text-sm sm:grid-cols-2">
+        <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5">
+          <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Destino informado
+          </dt>
+          <dd className="mt-1 text-slate-700">
             {dados.tipo_recebimento === 'pix'
               ? <>Pix · {rotuloChave}<br />{dados.chave_pix}</>
               : <>{descreverRecebimento(dados)}</>}
           </dd>
         </div>
-        <div className={`rounded-lg border p-3 ${
+
+        <div className={`rounded-xl border p-3.5 ${
           documentoConfere ? 'border-sucesso-200 bg-sucesso-50' : 'border-perigo-200 bg-perigo-50'}`}>
-          <dt className="mb-1 flex items-center gap-1.5 font-medium text-slate-700">
+          <dt className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
             {documentoConfere
               ? <CheckCircle2 className="h-4 w-4 text-sucesso-600" aria-hidden="true" />
               : <AlertTriangle className="h-4 w-4 text-perigo-600" aria-hidden="true" />}
-            Titular
+            Titular {documentoConfere ? 'confere' : 'não confere'}
           </dt>
-          <dd className="text-slate-700">
+          <dd className="mt-1 text-slate-700">
             Informado: {dados.nome_titular} · {dados.cpf_cnpj_titular}<br />
             Na conta: {dados.nome_conta} · {dados.documento_conta}
           </dd>
         </div>
       </dl>
-
-      <p className="mt-2 text-xs text-slate-500">Enviado em {formatarDataHora(dados.data_envio)}.</p>
-
-      <div className="mt-4 border-t border-slate-200 pt-4">
-        {rejeitando ? (
-          <div className="space-y-3">
-            <textarea rows={3} value={motivo} onChange={(e) => setMotivo(e.target.value)}
-              placeholder="Explique o que está errado. O texto é exibido para quem enviou os dados."
-              className="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 text-slate-900 placeholder:text-slate-400 focus:border-festa-600 focus:outline-none focus:ring-2 focus:ring-festa-600/30" />
-            <p className="text-xs text-slate-500">{motivo.trim().length}/10 caracteres mínimos.</p>
-            <div className="flex flex-wrap gap-2">
-              <button type="button" disabled={processando || motivo.trim().length < 10}
-                onClick={() => aoDecidir('rejeitado', motivo)}
-                className="rounded-lg bg-perigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-perigo-700 disabled:opacity-50">
-                Confirmar rejeição
-              </button>
-              <button type="button" onClick={() => { setRejeitando(false); setMotivo(''); }}
-                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50">
-                Voltar
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="flex flex-wrap gap-2">
-            <button type="button" disabled={processando} onClick={() => aoDecidir('validado')}
-              className="rounded-lg bg-festa-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-festa-700 disabled:opacity-50">
-              Validar
-            </button>
-            <button type="button" disabled={processando} onClick={() => setRejeitando(true)}
-              className="rounded-lg border border-perigo-600 px-4 py-2 text-sm font-medium text-perigo-700 transition-colors hover:bg-perigo-50 disabled:opacity-50">
-              Rejeitar
-            </button>
-          </div>
-        )}
-      </div>
-    </li>
+    </CartaoAdmin>
   );
 }
 
@@ -211,54 +219,56 @@ function ItemProcessamento({ item, processando, aoConcluir }) {
   const [falhando, setFalhando] = useState(false);
   const [motivo, setMotivo] = useState('');
 
-  return (
-    <li className="rounded-xl border border-slate-200 bg-white p-5">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="font-medium text-slate-900">
-            {item.origem === 'saque' ? 'Transferência de saque' : 'Estorno de reembolso'} ·{' '}
-            {formatarPreco(item.valor)}
-          </p>
-          <p className="text-sm text-slate-600">{item.nome_conta}</p>
-          {item.destino && <p className="text-xs text-slate-500">{item.destino}</p>}
-        </div>
-        <Etiqueta tom="atencao">processando</Etiqueta>
-      </div>
+  const rodape = falhando ? (
+    <div className="space-y-3">
+      <CampoTexto label="Motivo da falha" name={`motivo-falha-${item.origem}-${item.id}`}
+        rows={2} value={motivo} minimo={10}
+        onChange={(e) => setMotivo(e.target.value)}
+        placeholder="Motivo da falha informado pelo gateway." />
+      <AcoesAdmin>
+        <BotaoAcao tom="perigoCheio" Icone={X}
+          disabled={processando || motivo.trim().length < 10}
+          onClick={() => aoConcluir('recusado', motivo)}>
+          Registrar falha
+        </BotaoAcao>
+        <BotaoAcao tom="discreto" onClick={() => { setFalhando(false); setMotivo(''); }}>
+          Voltar
+        </BotaoAcao>
+      </AcoesAdmin>
+    </div>
+  ) : (
+    <AcoesAdmin>
+      <BotaoAcao tom="sucesso" Icone={Check} disabled={processando}
+        onClick={() => aoConcluir('concluido')}>
+        {item.origem === 'saque' ? 'Transferência confirmada' : 'Estorno confirmado'}
+      </BotaoAcao>
+      {/* UC 037, fluxo 9a — só o saque tem caminho de falha documentado. */}
+      {item.origem === 'saque' && (
+        <BotaoAcao tom="perigo" Icone={X} disabled={processando}
+          onClick={() => setFalhando(true)}>
+          Transferência falhou
+        </BotaoAcao>
+      )}
+    </AcoesAdmin>
+  );
 
-      <div className="mt-4 border-t border-slate-200 pt-4">
-        {falhando ? (
-          <div className="space-y-3">
-            <textarea rows={2} value={motivo} onChange={(e) => setMotivo(e.target.value)}
-              placeholder="Motivo da falha informado pelo gateway."
-              className="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 text-slate-900 placeholder:text-slate-400 focus:border-festa-600 focus:outline-none focus:ring-2 focus:ring-festa-600/30" />
-            <div className="flex flex-wrap gap-2">
-              <button type="button" disabled={processando || motivo.trim().length < 10}
-                onClick={() => aoConcluir('recusado', motivo)}
-                className="rounded-lg bg-perigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-perigo-700 disabled:opacity-50">
-                Registrar falha
-              </button>
-              <button type="button" onClick={() => { setFalhando(false); setMotivo(''); }}
-                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50">
-                Voltar
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="flex flex-wrap gap-2">
-            <button type="button" disabled={processando} onClick={() => aoConcluir('concluido')}
-              className="rounded-lg bg-sucesso-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-sucesso-700 disabled:opacity-50">
-              {item.origem === 'saque' ? 'Transferência confirmada' : 'Estorno confirmado'}
-            </button>
-            {/* UC 037, fluxo 9a — só o saque tem caminho de falha documentado. */}
-            {item.origem === 'saque' && (
-              <button type="button" disabled={processando} onClick={() => setFalhando(true)}
-                className="rounded-lg border border-perigo-600 px-4 py-2 text-sm font-medium text-perigo-700 transition-colors hover:bg-perigo-50 disabled:opacity-50">
-                Transferência falhou
-              </button>
-            )}
-          </div>
-        )}
-      </div>
-    </li>
+  return (
+    <CartaoAdmin
+      titulo={`${item.origem === 'saque' ? 'Transferência de saque' : 'Estorno de reembolso'} · ${formatarPreco(item.valor)}`}
+      subtitulo={
+        <>
+          {item.nome_conta}
+          {item.destino && (
+            <span className="mt-0.5 block text-xs text-slate-500">{item.destino}</span>
+          )}
+        </>
+      }
+      etiqueta={<Etiqueta tom="atencao" formato="ponto">processando</Etiqueta>}
+      rodape={rodape}
+    >
+      <p className="text-sm text-slate-600">
+        Aguardando o retorno do gateway. Informe abaixo o resultado que ele devolveria.
+      </p>
+    </CartaoAdmin>
   );
 }

@@ -102,7 +102,7 @@ export default function AbaConfiguracoes({ configuracoes }) {
 
   return (
     <div className="space-y-8">
-      <div className="flex gap-3 rounded-lg border border-festa-200 bg-festa-50 p-4 text-sm text-slate-700">
+      <div className="flex gap-3 rounded-xl border border-festa-100 bg-festa-50 p-4 text-sm text-slate-700">
         <Info className="mt-0.5 h-5 w-5 shrink-0 text-festa-600" aria-hidden="true" />
         <div>
           <p>
@@ -119,8 +119,12 @@ export default function AbaConfiguracoes({ configuracoes }) {
         </div>
       </div>
 
-      {mensagem && <p className="text-sm text-sucesso-700">{mensagem}</p>}
-      {aviso && <p className="text-sm text-atencao-700">{aviso}</p>}
+      {mensagem && (
+        <p className="rounded-xl bg-sucesso-50 px-4 py-3 text-sm text-sucesso-800">{mensagem}</p>
+      )}
+      {aviso && (
+        <p className="rounded-xl bg-atencao-50 px-4 py-3 text-sm text-atencao-800">{aviso}</p>
+      )}
 
       {GRUPOS.map((grupo) => {
         const chaves = Object.keys(PARAMETROS).filter(
@@ -130,15 +134,15 @@ export default function AbaConfiguracoes({ configuracoes }) {
 
         return (
           <section key={grupo.id}>
-            <h2 className="mb-3 text-base font-medium text-slate-900">{grupo.titulo}</h2>
-            <ul className="divide-y divide-slate-200 rounded-xl border border-slate-200 bg-white">
+            <h2 className="mb-3 text-base font-semibold text-slate-900">{grupo.titulo}</h2>
+            <ul className="divide-y divide-slate-200 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
               {chaves.map((chave) => {
                 const definicao = PARAMETROS[chave];
                 const registro = porChave[chave];
                 const emEdicao = editando === chave;
 
                 return (
-                  <li key={chave} className="p-4">
+                  <li key={chave} className="p-4 sm:p-5">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div className="min-w-0">
                         <p className="font-medium text-slate-900">
@@ -155,12 +159,12 @@ export default function AbaConfiguracoes({ configuracoes }) {
 
                       {!emEdicao && (
                         <div className="flex shrink-0 items-center gap-3">
-                          <span className="text-lg font-semibold text-slate-900">
+                          <span className="text-lg font-semibold text-festa-700">
                             {formatarValorParametro(chave, registro.valor)}
                           </span>
                           <button type="button" onClick={() => abrir(chave)}
                             disabled={processando}
-                            className="rounded-lg px-3 py-1.5 text-sm font-medium text-festa-700 transition-colors hover:bg-festa-50">
+                            className="rounded-lg px-3 py-2 text-sm font-medium text-festa-700 transition-colors hover:bg-festa-50 disabled:opacity-50">
                             Alterar
                           </button>
                         </div>
@@ -176,21 +180,23 @@ export default function AbaConfiguracoes({ configuracoes }) {
                             onChange={(e) => { setValorNovo(e.target.value); setErro(''); }}
                             onKeyDown={(e) => { if (e.key === 'Enter') salvar(chave); }}
                             aria-label={definicao.rotulo}
-                            className="w-40 rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-slate-900 focus:border-festa-600 focus:outline-none focus:ring-2 focus:ring-festa-600/30" />
+                            className="w-40 rounded-xl border border-festa-200 bg-white px-4 py-3 text-slate-900 focus:border-festa-600 focus:outline-none focus:ring-2 focus:ring-festa-600/25" />
                           <span className="text-sm text-slate-600">{definicao.unidade}</span>
                         </div>
                         <p className="text-xs text-slate-500">
                           Faixa aceita: {definicao.min} a {definicao.max} {definicao.unidade}.
                         </p>
-                        {erro && <p className="text-sm text-red-600">{erro}</p>}
+                        {erro && (
+                          <p className="rounded-lg bg-perigo-50 px-3 py-2 text-sm text-perigo-700">{erro}</p>
+                        )}
                         <div className="flex flex-wrap gap-2">
                           <button type="button" onClick={() => salvar(chave)} disabled={processando}
-                            className="rounded-lg bg-festa-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-festa-700 disabled:opacity-50">
+                            className="rounded-lg bg-festa-600 px-3.5 py-2 text-sm font-medium text-white transition-colors hover:bg-festa-700 disabled:cursor-not-allowed disabled:opacity-50">
                             {processando ? 'Salvando...' : 'Confirmar alteração'}
                           </button>
                           <button type="button" onClick={() => { setEditando(null); setErro(''); }}
                             disabled={processando}
-                            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50">
+                            className="rounded-lg px-3.5 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 disabled:opacity-50">
                             Cancelar
                           </button>
                         </div>
