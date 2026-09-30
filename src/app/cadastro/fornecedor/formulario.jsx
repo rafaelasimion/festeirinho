@@ -325,19 +325,24 @@ export default function FormularioCadastroFornecedor({ raioPadrao }) {
             validar={(v) => v === campos.senha ? null : 'As senhas não coincidem.'} />
         </SecaoFormulario>
 
-        {/* RN005 — a verificação não condiciona nada: é um selo de
-            confiabilidade. Enquanto está pendente o fornecedor aparece
-            normalmente na busca e recebe solicitações, e o que fica
-            oculto é só o indicador. O texto anterior dizia o contrário
-            ("antes de aparecer para os clientes") e assustava sem
-            motivo. */}
+        {/* O que passa por análise são duas coisas diferentes, e o texto
+            antigo ("seu cadastro passa por uma verificação antes de
+            aparecer para os clientes") misturava as duas:
+              RN005  o fornecedor NÃO espera aprovação — o perfil existe
+                     desde já, e a verificação apenas acende o selo;
+              RN031  o serviço SIM — nasce pendente e só entra na busca
+                     depois de aprovado (RF013, RF014).
+            Dizer aqui que ele "já aparece na busca" também não serviria:
+            a busca lista serviços (RF014), e no primeiro dia ele ainda
+            não tem nenhum aprovado. */}
         <div className="rounded-xl border border-festa-100 bg-festa-50 p-4">
           <div className="flex gap-3">
             <BadgeCheck className="mt-0.5 h-5 w-5 shrink-0 text-festa-600" aria-hidden="true" />
             <p className="text-sm text-slate-700">
-              Você já aparece na busca e pode receber solicitações desde o primeiro
-              dia. O selo de <strong className="font-medium">fornecedor verificado</strong>{' '}
-              aparece no seu perfil depois que a administração confere seus dados.
+              Seu perfil não fica esperando aprovação: ele existe desde já, e o selo
+              de <strong className="font-medium">fornecedor verificado</strong> acende
+              nele quando a administração conferir seus dados. O que passa por análise
+              antes de aparecer na busca é cada serviço que você cadastrar.
             </p>
           </div>
         </div>

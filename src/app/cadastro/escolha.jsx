@@ -89,10 +89,17 @@ export default function EscolhaCadastro() {
           Continuar
         </button>
 
-        <button type="button" onClick={() => router.back()}
-          className="w-full rounded-xl border border-festa-600 px-4 py-3.5 font-semibold text-festa-700 transition-colors hover:bg-festa-50">
-          Voltar
-        </button>
+        {/* Destino fixo, e não router.back(): esta tela é alcançada pelo
+            cabeçalho e pelo login, mas também pelo "Trocar tipo de conta"
+            de dentro dos dois formulários. Nesse caminho o histórico
+            anterior é justamente o formulário que a pessoa acabou de
+            deixar, e "Voltar" a empurrava de volta para dentro dele.
+            O início serve para os três caminhos; quem quer entrar tem o
+            link logo abaixo. */}
+        <Link href="/"
+          className="flex w-full items-center justify-center rounded-xl border border-festa-600 px-4 py-3.5 font-semibold text-festa-700 transition-colors hover:bg-festa-50">
+          Voltar ao início
+        </Link>
       </div>
 
       <p className="mt-6 text-center text-sm text-slate-600">
