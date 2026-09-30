@@ -1,7 +1,9 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { ArrowLeft, Lock } from 'lucide-react';
 import { UFS } from '@/lib/validacao';
 import {
   calcularValorFinal,
@@ -9,7 +11,16 @@ import {
   SUFIXO_PRECO,
   EXPLICACAO_COBRANCA,
 } from '@/lib/solicitacao';
-import Campo from '@/componentes/campo';
+import Campo, { CampoSelecao, CampoTexto } from '@/componentes/campo';
+import SecaoFormulario from '@/componentes/secao-formulario';
+import MolduraFoto from '@/componentes/moldura-foto';
+
+// UC 012 / RF017 — solicitação de serviço.
+//
+// Três seções, na ordem em que o fornecedor vai precisar das respostas:
+// quando e para quantos, onde, e o que dá contexto. O total fica por
+// último, fora das seções e em destaque, porque é o que a pessoa confere
+// antes de apertar o botão — e, pela RN029, não muda depois.
 
 const CAMPOS_INICIAIS = {
   dataHoraEvento: '',
@@ -28,10 +39,6 @@ const CAMPOS_INICIAIS = {
   estado: '',
   complemento: '',
 };
-
-const CLASSE_SELECT =
-  'w-full rounded-lg border border-slate-300 bg-white pl-3.5 py-2.5 text-slate-900 ' +
-  'focus:border-festa-600 focus:outline-none focus:ring-2 focus:ring-festa-600/30';
 
 // Data mínima que o calendário aceita, conforme a antecedência do serviço.
 function dataMinima(dias) {
@@ -69,6 +76,13 @@ export default function FormularioSolicitacao({ servico, tiposLocal }) {
         numeroConvidados: Number(campos.numeroConvidados),
       })
       : null;
+
+  // Qual campo ainda falta para a conta fechar. Cobrança fixa não depende
+  // de nenhum, então lá o total aparece desde o começo.
+  const faltaParaTotal =
+    servico.cobranca === 'hora' ? 'a duração'
+      : servico.cobranca === 'pessoa' ? 'o número de convidados'
+        : 'os dados do evento';
 
   // RN016/RN042 — a data precisa respeitar a antecedência mínima do serviço.
   function validarDataEvento(valor) {
@@ -121,130 +135,171 @@ export default function FormularioSolicitacao({ servico, tiposLocal }) {
   }
 
   return (
-    <main className="mx-auto max-w-xl px-6 py-10">
-      <h1 className="text-2xl font-semibold text-slate-900">{servico.nome}</h1>
-      <p className="mb-6 text-sm text-slate-600">
-        {servico.fornecedor} · {formatarPreco(servico.precoBase)}
-        {SUFIXO_PRECO[servico.cobranca]}
-      </p>
+    <main className="mx-auto w-full max-w-xl px-4 py-10 sm:px-6 sm:py-14">
+      <Link href={`/servicos/${servico.id}`}
+        className="inline-flex items-center gap-1.5 text-sm font-medium text-festa-700 hover:underline">
+        <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+        Voltar ao serviço
+      </Link>
 
-      <div className="space-y-4">
-        <p className="text-sm font-medium text-slate-700">Sobre o evento</p>
+      {/* Cabeçalho com miniatura, como o resumo da tela de pagamento: quem
+          chega aqui da busca, com várias abas abertas, reconhece pela foto
+          antes de ler o nome.
 
-        <Campo label="Data e hora do evento" name="dataHoraEvento" type="datetime-local"
-          min={dataMinima(servico.diasAntecedencia)}
-          value={campos.dataHoraEvento} onChange={aoDigitar} erro={erros.dataHoraEvento}
-          dica={`Este serviço exige ao menos ${servico.diasAntecedencia} dias de antecedência.`}
-          validar={validarDataEvento} />
+          A moldura não leva altura: o <img> dela é uma camada absoluta, e a
+          faixa da foto se estica até a altura do texto ao lado. Sem isso, a
+          foto em pé empurrava a linha inteira para baixo. */}
+      <div className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="flex">
+          <MolduraFoto foto={servico.fotoPrincipal} alt=""
+            className="w-24 shrink-0 sm:w-32" />
 
-        <Campo label="Duração (horas)" name="duracao" type="number" step="0.5" min="0.5"
-          value={campos.duracao} onChange={aoDigitar} erro={erros.duracao}
-          validar={(v) => Number(v) > 0 ? null : 'Informe a duração em horas.'} />
+          <div className="min-w-0 flex-1 p-4 sm:p-5">
+            <p className="text-xs font-semibold uppercase tracking-wide text-festa-700">
+              Solicitar serviço
+            </p>
+            <h1 className="mt-1 text-lg font-semibold text-slate-900 sm:text-xl">
+              {servico.nome}
+            </h1>
+            <p className="mt-0.5 truncate text-sm text-slate-600">{servico.fornecedor}</p>
+            <p className="mt-2 font-semibold text-festa-800">
+              {formatarPreco(servico.precoBase)}
+              <span className="text-sm font-normal text-slate-600">
+                {SUFIXO_PRECO[servico.cobranca]}
+              </span>
+            </p>
+          </div>
+        </div>
+      </div>
 
-        <Campo label="Número de convidados" name="numeroConvidados" type="number" min="1"
-          value={campos.numeroConvidados} onChange={aoDigitar} erro={erros.numeroConvidados}
-          dica={servico.capacidadeMax !== null
-            ? `Capacidade máxima deste serviço: ${servico.capacidadeMax} convidados.`
-            : null}
-          validar={validarConvidados} />
+      <div className="mt-8 space-y-4">
+        <SecaoFormulario numero={1} titulo="Sobre o evento"
+          descricao="Quando é, quanto dura e para quantas pessoas.">
+          <Campo label="Data e hora do evento" name="dataHoraEvento" type="datetime-local"
+            min={dataMinima(servico.diasAntecedencia)}
+            value={campos.dataHoraEvento} onChange={aoDigitar} erro={erros.dataHoraEvento}
+            dica={`Este serviço exige ao menos ${servico.diasAntecedencia} dias de antecedência.`}
+            validar={validarDataEvento} />
 
-        <div>
-          <label htmlFor="idTipoLocal" className="mb-1.5 block text-sm font-medium text-slate-700">
-            Tipo de local
-          </label>
-          <select id="idTipoLocal" name="idTipoLocal" value={campos.idTipoLocal}
-            onChange={aoDigitar} className={CLASSE_SELECT}>
+          <Campo label="Duração (horas)" name="duracao" type="number" step="0.5" min="0.5"
+            value={campos.duracao} onChange={aoDigitar} erro={erros.duracao}
+            validar={(v) => Number(v) > 0 ? null : 'Informe a duração em horas.'} />
+
+          <Campo label="Número de convidados" name="numeroConvidados" type="number" min="1"
+            value={campos.numeroConvidados} onChange={aoDigitar} erro={erros.numeroConvidados}
+            dica={servico.capacidadeMax !== null
+              ? `Capacidade máxima deste serviço: ${servico.capacidadeMax} convidados.`
+              : null}
+            validar={validarConvidados} />
+
+          <CampoSelecao label="Tipo de local" name="idTipoLocal" value={campos.idTipoLocal}
+            onChange={aoDigitar} erro={erros.idTipoLocal}>
             <option value="">Selecione</option>
             {tiposLocal.map((tipo) => (
               <option key={tipo.id} value={tipo.id}>{tipo.descricao}</option>
             ))}
-          </select>
-          {erros.idTipoLocal && <p className="mt-1 text-sm text-red-600">{erros.idTipoLocal}</p>}
-        </div>
+          </CampoSelecao>
+        </SecaoFormulario>
 
-        <p className="pt-2 text-sm font-medium text-slate-700">Endereço do evento</p>
+        <SecaoFormulario numero={2} titulo="Endereço do evento"
+          descricao="Onde o fornecedor precisa chegar.">
+          <Campo label="CEP" name="cep" value={campos.cep} onChange={aoDigitar}
+            inputMode="numeric" autoComplete="postal-code"
+            erro={erros.cep} placeholder="Somente números"
+            validar={(v) => v.replace(/\D/g, '').length === 8
+              ? null
+              : 'Informe um CEP com 8 dígitos.'} />
 
-        <Campo label="CEP" name="cep" value={campos.cep} onChange={aoDigitar}
-          erro={erros.cep} placeholder="Somente números"
-          validar={(v) => v.replace(/\D/g, '').length === 8
-            ? null
-            : 'Informe um CEP com 8 dígitos.'} />
+          <Campo label="Rua" name="rua" value={campos.rua} onChange={aoDigitar} erro={erros.rua}
+            autoComplete="address-line1"
+            validar={(v) => v.trim().length >= 2 ? null : 'Informe a rua.'} />
 
-        <Campo label="Rua" name="rua" value={campos.rua} onChange={aoDigitar} erro={erros.rua}
-          validar={(v) => v.trim().length >= 2 ? null : 'Informe a rua.'} />
+          {/* Número e complemento são curtos, então dividem a linha até no
+              celular; os outros pares só se dividem a partir do sm. */}
+          <div className="grid grid-cols-2 gap-5">
+            <Campo label="Número" name="numero" value={campos.numero}
+              inputMode="numeric"
+              onChange={aoDigitar} erro={erros.numero}
+              validar={(v) => v.trim().length >= 1 ? null : 'Informe o número.'} />
+            <Campo label="Complemento" name="complemento" value={campos.complemento}
+              onChange={aoDigitar} erro={erros.complemento} placeholder="Opcional" />
+          </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <Campo label="Número" name="numero" value={campos.numero}
-            onChange={aoDigitar} erro={erros.numero}
-            validar={(v) => v.trim().length >= 1 ? null : 'Informe o número.'} />
-          <Campo label="Complemento" name="complemento" value={campos.complemento}
-            onChange={aoDigitar} erro={erros.complemento} />
-        </div>
+          <Campo label="Bairro" name="bairro" value={campos.bairro}
+            onChange={aoDigitar} erro={erros.bairro}
+            validar={(v) => v.trim().length >= 2 ? null : 'Informe o bairro.'} />
 
-        <Campo label="Bairro" name="bairro" value={campos.bairro}
-          onChange={aoDigitar} erro={erros.bairro}
-          validar={(v) => v.trim().length >= 2 ? null : 'Informe o bairro.'} />
-
-        <div className="grid grid-cols-2 gap-4">
-          <Campo label="Cidade" name="cidade" value={campos.cidade}
-            onChange={aoDigitar} erro={erros.cidade}
-            validar={(v) => v.trim().length >= 2 ? null : 'Informe a cidade.'} />
-          <div>
-            <label htmlFor="estado" className="mb-1.5 block text-sm font-medium text-slate-700">
-              Estado
-            </label>
-            <select id="estado" name="estado" value={campos.estado}
-              onChange={aoDigitar} className={CLASSE_SELECT}>
+          <div className="grid gap-5 sm:grid-cols-2">
+            <Campo label="Cidade" name="cidade" value={campos.cidade}
+              autoComplete="address-level2"
+              onChange={aoDigitar} erro={erros.cidade}
+              validar={(v) => v.trim().length >= 2 ? null : 'Informe a cidade.'} />
+            <CampoSelecao label="Estado" name="estado" value={campos.estado}
+              onChange={aoDigitar} erro={erros.estado}>
               <option value="">UF</option>
               {UFS.map((uf) => <option key={uf} value={uf}>{uf}</option>)}
-            </select>
-            {erros.estado && <p className="mt-1 text-sm text-red-600">{erros.estado}</p>}
+            </CampoSelecao>
           </div>
-        </div>
+        </SecaoFormulario>
 
-        <p className="pt-2 text-sm font-medium text-slate-700">Detalhes da festa (opcional)</p>
+        <SecaoFormulario numero={3} titulo="Detalhes da festa"
+          descricao="Opcional, mas ajuda o fornecedor a se preparar.">
+          <Campo label="Tema" name="tema" value={campos.tema}
+            onChange={aoDigitar} erro={erros.tema}
+            placeholder="Ex.: fundo do mar" />
 
-        <Campo label="Tema" name="tema" value={campos.tema}
-          onChange={aoDigitar} erro={erros.tema} />
+          <div className="grid gap-5 sm:grid-cols-2">
+            <Campo label="Nome do aniversariante" name="nomeAniversariante"
+              value={campos.nomeAniversariante} onChange={aoDigitar}
+              erro={erros.nomeAniversariante} />
+            <Campo label="Idade" name="idadeAniversariante" type="number" min="0" max="255"
+              value={campos.idadeAniversariante} onChange={aoDigitar}
+              erro={erros.idadeAniversariante} />
+          </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <Campo label="Nome do aniversariante" name="nomeAniversariante"
-            value={campos.nomeAniversariante} onChange={aoDigitar} erro={erros.nomeAniversariante} />
-          <Campo label="Idade" name="idadeAniversariante" type="number" min="0" max="255"
-            value={campos.idadeAniversariante} onChange={aoDigitar} erro={erros.idadeAniversariante} />
-        </div>
+          <CampoTexto label="Observações" name="observacoes" rows={3}
+            value={campos.observacoes} onChange={aoDigitar} erro={erros.observacoes}
+            placeholder="Alguma restrição alimentar, acesso ao local, horário de montagem." />
+        </SecaoFormulario>
 
-        <div>
-          <label htmlFor="observacoes" className="mb-1.5 block text-sm font-medium text-slate-700">
-            Observações
-          </label>
-          <textarea id="observacoes" name="observacoes" rows={3} value={campos.observacoes}
-            onChange={aoDigitar}
-            className="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 text-slate-900 focus:border-festa-600 focus:outline-none focus:ring-2 focus:ring-festa-600/30" />
-        </div>
-
-        <div className="rounded-lg border border-festa-200 bg-festa-50 p-4">
+        {/* RF028/RN029 — o total fica fora das seções e maior que tudo:
+            é o número que a pessoa confere antes de enviar, e depois do
+            envio ele não muda. */}
+        <div className="rounded-2xl border border-festa-200 bg-festa-50 p-5 sm:p-6">
           <p className="text-sm text-slate-600">Valor total</p>
-          <p className="text-2xl font-semibold text-festa-800">
-            {valorFinal === null ? '—' : formatarPreco(valorFinal)}
-          </p>
-          <p className="mt-1 text-xs text-slate-600">
+          {/* Enquanto falta o campo que multiplica o preço, o lugar do
+              total dizia só "—", que não informa nada. Agora ele diz qual
+              campo destrava a conta. */}
+          {valorFinal === null ? (
+            <p className="mt-1 text-base font-medium text-slate-500">
+              Informe {faltaParaTotal} para ver o total.
+            </p>
+          ) : (
+            <p className="mt-0.5 text-3xl font-semibold text-festa-800">
+              {formatarPreco(valorFinal)}
+            </p>
+          )}
+          <p className="mt-2 text-sm text-slate-600">
             {EXPLICACAO_COBRANCA[servico.cobranca]}
-            {' '}O envio da solicitação confirma este valor; não há negociação depois.
+          </p>
+          <p className="mt-3 flex items-start gap-2 border-t border-festa-200 pt-3 text-xs text-slate-600">
+            <Lock className="mt-px h-3.5 w-3.5 shrink-0 text-festa-600" aria-hidden="true" />
+            O envio confirma este valor, e ele não é negociado depois. Os demais dados
+            também não podem ser alterados — para mudar algo, é preciso enviar uma
+            nova solicitação.
           </p>
         </div>
 
-        {erroGeral && <p className="text-sm text-red-600">{erroGeral}</p>}
+        {erroGeral && (
+          <p className="rounded-xl bg-perigo-50 px-4 py-3 text-sm text-perigo-700">
+            {erroGeral}
+          </p>
+        )}
 
         <button type="button" onClick={enviar} disabled={enviando}
-          className="w-full rounded-lg bg-festa-600 px-4 py-2.5 font-medium text-white transition-colors hover:bg-festa-700 disabled:opacity-50">
+          className="w-full rounded-xl bg-festa-600 px-4 py-3.5 font-semibold text-white transition-colors hover:bg-festa-700 disabled:cursor-not-allowed disabled:opacity-50">
           {enviando ? 'Enviando...' : 'Enviar solicitação'}
         </button>
-
-        <p className="text-xs text-slate-500">
-          Os dados informados não podem ser alterados depois do envio. Se precisar
-          mudar algo, será necessário enviar uma nova solicitação.
-        </p>
       </div>
     </main>
   );

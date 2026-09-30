@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import {
   Star, Check, X, MessageCircle, CheckCircle2, XCircle, Download, Flag,
 } from 'lucide-react';
+import { CampoSelecao } from '@/componentes/campo';
 import Etiqueta from '@/componentes/etiqueta';
 import DialogoCancelamento from '@/componentes/dialogo-cancelamento';
 import CartaoSolicitacao, { AvisoCartao } from '@/componentes/cartao-solicitacao';
@@ -25,10 +26,6 @@ import { ROTULO_MOTIVO_CONTESTACAO } from '@/lib/contestacao';
 import Chat from '@/componentes/chat';
 import DialogoDenuncia from '@/componentes/dialogo-denuncia';
 import { ROTULO_RESULTADO_DENUNCIA } from '@/lib/denuncia';
-
-const CLASSE_SELECT =
-  'w-full rounded-lg border border-slate-300 bg-white pl-3.5 py-2.5 text-slate-900 ' +
-  'focus:border-festa-600 focus:outline-none focus:ring-2 focus:ring-festa-600/30';
 
 function formatarDataHora(valor) {
   if (!valor) return '';
@@ -173,21 +170,21 @@ export default function ListaSolicitacoesRecebidas({
                 {/* UC 015 — recusar exige motivo. */}
                 {painel === 'recusar' && (
                   <div className="space-y-3">
-                    <div>
-                      <label htmlFor={`motivo-${solicitacao.id}`}
-                        className="mb-1.5 block text-sm font-medium text-slate-700">
-                        Motivo da recusa
-                      </label>
-                      <select id={`motivo-${solicitacao.id}`} value={motivo}
-                        onChange={(e) => setMotivo(e.target.value)}
-                        className={CLASSE_SELECT}>
-                        <option value="">Selecione</option>
-                        <option value="agenda_indisponivel">Agenda indisponível</option>
-                        <option value="fora_da_area">Fora da área de atendimento</option>
-                        <option value="inviabilidade">Inviabilidade técnica ou logística</option>
-                        <option value="outro">Outro motivo</option>
-                      </select>
-                    </div>
+                    {/* As opções saem do mesmo mapa que desenha o motivo
+                        depois de recusada, logo abaixo nesta tela. Escritas
+                        à mão, as duas listas já tinham divergido: aqui dizia
+                        "Inviabilidade técnica ou logística" e o registro da
+                        recusa, "Inviabilidade técnica, operacional ou
+                        logística". O nome é único por cartão porque vários
+                        podem estar abertos ao mesmo tempo. */}
+                    <CampoSelecao label="Motivo da recusa"
+                      name={`motivo-${solicitacao.id}`} value={motivo}
+                      onChange={(e) => setMotivo(e.target.value)}>
+                      <option value="">Selecione</option>
+                      {Object.entries(ROTULO_MOTIVO_RECUSA).map(([valor, rotulo]) => (
+                        <option key={valor} value={valor}>{rotulo}</option>
+                      ))}
+                    </CampoSelecao>
                     <div className="flex flex-wrap gap-2">
                       <button type="button" disabled={processando || motivo === ''}
                         onClick={() => acionar(

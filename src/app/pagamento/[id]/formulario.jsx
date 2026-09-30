@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { QrCode, Barcode, CreditCard, Plus } from 'lucide-react';
+import { CampoSelecao } from '@/componentes/campo';
 import CartaoSolicitacao, { AvisoCartao } from '@/componentes/cartao-solicitacao';
 import Etiqueta from '@/componentes/etiqueta';
 import { formatarPreco, ROTULO_FORMA_PAGAMENTO } from '@/lib/solicitacao';
@@ -270,20 +271,14 @@ export default function FormularioPagamento({
                 Cadastrar cartão
               </Link>
             ) : (
-              <>
-                <label htmlFor="cartao" className="mb-1.5 block text-sm font-medium text-slate-700">
-                  Qual cartão
-                </label>
-                <select id="cartao" value={idCartao}
-                  onChange={(e) => setIdCartao(e.target.value)}
-                  className="w-full rounded-xl border border-festa-200 bg-white pl-4 py-3 text-slate-900 focus:border-festa-600 focus:outline-none focus:ring-2 focus:ring-festa-600/25">
-                  {cartoes.map((cartao) => (
-                    <option key={cartao.id} value={cartao.id}>
-                      {rotuloCartao(cartao)}
-                    </option>
-                  ))}
-                </select>
-              </>
+              <CampoSelecao label="Qual cartão" name="cartao" value={idCartao}
+                onChange={(e) => setIdCartao(e.target.value)}>
+                {cartoes.map((cartao) => (
+                  <option key={cartao.id} value={cartao.id}>
+                    {rotuloCartao(cartao)}
+                  </option>
+                ))}
+              </CampoSelecao>
             )}
           </OpcaoPagamento>
         </div>

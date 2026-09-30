@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, KeyRound, Trash2 } from 'lucide-react';
-import Campo from '@/componentes/campo';
+import Campo, { CampoSelecao } from '@/componentes/campo';
 import { SecaoMenu, ItemMenu } from '@/componentes/menu-conta';
 import {
   UFS, validarEmail, validarTelefone, validarNomeUsuario,
@@ -14,10 +14,6 @@ import {
 // vitrine ficam em "Meu perfil": só aqueles disparam nova verificação
 // (RN067), e misturar os dois num formulário só faria o fornecedor perder
 // o selo ao corrigir o próprio telefone.
-
-const CLASSE_SELECT =
-  'w-full rounded-lg border border-slate-300 bg-white pl-3.5 py-2.5 text-slate-900 ' +
-  'focus:border-festa-600 focus:outline-none focus:ring-2 focus:ring-festa-600/30';
 
 export default function FormularioConta({ dados, documento, ehFornecedor }) {
   const router = useRouter();
@@ -157,17 +153,11 @@ export default function FormularioConta({ dados, documento, ehFornecedor }) {
           onChange={aoDigitar} erro={erros.telefone}
           validar={(v) => validarTelefone(v) ? null : 'Informe o telefone com DDD.'} />
 
-        <div>
-          <label htmlFor="estado" className="mb-1.5 block text-sm font-medium text-slate-700">
-            Estado
-          </label>
-          <select id="estado" name="estado" value={campos.estado}
-            onChange={aoDigitar} className={CLASSE_SELECT}>
-            <option value="">Selecione</option>
-            {UFS.map((uf) => <option key={uf} value={uf}>{uf}</option>)}
-          </select>
-          {erros.estado && <p className="mt-1 text-sm text-red-600">{erros.estado}</p>}
-        </div>
+        <CampoSelecao label="Estado" name="estado" value={campos.estado}
+          onChange={aoDigitar} erro={erros.estado}>
+          <option value="">Selecione</option>
+          {UFS.map((uf) => <option key={uf} value={uf}>{uf}</option>)}
+        </CampoSelecao>
 
         <Campo label="Cidade" name="cidade" value={campos.cidade}
           onChange={aoDigitar} erro={erros.cidade}

@@ -14,21 +14,25 @@ export default async function SolicitarServico({ params }) {
   if (!sessao) redirect('/login');
   if (sessao.tipoUsuario !== 'cliente') {
     return (
-      <main className="mx-auto max-w-xl px-6 py-10">
-        <h1 className="mb-2 text-2xl font-semibold">Solicitação indisponível</h1>
-        <p className="text-sm text-gray-600">
+      <main className="mx-auto w-full max-w-xl px-4 py-10 sm:px-6 sm:py-14">
+        <h1 className="text-2xl font-semibold text-slate-900">Solicitação indisponível</h1>
+        <p className="mt-1.5 text-slate-600">
           Apenas contas de cliente podem solicitar serviços.
         </p>
       </main>
     );
   }
 
+  // A foto principal vem por LEFT JOIN: serviço sem foto continua podendo
+  // ser solicitado, e a moldura desenha o padrão de festa no lugar.
   const [servicos] = await pool.execute(
     `SELECT s.id, s.nome, s.preco_base, s.capacidade_max, s.dias_antecedencia,
-            cb.descricao AS cobranca, f.nome_exibicao
+            cb.descricao AS cobranca, f.nome_exibicao,
+            fp.imagem_url AS foto_principal
        FROM servico s
        JOIN fornecedor f ON f.id = s.id_fornecedor
        JOIN cobranca cb  ON cb.id = s.id_cobranca
+       LEFT JOIN foto_servico fp ON fp.id_servico = s.id AND fp.principal = TRUE
       WHERE s.id = ?
         AND s.status_servico = 'ativo'
         AND s.status_verificacao = 'aprovado'
@@ -54,6 +58,7 @@ export default async function SolicitarServico({ params }) {
         diasAntecedencia: servicos[0].dias_antecedencia,
         cobranca: servicos[0].cobranca,
         fornecedor: servicos[0].nome_exibicao,
+        fotoPrincipal: servicos[0].foto_principal,
       }}
       tiposLocal={tiposLocal}
     />

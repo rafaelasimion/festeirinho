@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { AlertTriangle } from 'lucide-react';
-import Campo from '@/componentes/campo';
+import Campo, { CampoSelecao } from '@/componentes/campo';
 import {
   TIPOS_RECEBIMENTO,
   TIPOS_CHAVE_PIX,
@@ -15,10 +15,6 @@ import {
 // Serve ao saque do fornecedor e ao reembolso do cliente: a estrutura é a
 // mesma, só muda quem é o titular. O titular vem pré-preenchido com os
 // dados da própria conta, porque a RN061 exige que os dados pertençam a ele.
-
-const CLASSE_SELECT =
-  'w-full rounded-lg border border-slate-300 bg-white pl-3.5 py-2.5 text-slate-900 ' +
-  'focus:border-festa-600 focus:outline-none focus:ring-2 focus:ring-festa-600/30';
 
 export default function FormularioRecebimento({
   titular,            // { nome, documento } — pré-preenchimento
@@ -93,19 +89,13 @@ export default function FormularioRecebimento({
 
       {ehPix ? (
         <>
-          <div>
-            <label htmlFor="tipoChavePix" className="mb-1.5 block text-sm font-medium text-slate-700">
-              Tipo da chave
-            </label>
-            <select id="tipoChavePix" name="tipoChavePix" value={campos.tipoChavePix}
-              onChange={aoDigitar} className={CLASSE_SELECT}>
-              <option value="">Selecione</option>
-              {TIPOS_CHAVE_PIX.map(({ valor, rotulo }) => (
-                <option key={valor} value={valor}>{rotulo}</option>
-              ))}
-            </select>
-            {erros.tipoChavePix && <p className="mt-1 text-sm text-red-600">{erros.tipoChavePix}</p>}
-          </div>
+          <CampoSelecao label="Tipo da chave" name="tipoChavePix" value={campos.tipoChavePix}
+            onChange={aoDigitar} erro={erros.tipoChavePix}>
+            <option value="">Selecione</option>
+            {TIPOS_CHAVE_PIX.map(({ valor, rotulo }) => (
+              <option key={valor} value={valor}>{rotulo}</option>
+            ))}
+          </CampoSelecao>
           <Campo label="Chave Pix" name="chavePix" value={campos.chavePix}
             onChange={aoDigitar} erro={erros.chavePix} />
         </>
@@ -113,19 +103,13 @@ export default function FormularioRecebimento({
         <>
           <Campo label="Banco" name="banco" value={campos.banco}
             onChange={aoDigitar} erro={erros.banco} placeholder="Ex.: Banco do Brasil" />
-          <div>
-            <label htmlFor="tipoConta" className="mb-1.5 block text-sm font-medium text-slate-700">
-              Tipo de conta
-            </label>
-            <select id="tipoConta" name="tipoConta" value={campos.tipoConta}
-              onChange={aoDigitar} className={CLASSE_SELECT}>
-              <option value="">Selecione</option>
-              {TIPOS_CONTA.map(({ valor, rotulo }) => (
-                <option key={valor} value={valor}>{rotulo}</option>
-              ))}
-            </select>
-            {erros.tipoConta && <p className="mt-1 text-sm text-red-600">{erros.tipoConta}</p>}
-          </div>
+          <CampoSelecao label="Tipo de conta" name="tipoConta" value={campos.tipoConta}
+            onChange={aoDigitar} erro={erros.tipoConta}>
+            <option value="">Selecione</option>
+            {TIPOS_CONTA.map(({ valor, rotulo }) => (
+              <option key={valor} value={valor}>{rotulo}</option>
+            ))}
+          </CampoSelecao>
           <div className="grid grid-cols-2 gap-4">
             <Campo label="Agência" name="agencia" value={campos.agencia}
               onChange={aoDigitar} erro={erros.agencia} placeholder="Somente números" />

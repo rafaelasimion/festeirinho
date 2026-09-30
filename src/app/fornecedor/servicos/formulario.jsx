@@ -3,8 +3,9 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft } from 'lucide-react';
-import Campo from '@/componentes/campo';
+import { ArrowLeft, Info } from 'lucide-react';
+import Campo, { CampoSelecao, CampoTexto } from '@/componentes/campo';
+import SecaoFormulario from '@/componentes/secao-formulario';
 import GerenciarFotos from '@/componentes/gerenciar-fotos';
 import { ROTULO_COBRANCA } from '@/lib/solicitacao';
 
@@ -17,10 +18,6 @@ const CAMPOS_VAZIOS = {
   capacidadeMax: '',
   diasAntecedencia: '',
 };
-
-const CLASSE_SELECT =
-  'w-full rounded-lg border border-slate-300 bg-white pl-3.5 py-2.5 text-slate-900 ' +
-  'focus:border-festa-600 focus:outline-none focus:ring-2 focus:ring-festa-600/30';
 
 // O formulário em si. Sem ?novo nem ?editar não há o que fazer nesta
 // tela, e o fluxo volta para a vitrine.
@@ -189,119 +186,140 @@ export default function FormularioServico() {
   const editandoExistente = typeof editando === 'number';
 
   return (
-    <main className="mx-auto w-full max-w-2xl px-4 py-8 sm:px-6">
+    <main className="mx-auto w-full max-w-2xl px-4 py-10 sm:px-6 sm:py-14">
       <Link href="/fornecedor/vitrine"
-        className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:underline">
+        className="inline-flex items-center gap-1.5 text-sm font-medium text-festa-700 hover:underline">
         <ArrowLeft className="h-4 w-4" aria-hidden="true" />
         Voltar para a vitrine
       </Link>
 
-      <h1 className="mt-4 mb-6 text-2xl font-semibold text-slate-900">
-        {editando === 'novo' ? 'Novo serviço' : 'Editar serviço'}
-      </h1>
+      <div className="mt-6 text-center">
+        <h1 className="text-2xl font-semibold text-slate-900 sm:text-3xl">
+          {editando === 'novo' ? 'Novo serviço' : 'Editar serviço'}
+        </h1>
+        <p className="mt-1.5 text-slate-600">
+          {editando === 'novo'
+            ? 'É assim que ele vai aparecer para os clientes.'
+            : 'As mudanças valem para novas solicitações, não para as que já existem.'}
+        </p>
+      </div>
 
-      {mensagem && <p className="mb-4 text-sm text-sucesso-700">{mensagem}</p>}
-      {erroGeral && <p className="mb-4 text-sm text-perigo-600">{erroGeral}</p>}
+      {mensagem && (
+        <p className="mt-6 rounded-xl bg-sucesso-50 px-4 py-3 text-sm text-sucesso-800">
+          {mensagem}
+        </p>
+      )}
+      {erroGeral && (
+        <p className="mt-6 rounded-xl bg-perigo-50 px-4 py-3 text-sm text-perigo-700">
+          {erroGeral}
+        </p>
+      )}
 
       {editando !== null && (
-        <div className="mb-8 space-y-4 rounded-2xl border border-slate-200 bg-white p-5">
-          <Campo label="Nome do serviço" name="nome" value={campos.nome}
-            onChange={aoDigitar} erro={erros.nome}
-            validar={(v) => v.trim().length >= 3 ? null : 'Informe o nome do serviço.'} />
+        <div className="mt-8 space-y-4">
+          <SecaoFormulario numero={1} titulo="O que você oferece"
+            descricao="O que o cliente lê antes de decidir.">
+            <Campo label="Nome do serviço" name="nome" value={campos.nome}
+              onChange={aoDigitar} erro={erros.nome}
+              placeholder="Ex.: Buffet completo para 50 pessoas"
+              validar={(v) => v.trim().length >= 3 ? null : 'Informe o nome do serviço.'} />
 
-          <div>
-            <label htmlFor="descricao" className="mb-1.5 block text-sm font-medium text-slate-700">
-              Descrição
-            </label>
-            <textarea id="descricao" name="descricao" rows={4} value={campos.descricao}
-              onChange={aoDigitar}
-              className="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 text-slate-900 focus:border-festa-600 focus:outline-none focus:ring-2 focus:ring-festa-600/30" />
-            <p className="mt-1 text-xs text-slate-500">
-              {campos.descricao.trim().length}/20 caracteres mínimos.
-            </p>
-            {erros.descricao && <p className="mt-1 text-sm text-perigo-600">{erros.descricao}</p>}
-          </div>
+            <CampoTexto label="Descrição" name="descricao" rows={4}
+              value={campos.descricao} onChange={aoDigitar} erro={erros.descricao}
+              minimo={20}
+              placeholder="O que está incluso, para que tipo de festa, o que você leva."
+              validar={(v) => v.trim().length >= 20
+                ? null
+                : 'Descreva o serviço em ao menos 20 caracteres.'} />
 
-          <div>
-            <label htmlFor="idCategoria" className="mb-1.5 block text-sm font-medium text-slate-700">
-              Categoria
-            </label>
-            <select id="idCategoria" name="idCategoria" value={campos.idCategoria}
-              onChange={aoDigitar} className={CLASSE_SELECT}>
+            <CampoSelecao label="Categoria" name="idCategoria" value={campos.idCategoria}
+              onChange={aoDigitar} erro={erros.idCategoria}>
               <option value="">Selecione</option>
               {opcoes?.categorias?.map((categoria) => (
                 <option key={categoria.id} value={categoria.id}>{categoria.nome}</option>
               ))}
-            </select>
-            {erros.idCategoria && <p className="mt-1 text-sm text-perigo-600">{erros.idCategoria}</p>}
-          </div>
+            </CampoSelecao>
+          </SecaoFormulario>
 
-          <div>
-            <label htmlFor="idCobranca" className="mb-1.5 block text-sm font-medium text-slate-700">
-              Forma de cobrança
-            </label>
-            <select id="idCobranca" name="idCobranca" value={campos.idCobranca}
-              onChange={aoDigitar} className={CLASSE_SELECT}>
+          <SecaoFormulario numero={2} titulo="Preço e limites"
+            descricao="Como o valor é calculado e até onde você atende.">
+            <CampoSelecao label="Forma de cobrança" name="idCobranca" value={campos.idCobranca}
+              onChange={aoDigitar} erro={erros.idCobranca}
+              dica="Define por quanto o preço base é multiplicado na solicitação.">
               <option value="">Selecione</option>
               {opcoes?.cobrancas?.map((cobranca) => (
                 <option key={cobranca.id} value={cobranca.id}>
                   {ROTULO_COBRANCA[cobranca.descricao]}
                 </option>
               ))}
-            </select>
-            {erros.idCobranca && <p className="mt-1 text-sm text-perigo-600">{erros.idCobranca}</p>}
-          </div>
+            </CampoSelecao>
 
-          <Campo label="Preço base (R$)" name="precoBase" type="number" step="0.01" min="0.01"
-            value={campos.precoBase} onChange={aoDigitar} erro={erros.precoBase}
-            validar={(v) => Number(v) > 0 ? null : 'Informe um preço maior que zero.'} />
+            <Campo label="Preço base (R$)" name="precoBase" type="number" step="0.01" min="0.01"
+              value={campos.precoBase} onChange={aoDigitar} erro={erros.precoBase}
+              validar={(v) => Number(v) > 0 ? null : 'Informe um preço maior que zero.'} />
 
-          <Campo label="Capacidade máxima de convidados" name="capacidadeMax" type="number" min="1"
-            value={campos.capacidadeMax} onChange={aoDigitar} erro={erros.capacidadeMax}
-            dica="Deixe em branco se não houver limite."
-            validar={(v) => v === '' || Number(v) > 0
-              ? null
-              : 'Informe uma capacidade maior que zero ou deixe em branco.'} />
+            <div className="grid gap-5 sm:grid-cols-2">
+              <Campo label="Capacidade máxima" name="capacidadeMax" type="number" min="1"
+                value={campos.capacidadeMax} onChange={aoDigitar} erro={erros.capacidadeMax}
+                dica="Em branco: sem limite."
+                validar={(v) => v === '' || Number(v) > 0
+                  ? null
+                  : 'Informe uma capacidade maior que zero ou deixe em branco.'} />
 
-          <Campo label="Antecedência mínima (dias)" name="diasAntecedencia" type="number"
-            min={antecedenciaMinima}
-            value={campos.diasAntecedencia} onChange={aoDigitar} erro={erros.diasAntecedencia}
-            dica={`Mínimo permitido pela plataforma: ${opcoes ? antecedenciaMinima : '...'} dias.`}
-            validar={(v) => Number(v) >= antecedenciaMinima
-              ? null
-              : `A antecedência mínima permitida é de ${antecedenciaMinima} dias.`} />
+              <Campo label="Antecedência mínima (dias)" name="diasAntecedencia" type="number"
+                min={antecedenciaMinima}
+                value={campos.diasAntecedencia} onChange={aoDigitar} erro={erros.diasAntecedencia}
+                dica={`Mínimo da plataforma: ${opcoes ? antecedenciaMinima : '...'} dias.`}
+                validar={(v) => Number(v) >= antecedenciaMinima
+                  ? null
+                  : `A antecedência mínima permitida é de ${antecedenciaMinima} dias.`} />
+            </div>
+          </SecaoFormulario>
 
           {/* RF012 — fotos, na mesma tela da edição. Só aparecem quando o
               serviço já existe; num serviço novo, logo depois de salvar. */}
-          <div className="border-t border-slate-200 pt-4">
-            <p className="mb-1 text-sm font-medium text-slate-700">Fotos</p>
+          <SecaoFormulario numero={3} titulo="Fotos"
+            descricao={editandoExistente
+              ? 'Salvas na hora, sem precisar clicar em Salvar.'
+              : 'Liberadas assim que o serviço for salvo pela primeira vez.'}>
             {editandoExistente ? (
-              <>
-                <p className="mb-3 text-xs text-slate-500">
-                  As alterações nas fotos são salvas na hora, sem precisar clicar em Salvar.
-                </p>
-                <GerenciarFotos idServico={editando} aoAlterar={carregarServicos} />
-              </>
+              <GerenciarFotos idServico={editando} aoAlterar={carregarServicos} />
             ) : (
-              <p className="text-sm text-slate-500">
-                Salve o serviço para adicionar as fotos.
+              <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 text-center text-sm text-slate-500">
+                A foto precisa de um serviço para ficar pendurada. Salve abaixo e
+                o campo aparece aqui.
               </p>
             )}
+          </SecaoFormulario>
+
+          {/* RN031 e RN067 — quem cadastra precisa saber disto ANTES de
+              escrever, não depois de salvar: o serviço nasce pendente e não
+              aparece na busca até ser aprovado, e mexer em nome, descrição,
+              categoria, preço ou fotos devolve um serviço já aprovado à
+              análise. A tela antes só dizia isso na mensagem pós-salvamento. */}
+          <div className="rounded-xl border border-festa-100 bg-festa-50 p-4">
+            <div className="flex gap-3">
+              <Info className="mt-0.5 h-5 w-5 shrink-0 text-festa-600" aria-hidden="true" />
+              <p className="text-sm text-slate-700">
+                {editando === 'novo'
+                  ? 'Todo serviço passa pela análise da administração antes de aparecer na busca — é a conferência de que ele cabe no escopo de festas infantis.'
+                  : 'Mudar nome, descrição, categoria, preço ou fotos devolve o serviço à análise, e ele sai da busca até a nova aprovação. As solicitações em andamento não são afetadas.'}
+              </p>
+            </div>
           </div>
 
-          <div className="flex gap-2 border-t border-slate-200 pt-4">
+          <div className="grid gap-3 sm:grid-cols-2">
             <button type="button" onClick={salvar} disabled={salvando}
-              className="rounded-lg bg-festa-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-festa-700 disabled:opacity-50">
+              className="w-full rounded-xl bg-festa-600 px-4 py-3.5 font-semibold text-white transition-colors hover:bg-festa-700 disabled:cursor-not-allowed disabled:opacity-50">
               {salvando ? 'Salvando...' : 'Salvar'}
             </button>
             <button type="button" onClick={() => router.push('/fornecedor/vitrine')}
-              className="rounded-lg border border-festa-600 px-4 py-2 text-sm font-medium text-festa-700 transition-colors hover:bg-festa-50">
+              className="w-full rounded-xl border border-festa-600 bg-white px-4 py-3.5 font-semibold text-festa-700 transition-colors hover:bg-festa-50">
               {editandoExistente ? 'Concluir' : 'Cancelar'}
             </button>
           </div>
         </div>
       )}
-
     </main>
   );
 }
