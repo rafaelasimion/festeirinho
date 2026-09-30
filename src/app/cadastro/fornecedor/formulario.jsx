@@ -1,23 +1,27 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { User, Building2, Check } from 'lucide-react';
+import { ArrowLeft, User, Building2, Check, BadgeCheck } from 'lucide-react';
 import {
   UFS, dataMaximaNascimento, IDADE_MINIMA,
   validarCPF, validarCNPJ, validarEmail, validarTelefone,
   validarNomeUsuario, validarMaioridade, validarURL,
 } from '@/lib/validacao';
-import Campo from '@/componentes/campo';
+import Campo, { CampoSelecao, CampoTexto } from '@/componentes/campo';
+import SecaoFormulario from '@/componentes/secao-formulario';
+import MolduraAuth from '@/componentes/moldura-auth';
 import CapturaLocalizacao from '@/componentes/captura-localizacao';
+import AvisoCpfOutroPapel from '@/componentes/aviso-cpf-outro-papel';
 
-const CLASSE_SELECT =
-  'w-full rounded-lg border border-slate-300 bg-white pl-3.5 py-2.5 text-slate-900 ' +
-  'focus:border-festa-600 focus:outline-none focus:ring-2 focus:ring-festa-600/30';
-
-const CLASSE_TEXTAREA =
-  'w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 text-slate-900 ' +
-  'focus:border-festa-600 focus:outline-none focus:ring-2 focus:ring-festa-600/30';
+// UC 002 / RF002 — cadastro de fornecedor.
+//
+// São dezoito campos, e a ordem importa mais aqui do que no cadastro de
+// cliente: a escolha PF/PJ decide quais campos existem, então ela vem
+// primeiro e os documentos aparecem logo abaixo dela, não trinta linhas
+// depois. As quatro seções respondem uma pergunta cada — quem é, o que
+// faz, onde atende, como entra.
 
 const TIPOS_PESSOA = [
   { valor: 'PF', rotulo: 'Pessoa física', detalhe: 'Atuo com meu CPF', Icone: User },
@@ -111,211 +115,258 @@ export default function FormularioCadastroFornecedor({ raioPadrao }) {
   }
 
   return (
-    <main className="mx-auto max-w-xl p-6">
-      <h1 className="mb-6 text-2xl font-semibold text-slate-900">Criar conta de fornecedor</h1>
+    <MolduraAuth largura="max-w-xl">
+      <Link href="/cadastro"
+        className="inline-flex items-center gap-1.5 text-sm font-medium text-festa-700 hover:underline">
+        <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+        Trocar tipo de conta
+      </Link>
 
-      <div className="space-y-4">
-        <p className="text-sm font-medium text-slate-700">Dados de acesso</p>
+      <div className="mt-6 text-center">
+        <h1 className="text-2xl font-semibold text-slate-900 sm:text-3xl">
+          Criar conta de fornecedor
+        </h1>
+        <p className="mt-1.5 text-slate-600">
+          Depois disso você já pode cadastrar serviços e receber solicitações.
+        </p>
+      </div>
 
-        <Campo label="Nome do responsável" name="nome" value={campos.nome}
-          onChange={aoDigitar} erro={erros.nome}
-          validar={(v) => v.trim().length >= 3 ? null : 'Informe o nome do responsável.'} />
+      <div className="mt-8 space-y-4">
+        <SecaoFormulario numero={1} titulo="Quem você é"
+          descricao="Os documentos que a plataforma verifica.">
+          {/* Radio de verdade, escondido visualmente: mantém navegação por
+              setas do teclado e leitura correta por leitor de tela. */}
+          <fieldset className="min-w-0">
+            <legend className="mb-1.5 text-sm font-medium text-slate-700">
+              Tipo de pessoa
+            </legend>
 
-        <Campo label="Nome de usuário" name="nomeUsuario" value={campos.nomeUsuario}
-          onChange={aoDigitar} erro={erros.nomeUsuario}
-          validar={(v) => validarNomeUsuario(v)
-            ? null
-            : 'Use de 3 a 50 caracteres: letras, números, ponto ou _.'} />
+            <div className="grid grid-cols-2 gap-3">
+              {TIPOS_PESSOA.map(({ valor, rotulo, detalhe, Icone }) => {
+                const selecionado = campos.tipoPessoa === valor;
+                return (
+                  // Tudo em coluna: o ícone numa linha própria, depois o
+                  // rótulo, depois o detalhe. Lado a lado, o ícone roubava
+                  // largura e "Pessoa jurídica" quebrava em duas linhas
+                  // enquanto o selo de selecionado passava por cima.
+                  <label key={valor}
+                    className={`relative flex cursor-pointer flex-col rounded-xl border p-4
+                      transition-colors focus-within:ring-2 focus-within:ring-festa-600/40
+                      ${selecionado
+                        ? 'border-festa-600 bg-festa-50'
+                        : 'border-slate-200 bg-white hover:border-festa-200'}`}>
+                    <input type="radio" name="tipoPessoa" value={valor}
+                      checked={selecionado} onChange={aoDigitar} className="sr-only" />
 
-        <Campo label="E-mail" name="email" type="email" value={campos.email}
-          onChange={aoDigitar} erro={erros.email}
-          validar={(v) => validarEmail(v) ? null : 'Informe um e-mail válido.'} />
-
-        <Campo label="Telefone com DDD" name="telefone" value={campos.telefone}
-          onChange={aoDigitar} erro={erros.telefone} placeholder="16999998888"
-          validar={(v) => validarTelefone(v) ? null : 'Informe o telefone com DDD.'} />
-
-        <Campo label="Senha" name="senha" type="password" value={campos.senha}
-          onChange={aoDigitar} erro={erros.senha} dica="Mínimo de 8 caracteres."
-          validar={(v) => v.length >= 8 ? null : 'A senha deve ter ao menos 8 caracteres.'} />
-
-        <Campo label="Confirmar senha" name="confirmacaoSenha" type="password"
-          value={campos.confirmacaoSenha} onChange={aoDigitar} erro={erros.confirmacaoSenha}
-          validar={(v) => v === campos.senha ? null : 'As senhas não coincidem.'} />
-
-        <p className="pt-2 text-sm font-medium text-slate-700">Dados do negócio</p>
-
-        {/* Radio de verdade, escondido visualmente: mantém navegação por
-            setas do teclado e leitura correta por leitor de tela. */}
-        <fieldset>
-          <legend className="mb-1.5 text-sm font-medium text-slate-700">
-            Tipo de pessoa
-          </legend>
-
-          <div className="grid grid-cols-2 gap-3">
-            {TIPOS_PESSOA.map(({ valor, rotulo, detalhe, Icone }) => {
-              const selecionado = campos.tipoPessoa === valor;
-              return (
-                // Tudo em coluna: o ícone numa linha própria, depois o
-                // rótulo, depois o detalhe. Lado a lado, o ícone roubava
-                // largura e "Pessoa jurídica" quebrava em duas linhas
-                // enquanto o selo de selecionado passava por cima.
-                <label key={valor}
-                  className={`relative flex cursor-pointer flex-col rounded-xl border p-4
-                    transition-colors focus-within:ring-2 focus-within:ring-festa-600/40
-                    ${selecionado
-                      ? 'border-festa-600 bg-festa-50'
-                      : 'border-slate-200 bg-white hover:border-slate-300'}`}>
-                  <input type="radio" name="tipoPessoa" value={valor}
-                    checked={selecionado} onChange={aoDigitar} className="sr-only" />
-
-                  <span className={`flex h-9 w-9 items-center justify-center rounded-full ${
-                    selecionado ? 'bg-white' : 'bg-slate-100'}`}>
-                    <Icone aria-hidden="true"
-                      className={`h-5 w-5 ${selecionado ? 'text-festa-600' : 'text-slate-400'}`} />
-                  </span>
-
-                  <span className={`mt-3 block text-sm font-medium ${
-                    selecionado ? 'text-festa-800' : 'text-slate-800'}`}>
-                    {rotulo}
-                  </span>
-                  <span className="mt-0.5 block text-xs text-slate-500">{detalhe}</span>
-
-                  {selecionado && (
-                    <span aria-hidden="true"
-                      className="absolute right-3 top-3 flex h-5 w-5 items-center justify-center rounded-full bg-festa-600">
-                      <Check className="h-3 w-3 text-white" strokeWidth={3} />
+                    <span className={`flex h-9 w-9 items-center justify-center rounded-full ${
+                      selecionado ? 'bg-white' : 'bg-slate-100'}`}>
+                      <Icone aria-hidden="true"
+                        className={`h-5 w-5 ${selecionado ? 'text-festa-600' : 'text-slate-400'}`} />
                     </span>
-                  )}
-                </label>
-              );
-            })}
+
+                    <span className={`mt-3 block text-sm font-medium ${
+                      selecionado ? 'text-festa-800' : 'text-slate-800'}`}>
+                      {rotulo}
+                    </span>
+                    <span className="mt-0.5 block text-xs text-slate-500">{detalhe}</span>
+
+                    {selecionado && (
+                      <span aria-hidden="true"
+                        className="absolute right-3 top-3 flex h-5 w-5 items-center justify-center rounded-full bg-festa-600">
+                        <Check className="h-3 w-3 text-white" strokeWidth={3} />
+                      </span>
+                    )}
+                  </label>
+                );
+              })}
+            </div>
+
+            <p className="mt-2 text-xs text-slate-500">
+              Não é possível alterar depois do cadastro.
+            </p>
+            {erros.tipoPessoa && (
+              <p className="mt-1 text-sm text-perigo-600">{erros.tipoPessoa}</p>
+            )}
+          </fieldset>
+
+          {/* RN001 — PF preenche CPF e nascimento; PJ, CNPJ e razão social.
+              Os campos trocam junto com a escolha acima, e ficam logo
+              abaixo dela para que a troca seja visível. */}
+          {ehPF ? (
+            <div className="grid gap-5 sm:grid-cols-2">
+              <Campo label="CPF" name="cpf" value={campos.cpf}
+                inputMode="numeric"
+                onChange={aoDigitar} erro={erros.cpf} placeholder="Somente números"
+                validar={(v) => validarCPF(v) ? null : 'CPF inválido.'} />
+
+              <Campo label="Data de nascimento" name="dataNascimento" type="date"
+                max={dataMaximaNascimento()}
+                value={campos.dataNascimento} onChange={aoDigitar}
+                erro={erros.dataNascimento}
+                dica={`Mínimo de ${IDADE_MINIMA} anos completos.`}
+                validar={(v) => validarMaioridade(v)
+                  ? null
+                  : `É necessário ter ao menos ${IDADE_MINIMA} anos completos.`} />
+            </div>
+          ) : (
+            <>
+              <Campo label="CNPJ" name="cnpj" value={campos.cnpj}
+                onChange={aoDigitar} erro={erros.cnpj}
+                placeholder="Números ou letras, sem pontuação"
+                validar={(v) => validarCNPJ(v) ? null : 'CNPJ inválido.'} />
+
+              <Campo label="Razão social" name="razaoSocial" value={campos.razaoSocial}
+                onChange={aoDigitar} erro={erros.razaoSocial}
+                validar={(v) => v.trim().length >= 2 ? null : 'Informe a razão social.'} />
+            </>
+          )}
+
+          <Campo label="Nome do responsável" name="nome" value={campos.nome}
+            autoComplete="name"
+            onChange={aoDigitar} erro={erros.nome}
+            dica="Não aparece para os clientes."
+            validar={(v) => v.trim().length >= 3 ? null : 'Informe o nome do responsável.'} />
+        </SecaoFormulario>
+
+        <SecaoFormulario numero={2} titulo="Seu negócio"
+          descricao="É isto que o cliente vê na vitrine.">
+          <Campo label="Nome de exibição" name="nomeExibicao" value={campos.nomeExibicao}
+            onChange={aoDigitar} erro={erros.nomeExibicao}
+            placeholder="Ex.: Buffet da Ana"
+            dica="É este nome que aparece na vitrine e na busca."
+            validar={(v) => v.trim().length >= 2
+              ? null
+              : 'Informe o nome que aparecerá na vitrine.'} />
+
+          <CampoTexto label="Descrição do seu trabalho" name="descricao" rows={4}
+            value={campos.descricao} onChange={aoDigitar} erro={erros.descricao}
+            minimo={20}
+            placeholder="O que você faz, para que tipo de festa, o que está incluso."
+            validar={(v) => v.trim().length >= 20
+              ? null
+              : 'Descreva seu trabalho em ao menos 20 caracteres.'} />
+
+          <Campo label="Instagram (opcional)" name="instagramUrl" value={campos.instagramUrl}
+            type="url" inputMode="url"
+            onChange={aoDigitar} erro={erros.instagramUrl} placeholder="https://..."
+            validar={(v) => validarURL(v) ? null : 'Endereço inválido. Comece com https://'} />
+
+          <Campo label="WhatsApp (opcional)" name="whatsappUrl" value={campos.whatsappUrl}
+            type="url" inputMode="url"
+            onChange={aoDigitar} erro={erros.whatsappUrl} placeholder="https://..."
+            validar={(v) => validarURL(v) ? null : 'Endereço inválido. Comece com https://'} />
+
+          <Campo label="Site (opcional)" name="site" value={campos.site}
+            type="url" inputMode="url"
+            onChange={aoDigitar} erro={erros.site} placeholder="https://..."
+            validar={(v) => validarURL(v) ? null : 'Endereço inválido. Comece com https://'} />
+        </SecaoFormulario>
+
+        <SecaoFormulario numero={3} titulo="Área de atendimento"
+          descricao="Até onde você vai, a partir da sua sede.">
+          <div className="grid gap-5 sm:grid-cols-2">
+            <CampoSelecao label="Estado" name="estado" value={campos.estado}
+              onChange={aoDigitar} erro={erros.estado}>
+              <option value="">Selecione</option>
+              {UFS.map((uf) => <option key={uf} value={uf}>{uf}</option>)}
+            </CampoSelecao>
+
+            <Campo label="Cidade" name="cidade" value={campos.cidade}
+              autoComplete="address-level2"
+              onChange={aoDigitar} erro={erros.cidade}
+              validar={(v) => v.trim().length >= 2 ? null : 'Informe a cidade.'} />
           </div>
 
-          <p className="mt-2 text-xs text-slate-500">
-            Não é possível alterar depois do cadastro.
-          </p>
-          {erros.tipoPessoa && <p className="mt-1 text-sm text-red-600">{erros.tipoPessoa}</p>}
-        </fieldset>
-
-        {ehPF ? (
-          <>
-            <Campo label="CPF" name="cpf" value={campos.cpf}
-              onChange={aoDigitar} erro={erros.cpf} placeholder="Somente números"
-              validar={(v) => validarCPF(v) ? null : 'CPF inválido.'} />
-            <Campo label="Data de nascimento" name="dataNascimento" type="date"
-              max={dataMaximaNascimento()}
-              value={campos.dataNascimento} onChange={aoDigitar} erro={erros.dataNascimento}
-              dica={`É necessário ter ao menos ${IDADE_MINIMA} anos completos.`}
-              validar={(v) => validarMaioridade(v)
+          <Campo label="Raio de atendimento (km)" name="raioAtendimentoKm" type="number"
+            min="1" max="200" value={campos.raioAtendimentoKm}
+            onChange={aoDigitar} erro={erros.raioAtendimentoKm}
+            dica={`Sugestão da plataforma: ${raioPadrao} km. Você pode ajustar.`}
+            validar={(v) => {
+              const n = Number(v);
+              return Number.isInteger(n) && n >= 1 && n <= 200
                 ? null
-                : `É necessário ter ao menos ${IDADE_MINIMA} anos completos.`} />
-          </>
-        ) : (
-          <>
-            <Campo label="CNPJ" name="cnpj" value={campos.cnpj}
-              onChange={aoDigitar} erro={erros.cnpj}
-              placeholder="Números ou letras, sem pontuação"
-              validar={(v) => validarCNPJ(v) ? null : 'CNPJ inválido.'} />
-            <Campo label="Razão social" name="razaoSocial" value={campos.razaoSocial}
-              onChange={aoDigitar} erro={erros.razaoSocial}
-              validar={(v) => v.trim().length >= 2 ? null : 'Informe a razão social.'} />
-          </>
-        )}
+                : 'Informe um raio entre 1 e 200 km.';
+            }} />
 
-        <Campo label="Nome de exibição" name="nomeExibicao" value={campos.nomeExibicao}
-          onChange={aoDigitar} erro={erros.nomeExibicao}
-          placeholder="Como você aparece para os clientes"
-          validar={(v) => v.trim().length >= 2
-            ? null
-            : 'Informe o nome que aparecerá na vitrine.'} />
+          <CapturaLocalizacao
+            coordenadas={coordenadas}
+            aoAlterar={setCoordenadas}
+            descricao="Ajuda os clientes da sua região a encontrar você na busca." />
+        </SecaoFormulario>
 
-        <div>
-          <label htmlFor="descricao" className="mb-1.5 block text-sm font-medium text-slate-700">
-            Descrição do seu trabalho
-          </label>
-          <textarea id="descricao" name="descricao" rows={4} value={campos.descricao}
-            onChange={aoDigitar} className={CLASSE_TEXTAREA} />
-          <p className="mt-1 text-xs text-slate-500">
-            {campos.descricao.trim().length}/20 caracteres mínimos.
-          </p>
-          {erros.descricao && <p className="mt-1 text-sm text-red-600">{erros.descricao}</p>}
-        </div>
-
-        <Campo label="Instagram (opcional)" name="instagramUrl" value={campos.instagramUrl}
-          onChange={aoDigitar} erro={erros.instagramUrl} placeholder="https://..."
-          validar={(v) => validarURL(v) ? null : 'Endereço inválido. Comece com https://'} />
-
-        <Campo label="WhatsApp (opcional)" name="whatsappUrl" value={campos.whatsappUrl}
-          onChange={aoDigitar} erro={erros.whatsappUrl} placeholder="https://..."
-          validar={(v) => validarURL(v) ? null : 'Endereço inválido. Comece com https://'} />
-
-        <Campo label="Site (opcional)" name="site" value={campos.site}
-          onChange={aoDigitar} erro={erros.site} placeholder="https://..."
-          validar={(v) => validarURL(v) ? null : 'Endereço inválido. Comece com https://'} />
-
-        <p className="pt-2 text-sm font-medium text-slate-700">Área de atendimento</p>
-
-        <div>
-          <label htmlFor="estado" className="mb-1.5 block text-sm font-medium text-slate-700">
-            Estado
-          </label>
-          <select id="estado" name="estado" value={campos.estado}
-            onChange={aoDigitar} className={CLASSE_SELECT}>
-            <option value="">Selecione</option>
-            {UFS.map((uf) => <option key={uf} value={uf}>{uf}</option>)}
-          </select>
-          {erros.estado && <p className="mt-1 text-sm text-red-600">{erros.estado}</p>}
-        </div>
-
-        <Campo label="Cidade" name="cidade" value={campos.cidade}
-          onChange={aoDigitar} erro={erros.cidade}
-          validar={(v) => v.trim().length >= 2 ? null : 'Informe a cidade.'} />
-
-        <Campo label="Raio de atendimento (km)" name="raioAtendimentoKm" type="number"
-          min="1" max="200" value={campos.raioAtendimentoKm}
-          onChange={aoDigitar} erro={erros.raioAtendimentoKm}
-          dica={`Sugestão da plataforma: ${raioPadrao} km. Você pode ajustar.`}
-          validar={(v) => {
-            const n = Number(v);
-            return Number.isInteger(n) && n >= 1 && n <= 200
+        <SecaoFormulario numero={4} titulo="Acesso à conta"
+          descricao="Com o que você vai entrar daqui em diante.">
+          <Campo label="Nome de usuário" name="nomeUsuario" value={campos.nomeUsuario}
+            autoComplete="username"
+            onChange={aoDigitar} erro={erros.nomeUsuario}
+            validar={(v) => validarNomeUsuario(v)
               ? null
-              : 'Informe um raio entre 1 e 200 km.';
-          }} />
+              : 'Use de 3 a 50 caracteres: letras, números, ponto ou _.'} />
 
-        <CapturaLocalizacao
-          coordenadas={coordenadas}
-          aoAlterar={setCoordenadas}
-          descricao="Ajuda os clientes da sua região a encontrar você na busca." />
+          <Campo label="E-mail" name="email" type="email" value={campos.email}
+            autoComplete="email"
+            onChange={aoDigitar} erro={erros.email}
+            validar={(v) => validarEmail(v) ? null : 'Informe um e-mail válido.'} />
+
+          <Campo label="Telefone com DDD" name="telefone" value={campos.telefone}
+            inputMode="tel" autoComplete="tel"
+            onChange={aoDigitar} erro={erros.telefone} placeholder="16999998888"
+            validar={(v) => validarTelefone(v) ? null : 'Informe o telefone com DDD.'} />
+
+          <Campo label="Senha" name="senha" type="password" value={campos.senha}
+            autoComplete="new-password"
+            onChange={aoDigitar} erro={erros.senha} dica="Mínimo de 8 caracteres."
+            validar={(v) => v.length >= 8 ? null : 'A senha deve ter ao menos 8 caracteres.'} />
+
+          <Campo label="Confirmar senha" name="confirmacaoSenha" type="password"
+            autoComplete="new-password"
+            value={campos.confirmacaoSenha} onChange={aoDigitar}
+            erro={erros.confirmacaoSenha}
+            validar={(v) => v === campos.senha ? null : 'As senhas não coincidem.'} />
+        </SecaoFormulario>
+
+        {/* RN005 — a verificação não condiciona nada: é um selo de
+            confiabilidade. Enquanto está pendente o fornecedor aparece
+            normalmente na busca e recebe solicitações, e o que fica
+            oculto é só o indicador. O texto anterior dizia o contrário
+            ("antes de aparecer para os clientes") e assustava sem
+            motivo. */}
+        <div className="rounded-xl border border-festa-100 bg-festa-50 p-4">
+          <div className="flex gap-3">
+            <BadgeCheck className="mt-0.5 h-5 w-5 shrink-0 text-festa-600" aria-hidden="true" />
+            <p className="text-sm text-slate-700">
+              Você já aparece na busca e pode receber solicitações desde o primeiro
+              dia. O selo de <strong className="font-medium">fornecedor verificado</strong>{' '}
+              aparece no seu perfil depois que a administração confere seus dados.
+            </p>
+          </div>
+        </div>
 
         {avisoCpf && (
-          <div className="rounded-lg border border-atencao-600 bg-atencao-50 p-3">
-            <p className="text-sm text-slate-700">{avisoCpf}</p>
-            <div className="mt-2 flex gap-2">
-              <button type="button" onClick={() => enviar(true)} disabled={enviando}
-                className="rounded-lg bg-festa-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-festa-700 disabled:opacity-50">
-                Continuar mesmo assim
-              </button>
-              <button type="button" onClick={() => setAvisoCpf('')}
-                className="rounded-lg border border-festa-600 px-3 py-1.5 text-sm font-medium text-festa-700 transition-colors hover:bg-festa-50">
-                Revisar o CPF
-              </button>
-            </div>
-          </div>
+          <AvisoCpfOutroPapel aviso={avisoCpf} enviando={enviando}
+            aoContinuar={() => enviar(true)}
+            aoRevisar={() => setAvisoCpf('')} />
         )}
 
-        {erroGeral && <p className="text-sm text-red-600">{erroGeral}</p>}
-
-        <p className="text-sm text-slate-600">
-          Seu cadastro passa por uma verificação antes de aparecer para os clientes.
-        </p>
+        {erroGeral && (
+          <p className="rounded-xl bg-perigo-50 px-4 py-3 text-sm text-perigo-700">
+            {erroGeral}
+          </p>
+        )}
 
         <button type="button" onClick={() => enviar(false)}
           disabled={enviando || Boolean(avisoCpf)}
-          className="w-full rounded-lg bg-festa-600 px-4 py-2.5 font-medium text-white transition-colors hover:bg-festa-700 disabled:opacity-50">
+          className="w-full rounded-xl bg-festa-600 px-4 py-3.5 font-semibold text-white transition-colors hover:bg-festa-700 disabled:cursor-not-allowed disabled:opacity-50">
           {enviando ? 'Criando conta...' : 'Criar conta'}
         </button>
       </div>
-    </main>
+
+      <p className="mt-6 text-center text-sm text-slate-600">
+        Já tem conta?{' '}
+        <Link href="/login" className="font-medium text-festa-700 hover:underline">
+          Entrar
+        </Link>
+      </p>
+    </MolduraAuth>
   );
 }
