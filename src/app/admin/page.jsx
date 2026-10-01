@@ -4,6 +4,7 @@ import { administradorAtivo } from '@/lib/sessao-admin';
 import { descreverRecebimento } from '@/lib/recebimento';
 import { marcarContasInativas } from '@/lib/inatividade-servidor';
 import PainelVerificacao from './painel';
+import { paraSerializar } from '@/lib/datas';
 
 export const metadata = {
   title: 'Painel administrativo — Festeirinho',
@@ -229,7 +230,7 @@ export default async function Admin() {
       ORDER BY (status_denuncia = 'pendente') DESC, data_denuncia DESC`
   );
 
-  const iso = (valor) => (valor ? valor.toISOString() : null);
+  const iso = paraSerializar;
 
   return (
     <PainelVerificacao

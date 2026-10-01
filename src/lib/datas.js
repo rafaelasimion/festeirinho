@@ -36,9 +36,36 @@ function comoTexto(valor) {
     if (Number.isNaN(valor.getTime())) return '';
     return `${valor.getFullYear()}-${doisDigitos(valor.getMonth() + 1)}-`
       + `${doisDigitos(valor.getDate())} `
-      + `${doisDigitos(valor.getHours())}:${doisDigitos(valor.getMinutes())}`;
+      + `${doisDigitos(valor.getHours())}:${doisDigitos(valor.getMinutes())}`
+      + `:${doisDigitos(valor.getSeconds())}`;
   }
   return String(valor ?? '');
+}
+
+// Data pronta para atravessar de um componente de servidor para um de
+// cliente.
+//
+// Antes do dateStrings, cada tela fazia `valor.toISOString()` aqui, porque
+// o mysql2 entregava um Date e um Date não sobrevive à serialização. Com o
+// banco devolvendo texto, aquilo virou "toISOString is not a function" em
+// nove lugares — e, pior, o toISOString convertia para UTC, que é
+// justamente a conversão que criava as três horas de diferença.
+//
+// Agora o valor já vem no formato certo e só precisa passar. O Date ainda
+// é tratado porque uma coluna pode escapar do dateStrings, ou o valor
+// pode ter sido montado em JS.
+// O texto sai com T no lugar do espaço. O banco entrega
+// '2026-09-28 20:53:00', e esse formato com espaço NÃO é ISO 8601: o V8
+// aceita, mas o Safari devolve Invalid Date. Como do outro lado alguém
+// pode fazer new Date() com esse valor, o T é o que garante que ele seja
+// lido igual em qualquer navegador — e, sem Z nem fuso no fim, lido como
+// hora local, que é o que ele é.
+export function paraSerializar(valor) {
+  if (!valor) return null;
+  const texto = valor instanceof Date ? comoTexto(valor) : String(valor);
+  // Um Date inválido é truthy e escapa da guarda acima; aqui ele vira null
+  // como qualquer outra ausência, em vez de um texto vazio no JSON.
+  return texto === '' ? null : texto.replace(' ', 'T');
 }
 
 function partes(valor) {

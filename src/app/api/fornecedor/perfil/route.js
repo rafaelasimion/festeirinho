@@ -45,7 +45,7 @@ export async function GET() {
   return NextResponse.json({
     ...perfil,
     data_nascimento: perfil.data_nascimento
-      ? perfil.data_nascimento.toISOString().slice(0, 10)
+      ? String(perfil.data_nascimento).slice(0, 10)
       : null,
   });
 }

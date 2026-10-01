@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import { pool } from '@/lib/db';
 import { lerSessao } from '@/lib/sessao';
 import Vitrine from './vitrine';
+import { paraSerializar } from '@/lib/datas';
 
 // RF072 / UC 045 — vitrine do fornecedor.
 //
@@ -201,7 +202,7 @@ export default async function PaginaVitrine({ params }) {
       avaliacoes={avaliacoes}
       comentarios={comentarios.map((c) => ({
         ...c,
-        data_avaliacao: c.data_avaliacao.toISOString(),
+        data_avaliacao: paraSerializar(c.data_avaliacao),
       }))}
       ehDono={ehDono}
       ehCliente={ehCliente}

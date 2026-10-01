@@ -4,6 +4,7 @@ import { lerSessao } from '@/lib/sessao';
 import { obterConfiguracoes } from '@/lib/configuracao';
 import { expirarPagamentosVencidos } from '@/lib/pagamento-servidor';
 import FormularioPagamento from './formulario';
+import { paraSerializar } from '@/lib/datas';
 
 export default async function Pagamento({ params }) {
   const { id } = await params;
@@ -68,7 +69,7 @@ export default async function Pagamento({ params }) {
         id: pagamento.id,
         valorBruto: Number(pagamento.valor_bruto),
         status: pagamento.status,
-        dataLimite: pagamento.data_limite.toISOString(),
+        dataLimite: paraSerializar(pagamento.data_limite),
         numeroTentativas: pagamento.numero_tentativas,
         formaPagamento: pagamento.forma_pagamento,
         idTransacao: pagamento.id_transacao_gateway,
@@ -76,7 +77,7 @@ export default async function Pagamento({ params }) {
         idSolicitacao: pagamento.id_solicitacao,
         servico: pagamento.servico,
         fornecedor: pagamento.fornecedor,
-        dataHoraEvento: pagamento.data_hora_evento.toISOString(),
+        dataHoraEvento: paraSerializar(pagamento.data_hora_evento),
         duracao: pagamento.duracao,
         numeroConvidados: pagamento.numero_convidados,
         cidade: pagamento.cidade,

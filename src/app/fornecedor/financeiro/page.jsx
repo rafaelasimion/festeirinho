@@ -5,6 +5,7 @@ import { obterConfiguracoes } from '@/lib/configuracao';
 import { confirmarConclusoesVencidas } from '@/lib/conclusao-servidor';
 import { liberarRepassesVencidos } from '@/lib/repasse-servidor';
 import PainelFinanceiro from './painel';
+import { paraSerializar } from '@/lib/datas';
 
 export const metadata = {
   title: 'Financeiro — Festeirinho',
@@ -95,7 +96,7 @@ export default async function Financeiro() {
     [fornecedor.id]
   );
 
-  const iso = (valor) => (valor ? valor.toISOString() : null);
+  const iso = paraSerializar;
 
   // RN061 — o titular dos dados é o próprio fornecedor. Pré-preencher evita
   // o erro mais comum, que é informar a conta de outra pessoa.

@@ -9,6 +9,7 @@ import {
 } from '@/lib/conclusao-servidor';
 import { obterConfiguracoes } from '@/lib/configuracao';
 import ListaSolicitacoesRecebidas from './lista';
+import { paraSerializar } from '@/lib/datas';
 
 export default async function SolicitacoesRecebidas() {
   const sessao = await lerSessao();
@@ -90,7 +91,7 @@ export default async function SolicitacoesRecebidas() {
 }
 
 function serializar(linhas) {
-  const iso = (valor) => (valor ? valor.toISOString() : null);
+  const iso = paraSerializar;
   const numero = (valor) => (valor === null || valor === undefined ? null : Number(valor));
 
   return linhas.map((linha) => ({

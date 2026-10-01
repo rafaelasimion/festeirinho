@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { pool } from '@/lib/db';
 import { lerSessao } from '@/lib/sessao';
 import { chatAberto } from '@/lib/solicitacao';
+import { paraSerializar } from '@/lib/datas';
 
 // UC 016 / RN022 — chat vinculado à solicitação.
 //   GET   lista as mensagens e marca como lidas as recebidas
@@ -98,7 +99,7 @@ export async function GET(request, { params }) {
       nomeFornecedor: solicitacao.nome_fornecedor,
       mensagens: mensagens.map((m) => ({
         ...m,
-        data_hora: m.data_hora.toISOString(),
+        data_hora: paraSerializar(m.data_hora),
         lida: Boolean(m.lida),
       })),
     });
