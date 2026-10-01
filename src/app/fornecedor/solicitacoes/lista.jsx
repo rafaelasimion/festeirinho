@@ -26,14 +26,7 @@ import { ROTULO_MOTIVO_CONTESTACAO } from '@/lib/contestacao';
 import Chat from '@/componentes/chat';
 import DialogoDenuncia from '@/componentes/dialogo-denuncia';
 import { ROTULO_RESULTADO_DENUNCIA } from '@/lib/denuncia';
-
-function formatarDataHora(valor) {
-  if (!valor) return '';
-  return new Date(valor).toLocaleString('pt-BR', {
-    dateStyle: 'short',
-    timeStyle: 'short',
-  });
-}
+import { formatarDataHora } from '@/lib/datas';
 
 function somarDias(iso, dias) {
   const data = new Date(iso);

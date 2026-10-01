@@ -9,6 +9,7 @@ import CartaoAdmin, {
 } from '@/componentes/cartao-admin';
 import { BotaoAcao } from '@/componentes/acoes-solicitacao';
 import { CampoTexto } from '@/componentes/campo';
+import { formatarDataHora } from '@/lib/datas';
 
 // UC 027 / UC 035 — contas da plataforma: suspensão, reativação e análise
 // das solicitações de revisão.
@@ -26,11 +27,6 @@ const TOM_STATUS = {
   inativo: 'neutro',
   excluido: 'neutro',
 };
-
-function formatarDataHora(valor) {
-  if (!valor) return '';
-  return new Date(valor).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
-}
 
 // Plural sem "(s)": a palavra certa para cada quantidade. Tem duas formas
 // porque em português o plural nem sempre é só acrescentar a letra —

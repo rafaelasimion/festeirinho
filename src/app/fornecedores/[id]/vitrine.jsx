@@ -15,10 +15,7 @@ import {
   formatarPreco, SUFIXO_PRECO, ROTULO_VERIFICACAO, TOM_VERIFICACAO,
 } from '@/lib/solicitacao';
 import { AVISO_NOVA_VERIFICACAO } from '@/lib/fornecedor';
-
-function formatarData(iso) {
-  return new Date(iso).toLocaleDateString('pt-BR');
-}
+import { formatarData } from '@/lib/datas';
 
 function Estrelas({ nota, tamanho = 'h-4 w-4' }) {
   return (

@@ -1,4 +1,4 @@
-import { CalendarClock, MapPin, Users } from 'lucide-react';
+import { CalendarClock, MapPin, Users, ChevronRight } from 'lucide-react';
 import MolduraFoto from '@/componentes/moldura-foto';
 
 // Casca do cartão de solicitação, igual nas duas telas — a do cliente e a
@@ -84,6 +84,41 @@ export default function CartaoSolicitacao({
         <div className="border-t border-slate-200 p-4 sm:p-5">{painel}</div>
       )}
     </Tag>
+  );
+}
+
+// Detalhe que o cartão guarda fechado.
+//
+// Uma contestação traz motivo, descrição, data de envio, resultado,
+// justificativa e data da análise — seis parágrafos que, abertos, fazem o
+// cartão passar de duas telas e empurram as ações para fora da vista.
+// Recolhido, sobra a linha que importa: do que se trata e como terminou.
+//
+// É <details>/<summary> do navegador, sem estado em React: abre e fecha
+// sozinho, funciona pelo teclado e é lido como botão por leitor de tela.
+//
+// `abertoPorPadrao` serve ao que ainda está em aberto — uma contestação
+// pendente a pessoa precisa ver sem procurar; uma já julgada, não.
+export function DetalheRecolhivel({
+  resumo, tom = 'neutro', abertoPorPadrao = false, children,
+}) {
+  const TONS = {
+    neutro: 'border-slate-200 bg-slate-50',
+    atencao: 'border-atencao-200 bg-atencao-50',
+    perigo: 'border-perigo-200 bg-perigo-50',
+  };
+
+  return (
+    <details open={abertoPorPadrao || undefined}
+      className={`group mt-4 rounded-xl border ${TONS[tom] ?? TONS.neutro}`}>
+      <summary className="flex cursor-pointer list-none items-center gap-2 p-3 text-sm font-medium text-slate-800">
+        <ChevronRight aria-hidden="true"
+          className="h-4 w-4 shrink-0 text-slate-500 transition-transform group-open:rotate-90" />
+        <span className="min-w-0 flex-1">{resumo}</span>
+      </summary>
+
+      <div className="space-y-2 px-3 pb-3 pl-9 text-sm">{children}</div>
+    </details>
   );
 }
 

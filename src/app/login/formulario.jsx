@@ -6,11 +6,7 @@ import { useRouter } from 'next/navigation';
 import { ShieldAlert } from 'lucide-react';
 import Campo from '@/componentes/campo';
 import MolduraAuth from '@/componentes/moldura-auth';
-
-function formatarData(valor) {
-  if (!valor) return '';
-  return new Date(valor).toLocaleDateString('pt-BR');
-}
+import { formatarData } from '@/lib/datas';
 
 export default function FormularioLogin() {
   const router = useRouter();

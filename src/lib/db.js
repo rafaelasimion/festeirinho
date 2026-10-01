@@ -15,5 +15,14 @@ export const pool =
     waitForConnections: true,
     connectionLimit: 10,
     charset: 'utf8mb4',
-    timezone: 'Z',
+    // Os DATETIME do sistema são relógio de parede, não instantes com fuso
+    // (lib/datas.js explica por quê). Com dateStrings o mysql2 entrega o
+    // texto como está no banco — '2026-09-28 20:53:00' — em vez de montar
+    // um Date interpretando esse texto num fuso qualquer.
+    //
+    // O timezone: 'Z' que havia aqui fazia exatamente essa interpretação, e
+    // era a origem das três horas a menos em toda data exibida: o valor
+    // gravado em horário local voltava como se fosse UTC, e o navegador o
+    // convertia de novo para o horário local.
+    dateStrings: true,
   }));

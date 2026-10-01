@@ -13,11 +13,7 @@ import {
   ROTULO_STATUS_VALIDACAO,
   descreverRecebimento,
 } from '@/lib/recebimento';
-
-function formatarDataHora(valor) {
-  if (!valor) return '';
-  return new Date(valor).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
-}
+import { formatarDataHora } from '@/lib/datas';
 
 export default function Saques({ saldoDisponivel, valorMinimoSaque, titular, saques }) {
   const router = useRouter();

@@ -9,13 +9,7 @@ import CartaoSolicitacao, { AvisoCartao } from '@/componentes/cartao-solicitacao
 import Etiqueta from '@/componentes/etiqueta';
 import { formatarPreco, ROTULO_FORMA_PAGAMENTO } from '@/lib/solicitacao';
 import { rotuloCartao } from '@/lib/cartao';
-
-function formatarDataHora(valor) {
-  return new Date(valor).toLocaleString('pt-BR', {
-    dateStyle: 'short',
-    timeStyle: 'short',
-  });
-}
+import { formatarDataHora } from '@/lib/datas';
 
 // Cada forma de pagamento é um cartão escolhível, no mesmo molde da
 // escolha entre pessoa física e jurídica no cadastro: o rádio fica

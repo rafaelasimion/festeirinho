@@ -13,7 +13,9 @@ import FormularioAvaliacao from '@/componentes/formulario-avaliacao';
 import DadosReembolso from '@/componentes/dados-reembolso';
 import Chat from '@/componentes/chat';
 import DialogoDenuncia from '@/componentes/dialogo-denuncia';
-import CartaoSolicitacao, { AvisoCartao } from '@/componentes/cartao-solicitacao';
+import CartaoSolicitacao, {
+  AvisoCartao, DetalheRecolhivel,
+} from '@/componentes/cartao-solicitacao';
 import { BarraAcoes, BotaoAcao, LinkAcao } from '@/componentes/acoes-solicitacao';
 import {
   formatarPreco,
@@ -34,14 +36,7 @@ import {
   ROTULO_RESULTADO_CONTESTACAO,
   TOM_RESULTADO_CONTESTACAO,
 } from '@/lib/contestacao';
-
-function formatarDataHora(valor) {
-  if (!valor) return '';
-  return new Date(valor).toLocaleString('pt-BR', {
-    dateStyle: 'short',
-    timeStyle: 'short',
-  });
-}
+import { formatarDataHora } from '@/lib/datas';
 
 export default function ListaMinhasSolicitacoes({ solicitacoes, prazoConfirmacaoHoras, titular }) {
   const router = useRouter();
@@ -169,10 +164,13 @@ export default function ListaMinhasSolicitacoes({ solicitacoes, prazoConfirmacao
                     : contestando === solicitacao.id ? 'contestar'
                       : null;
 
-            // O painel aberto vai por fora da linha da foto (prop "painel"):
-            // dentro dela, um chat de 500px esticava a faixa lateral junto.
-            const conteudoPainel = painel === null ? null : (
-              <>
+            // Tudo que é alto vai por fora da linha da foto (prop "painel"):
+            // dentro dela, um chat de 500px — ou o formulário de avaliação,
+            // com as estrelas, o comentário e a escolha de visibilidade —
+            // esticava a faixa lateral junto, e a foto virava uma tira.
+            const avaliar = solicitacao.status === 'concluido';
+            const conteudoPainel = (painel === null && !avaliar) ? null : (
+              <div className="space-y-4">
 
                 {painel === 'conversar' && (
                   <>
@@ -284,7 +282,42 @@ export default function ListaMinhasSolicitacoes({ solicitacoes, prazoConfirmacao
                     </div>
                   </div>
                 )}
-              </>
+              {solicitacao.status === 'concluido' && (
+                <FormularioAvaliacao
+                  avaliacao={solicitacao.id_avaliacao ? {
+                    id: solicitacao.id_avaliacao,
+                    nota: solicitacao.nota,
+                    comentario: solicitacao.comentario,
+                    status_avaliacao: solicitacao.status_avaliacao,
+                  } : null}
+                  processando={processando}
+                  aoEnviar={async ({ nota, comentario, visibilidade }) => {
+                    setErro('');
+                    setMensagem('');
+                    setProcessando(true);
+                    try {
+                      const resposta = await fetch('/api/avaliacoes', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          idSolicitacao: solicitacao.id, nota, comentario, visibilidade,
+                        }),
+                      });
+                      const dados = await resposta.json();
+                      if (!resposta.ok) {
+                        setErro(dados.erro ?? 'Não foi possível registrar a avaliação.');
+                        return;
+                      }
+                      setMensagem('Avaliação registrada. Obrigado!');
+                      router.refresh();
+                    } catch {
+                      setErro('Falha de conexão. Tente novamente.');
+                    } finally {
+                      setProcessando(false);
+                    }
+                  }} />
+              )}
+              </div>
             );
 
             return (
@@ -353,12 +386,28 @@ export default function ListaMinhasSolicitacoes({ solicitacoes, prazoConfirmacao
                   </AvisoCartao>
                 )}
 
-                {/* UC 042/043 — contestação registrada */}
+                {/* UC 042/043 — contestação registrada. Fechada quando já
+                    foi julgada: o resumo já diz o desfecho, e aberta ela
+                    sozinha dobrava a altura do cartão. */}
                 {solicitacao.status_contestacao && (
-                  <div className="mt-4 space-y-2 rounded-lg border border-atencao-200 bg-atencao-50 p-3 text-sm">
-                    <p className="font-medium text-slate-800">
-                      Contestação: {ROTULO_MOTIVO_CONTESTACAO[solicitacao.motivo_contestacao_cliente]}
-                    </p>
+                  <DetalheRecolhivel tom="atencao"
+                    abertoPorPadrao={solicitacao.status_contestacao === 'pendente'}
+                    resumo={
+                      <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                        <span>
+                          Contestação:{' '}
+                          {ROTULO_MOTIVO_CONTESTACAO[solicitacao.motivo_contestacao_cliente]}
+                        </span>
+                        {solicitacao.status_contestacao === 'pendente' ? (
+                          <Etiqueta tom="atencao" formato="caixa" contorno>em análise</Etiqueta>
+                        ) : (
+                          <Etiqueta formato="caixa" contorno
+                            tom={TOM_RESULTADO_CONTESTACAO[solicitacao.resultado_contestacao]}>
+                            {ROTULO_RESULTADO_CONTESTACAO[solicitacao.resultado_contestacao]}
+                          </Etiqueta>
+                        )}
+                      </span>
+                    }>
                     <p className="whitespace-pre-line text-slate-700">
                       {solicitacao.descricao_contestacao_cliente}
                     </p>
@@ -373,12 +422,7 @@ export default function ListaMinhasSolicitacoes({ solicitacoes, prazoConfirmacao
                       </p>
                     ) : (
                       <div className="space-y-1 border-t border-atencao-200 pt-2">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium text-slate-800">Resultado:</span>
-                          <Etiqueta tom={TOM_RESULTADO_CONTESTACAO[solicitacao.resultado_contestacao]}>
-                            {ROTULO_RESULTADO_CONTESTACAO[solicitacao.resultado_contestacao]}
-                          </Etiqueta>
-                        </div>
+                        <p className="font-medium text-slate-800">Justificativa da decisão</p>
                         <p className="whitespace-pre-line text-slate-700">
                           {solicitacao.justificativa_contestacao}
                         </p>
@@ -387,7 +431,7 @@ export default function ListaMinhasSolicitacoes({ solicitacoes, prazoConfirmacao
                         </p>
                       </div>
                     )}
-                  </div>
+                  </DetalheRecolhivel>
                 )}
 
                 {/* UC 022 — cancelamento registrado */}
@@ -455,42 +499,6 @@ export default function ListaMinhasSolicitacoes({ solicitacoes, prazoConfirmacao
                       </p>
                     )}
                   </div>
-                )}
-
-                {solicitacao.status === 'concluido' && (
-                  <FormularioAvaliacao
-                    avaliacao={solicitacao.id_avaliacao ? {
-                      id: solicitacao.id_avaliacao,
-                      nota: solicitacao.nota,
-                      comentario: solicitacao.comentario,
-                      status_avaliacao: solicitacao.status_avaliacao,
-                    } : null}
-                    processando={processando}
-                    aoEnviar={async ({ nota, comentario, visibilidade }) => {
-                      setErro('');
-                      setMensagem('');
-                      setProcessando(true);
-                      try {
-                        const resposta = await fetch('/api/avaliacoes', {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({
-                            idSolicitacao: solicitacao.id, nota, comentario, visibilidade,
-                          }),
-                        });
-                        const dados = await resposta.json();
-                        if (!resposta.ok) {
-                          setErro(dados.erro ?? 'Não foi possível registrar a avaliação.');
-                          return;
-                        }
-                        setMensagem('Avaliação registrada. Obrigado!');
-                        router.refresh();
-                      } catch {
-                        setErro('Falha de conexão. Tente novamente.');
-                      } finally {
-                        setProcessando(false);
-                      }
-                    }} />
                 )}
 
                 {painel === null && (

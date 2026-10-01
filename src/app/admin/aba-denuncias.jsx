@@ -14,13 +14,9 @@ import {
   ROTULO_RESULTADO_DENUNCIA,
   TOM_RESULTADO_DENUNCIA,
 } from '@/lib/denuncia';
+import { formatarDataHora } from '@/lib/datas';
 
 // RF068 / UC 026 — análise das denúncias.
-
-function formatarDataHora(valor) {
-  if (!valor) return '';
-  return new Date(valor).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
-}
 
 export default function AbaDenuncias({ denuncias }) {
   const router = useRouter();

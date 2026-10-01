@@ -2,6 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Send, Loader2, MessageCircle, X } from 'lucide-react';
+import {
+  apenasDia, diaDeHoje, formatarDataPorExtenso, formatarHora,
+} from '@/lib/datas';
 
 // UC 016 — canal de mensagens da solicitação.
 //
@@ -13,27 +16,18 @@ import { Send, Loader2, MessageCircle, X } from 'lucide-react';
 
 const INTERVALO_MS = 5000;
 
-function apenasData(valor) {
-  return new Date(valor).toLocaleDateString('pt-BR');
-}
-
 // Separador de dia, como em qualquer aplicativo de mensagens: "Hoje" e
 // "Ontem" poupam quem lê de calcular a data de cabeça.
+//
+// A comparação é feita sobre o texto do dia, e não sobre Date: a data da
+// mensagem vem do banco como relógio de parede (lib/datas.js), e montar um
+// Date a partir dela só abriria espaço para a conversão de fuso que já nos
+// custou três horas em todas as telas.
 function rotuloDoDia(valor) {
-  const hoje = new Date();
-  const ontem = new Date();
-  ontem.setDate(hoje.getDate() - 1);
-
-  const data = apenasData(valor);
-  if (data === apenasData(hoje)) return 'Hoje';
-  if (data === apenasData(ontem)) return 'Ontem';
-  return new Date(valor).toLocaleDateString('pt-BR', {
-    day: '2-digit', month: 'long', year: 'numeric',
-  });
-}
-
-function horario(valor) {
-  return new Date(valor).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  const dia = apenasDia(valor);
+  if (dia === diaDeHoje()) return 'Hoje';
+  if (dia === diaDeHoje(-1)) return 'Ontem';
+  return formatarDataPorExtenso(valor);
 }
 
 export default function Chat({ idSolicitacao, titulo, aoFechar, aoAlterar }) {
@@ -167,7 +161,7 @@ export default function Chat({ idSolicitacao, titulo, aoFechar, aoAlterar }) {
               const minha = mensagem.id_usuario === dados.idUsuarioAtual;
               const anterior = dados.mensagens[posicao - 1];
               const mudouODia = !anterior
-                || apenasData(anterior.data_hora) !== apenasData(mensagem.data_hora);
+                || apenasDia(anterior.data_hora) !== apenasDia(mensagem.data_hora);
 
               return (
                 <li key={mensagem.id}>
@@ -186,7 +180,7 @@ export default function Chat({ idSolicitacao, titulo, aoFechar, aoAlterar }) {
                       <p className="whitespace-pre-line text-sm">{mensagem.conteudo}</p>
                       <p className={`mt-1 text-right text-[11px] ${
                         minha ? 'text-white/70' : 'text-slate-400'}`}>
-                        {horario(mensagem.data_hora)}
+                        {formatarHora(mensagem.data_hora)}
                       </p>
                     </div>
                   </div>

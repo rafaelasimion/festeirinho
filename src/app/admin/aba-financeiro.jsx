@@ -9,17 +9,13 @@ import { BotaoAcao } from '@/componentes/acoes-solicitacao';
 import { CampoTexto } from '@/componentes/campo';
 import { formatarPreco } from '@/lib/solicitacao';
 import { descreverRecebimento, TIPOS_CHAVE_PIX } from '@/lib/recebimento';
+import { formatarDataHora } from '@/lib/datas';
 
 // Aba "Financeiro" do painel administrativo.
 //
 // Duas filas, na ordem em que o dinheiro anda:
 //   1. dados de recebimento aguardando validação (UC 038)
 //   2. transferências e estornos em processamento, esperando o gateway
-
-function formatarDataHora(valor) {
-  if (!valor) return '';
-  return new Date(valor).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
-}
 
 export default function AbaFinanceiro({ dadosPendentes, processamentos }) {
   const router = useRouter();

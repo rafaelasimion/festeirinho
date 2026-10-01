@@ -11,17 +11,13 @@ import {
   antecedenciaMinimaDias,
   formatarValorParametro,
 } from '@/lib/parametros';
+import { formatarDataHora as formatarData } from '@/lib/datas';
 
 // UC 028 — painel de configurações.
 //
 // Cada parâmetro é alterado individualmente e confirmado (passos 3 e 4). A
 // tela confere faixa e consistência antes de enviar; o servidor confere de
 // novo, com as mesmas funções.
-
-function formatarData(valor) {
-  if (!valor) return '';
-  return new Date(valor).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
-}
 
 export default function AbaConfiguracoes({ configuracoes }) {
   const router = useRouter();

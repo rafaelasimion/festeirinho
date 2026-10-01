@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { pool } from '@/lib/db';
 import { lerSessao } from '@/lib/sessao';
+import { formatarDataHora } from '@/lib/datas';
 
 // UC 017 / RF064 — central de notificações.
 
@@ -32,12 +33,6 @@ function destino(notificacao, ehFornecedor) {
   if (notificacao.tipo === 'servico') return '/fornecedor/vitrine';
   if (notificacao.tipo === 'financeiro') return '/fornecedor/financeiro';
   return ehFornecedor ? '/fornecedor/perfil' : '/minha-conta';
-}
-
-function formatarDataHora(valor) {
-  return new Date(valor).toLocaleString('pt-BR', {
-    dateStyle: 'short', timeStyle: 'short',
-  });
 }
 
 export default async function Notificacoes() {

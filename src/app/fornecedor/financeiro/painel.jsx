@@ -2,14 +2,10 @@ import { Wallet, Clock, CheckCircle2 } from 'lucide-react';
 import Etiqueta from '@/componentes/etiqueta';
 import { formatarPreco } from '@/lib/solicitacao';
 import Saques from './saques';
+import { formatarData } from '@/lib/datas';
 
 // Componente de servidor: só apresenta. A parte interativa — pedir saque e
 // reenviar dados — fica isolada no componente Saques, que é de cliente.
-
-function formatarData(valor) {
-  if (!valor) return '';
-  return new Date(valor).toLocaleDateString('pt-BR');
-}
 
 export default function PainelFinanceiro({
   saldoDisponivel, diasCarencia, valorMinimoSaque, percentualComissao,
