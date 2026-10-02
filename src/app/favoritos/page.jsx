@@ -200,8 +200,27 @@ export default async function Favoritos() {
                       </p>
                     </div>
 
-                    <BotaoFavorito tipo="fornecedor" id={fornecedor.id} favorito
-                      rotulo={fornecedor.nome_exibicao} />
+                    {/* Sem isto o fornecedor favoritado era um beco sem
+                        saída: aparecia salvo, mas não havia como abrir a
+                        vitrine dele. O cartão de serviço ao lado sempre
+                        teve o "Ver detalhes"; faltava o par aqui.
+
+                        O botão só existe com o fornecedor ativo porque
+                        /fornecedores/[id] devolve 404 para quem não é o
+                        dono quando o fornecedor está pausado ou suspenso —
+                        um link que leva a "página não encontrada" é pior
+                        que link nenhum. Nesse caso a linha acima já
+                        explica: "Indisponível no momento". */}
+                    <div className="flex shrink-0 items-center gap-2">
+                      {fornecedor.status_fornecedor === 'ativo' && (
+                        <Link href={`/fornecedores/${fornecedor.id}`}
+                          className="rounded-lg bg-festa-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-festa-700">
+                          Ver vitrine
+                        </Link>
+                      )}
+                      <BotaoFavorito tipo="fornecedor" id={fornecedor.id} favorito
+                        rotulo={fornecedor.nome_exibicao} />
+                    </div>
                   </li>
                 ))}
               </ul>

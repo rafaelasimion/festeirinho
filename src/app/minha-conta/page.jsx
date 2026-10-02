@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import {
   UserPen, Bell, Heart, ClipboardList, Store, Wallet,
-  CreditCard, LifeBuoy, LogOut, BadgeCheck, FileText,
+  CreditCard, Headset, LogOut, BadgeCheck, FileText,
 } from 'lucide-react';
 import { lerSessao } from '@/lib/sessao';
 import { pool } from '@/lib/db';
@@ -145,7 +145,7 @@ export default async function MinhaConta() {
       </section>
 
       <SecaoMenu titulo="Suporte">
-        <ItemMenu href="/suporte" Icone={LifeBuoy}
+        <ItemMenu href="/suporte" Icone={Headset}
           titulo="Fale conosco" descricao="Atendimento por e-mail ou WhatsApp" />
 
         {/* Sair é uma ação que MUDA estado no servidor, então é POST, e
