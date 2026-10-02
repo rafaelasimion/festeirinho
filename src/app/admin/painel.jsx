@@ -543,7 +543,10 @@ function FotosDoServico({ fotos }) {
 
   return (
     <Bloco rotulo={`Fotos (${fotos.length})`}>
-      <ul className="flex gap-2 overflow-x-auto pb-1">
+      {/* O -m-1/p-1 dá espaço para o anel da foto principal: o
+          overflow-x-auto recorta o que passa da caixa, e o anel, desenhado
+          para fora da borda, sumia em cima e à esquerda. */}
+      <ul className="-m-1 flex gap-2 overflow-x-auto p-1">
         {fotos.map((foto) => (
           <li key={foto.id} className="relative shrink-0">
             <a href={foto.imagem_url} target="_blank" rel="noreferrer"

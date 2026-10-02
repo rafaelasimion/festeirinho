@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { LifeBuoy, Mail, MessageCircle, ArrowLeft } from 'lucide-react';
+import { Headset, Mail, MessageCircle, ArrowLeft } from 'lucide-react';
+import { CampoTexto } from '@/componentes/campo';
 import {
   ASSUNTOS,
   montarMensagem,
@@ -39,7 +40,7 @@ export default function FormularioSuporte({
     <main className="mx-auto max-w-2xl px-6 py-10">
       <div className="mb-6 flex items-start gap-3">
         <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-festa-50">
-          <LifeBuoy className="h-5 w-5 text-festa-700" aria-hidden="true" />
+          <Headset className="h-5 w-5 text-festa-700" aria-hidden="true" />
         </span>
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">Falar com o suporte</h1>
@@ -89,14 +90,16 @@ export default function FormularioSuporte({
         ))}
       </fieldset>
 
+      {/* O label era uma frase — "Conte o que aconteceu (opcional)" —, e
+          num celular ela quebrava em duas linhas sobre um campo que já
+          tem placeholder dizendo a mesma coisa. Label nomeia o campo; o
+          convite fica no placeholder. */}
       <div className="mt-6">
-        <label htmlFor="relato" className="mb-1.5 block text-sm font-medium text-slate-700">
-          Conte o que aconteceu <span className="font-normal text-slate-500">(opcional)</span>
-        </label>
-        <textarea id="relato" rows={4} value={relato}
+        <CampoTexto
+          label={<>Mensagem <span className="font-normal text-slate-500">(opcional)</span></>}
+          name="relato" rows={4} value={relato}
           onChange={(evento) => setRelato(evento.target.value)}
-          placeholder="Você pode escrever aqui ou direto na conversa, como preferir."
-          className="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 text-slate-900 placeholder:text-slate-400 focus:border-festa-600 focus:outline-none focus:ring-2 focus:ring-festa-600/30" />
+          placeholder="Conte o que aconteceu. Você também pode escrever direto na conversa." />
       </div>
 
       {/* Mostrar a mensagem antes de abrir o canal evita a surpresa de

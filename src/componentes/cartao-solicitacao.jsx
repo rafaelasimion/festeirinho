@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { CalendarClock, MapPin, Users, ChevronRight } from 'lucide-react';
 import MolduraFoto from '@/componentes/moldura-foto';
 
@@ -13,10 +14,14 @@ import MolduraFoto from '@/componentes/moldura-foto';
 // `como` existe porque este mesmo resumo aparece fora de lista: na tela de
 // pagamento ele é um bloco solto, e um <li> sozinho, sem <ul> em volta, é
 // HTML inválido. O padrão continua sendo o <li> das duas listas.
+// hrefTitulo e hrefSubtitulo são opcionais porque os dois lados do
+// sistema têm destinos diferentes: para o cliente o título leva ao serviço
+// e o subtítulo à vitrine do fornecedor; para o fornecedor o subtítulo é o
+// nome do cliente, que não tem página. Sem href, o texto fica texto.
 export default function CartaoSolicitacao({
   como: Tag = 'li',
   titulo, subtitulo, preco, foto, etiquetas, quando, convidados, local,
-  painel, children,
+  hrefTitulo, hrefSubtitulo, painel, children,
 }) {
   return (
     // Corpo branco, e quem dá peso ao cartão é a foto.
@@ -42,8 +47,26 @@ export default function CartaoSolicitacao({
             serviço comprido desce em uma palavra por linha. */}
         <div className="sm:flex sm:items-start sm:justify-between sm:gap-3">
           <div className="min-w-0">
-            <h2 className="font-semibold text-slate-900">{titulo}</h2>
-            <p className="text-sm text-slate-600">{subtitulo}</p>
+            <h2 className="font-semibold text-slate-900">
+              {hrefTitulo
+                ? (
+                  <Link href={hrefTitulo}
+                    className="rounded transition-colors hover:text-festa-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-festa-600/40">
+                    {titulo}
+                  </Link>
+                )
+                : titulo}
+            </h2>
+            <p className="text-sm text-slate-600">
+              {hrefSubtitulo
+                ? (
+                  <Link href={hrefSubtitulo}
+                    className="rounded transition-colors hover:text-festa-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-festa-600/40">
+                    {subtitulo}
+                  </Link>
+                )
+                : subtitulo}
+            </p>
           </div>
           <div className="mt-2 flex flex-wrap gap-1.5 sm:mt-0 sm:shrink-0 sm:justify-end">
             {etiquetas}

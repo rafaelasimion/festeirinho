@@ -27,7 +27,14 @@ import { Eye, EyeOff } from 'lucide-react';
 // estava arredondado e com borda roxa: cada arquivo escrevia a sua própria
 // CLASSE_SELECT. Quem mudar a borda aqui muda nos três controles.
 function classesControle(comErro, espacamento) {
-  return `w-full rounded-xl border bg-white py-3 text-slate-900
+  // min-w-0 é o que impede um controle de empurrar a coluna em que vive.
+  // O w-full dá a largura desejada, não a MÍNIMA: a largura mínima de um
+  // <select> é intrínseca — a opção mais comprida —, e num item de grade
+  // ou de flex, cujo min-width: auto não deixa encolher abaixo do
+  // conteúdo, é essa largura que vence. O Chromium trunca a opção e
+  // disfarça; o Firefox obedece e o select sai da tela. "Área externa,
+  // chácara ou espaço ao ar livre com cobertura" é a opção que faz isso.
+  return `w-full min-w-0 rounded-xl border bg-white py-3 text-slate-900
     placeholder:text-slate-400
     focus:outline-none focus:ring-2
     disabled:bg-slate-100 disabled:text-slate-500
@@ -63,7 +70,10 @@ function useValidacao({ erro, validar, onChange, onBlur }) {
 // Rótulo em cima, dica e erro embaixo: a moldura é a mesma para os três.
 function Moldura({ label, name, dica, mensagem, children }) {
   return (
-    <div>
+    // min-w-0 pelo mesmo motivo do controle: esta div é o item da grade, e
+    // o min-width: auto dela repassaria para a coluna a largura intrínseca
+    // de quem está dentro.
+    <div className="min-w-0">
       <label htmlFor={name} className="mb-1.5 block text-sm font-medium text-slate-700">
         {label}
       </label>

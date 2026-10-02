@@ -339,6 +339,8 @@ export default function ListaMinhasSolicitacoes({ solicitacoes, prazoConfirmacao
                 quando={`${formatarDataHora(solicitacao.data_hora_evento)} · ${solicitacao.duracao}h`}
                 convidados={`${solicitacao.numero_convidados} convidados`}
                 local={`${solicitacao.cidade}/${solicitacao.estado}`}
+                hrefTitulo={`/servicos/${solicitacao.id_servico}`}
+                hrefSubtitulo={`/fornecedores/${solicitacao.id_fornecedor}`}
                 painel={conteudoPainel}>
 
                 {solicitacao.status === 'aguardando_analise' && (

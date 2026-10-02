@@ -256,7 +256,14 @@ export default async function DetalheServico({ params }) {
           </p>
         </section>
 
-        <div className="grid grid-cols-2 gap-3">
+        {/* Uma coluna no celular. Duas colunas aqui não cabiam: o cartão
+            gasta 32px de p-4 e mais 36px no ícone, e o que sobra para o
+            texto é 90px a 360px — "Antecedência" ocupa 113px e saía 23px
+            para fora do cartão (a 390px, 8px). Diminuir o rótulo para
+            15px deixava 16px de sobra para fora, e encolher o ícone para
+            20px, 15px: a palavra é uma só e não quebra, então nenhum
+            ajuste de tamanho resolvia — o que faltava era largura. */}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div className="flex items-center gap-3 rounded-2xl bg-white p-4">
             <Users className="h-6 w-6 shrink-0 text-festa-600" aria-hidden="true" />
             <div className="min-w-0">

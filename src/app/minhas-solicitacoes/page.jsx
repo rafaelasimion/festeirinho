@@ -37,6 +37,9 @@ export default async function MinhasSolicitacoes() {
             so.resultado_contestacao, so.justificativa_contestacao,
             so.data_analise_contestacao,
             s.nome AS servico, f.nome_exibicao AS fornecedor,
+            -- Os dois ids que o cartão usa para linkar: o nome do serviço
+            -- leva à página dele, o do fornecedor à vitrine.
+            s.id AS id_servico, f.id AS id_fornecedor,
             -- Miniatura do serviço no cabeçalho do cartão: a foto é o
             -- que identifica a contratação de relance, antes do nome.
             fp.imagem_url AS foto_principal,
