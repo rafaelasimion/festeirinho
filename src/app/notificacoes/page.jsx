@@ -12,8 +12,8 @@ import { formatarDataHora } from '@/lib/datas';
 export const metadata = { title: 'Notificações — Festeirinho' };
 
 // Cada tipo tem um ícone e um destino. Os tipos com solicitação levam à
-// lista de solicitações do papel correspondente; os demais, à seção
-// relacionada (RN065).
+// solicitação em si, quando o papel tem página para ela, e à lista quando
+// não tem; os demais, à seção relacionada (RN065).
 const TIPOS = {
   solicitacao: { Icone: CalendarCheck, rotulo: 'Solicitação' },
   pagamento: { Icone: CreditCard, rotulo: 'Pagamento' },
@@ -26,7 +26,14 @@ const TIPOS = {
 
 function destino(notificacao, ehFornecedor) {
   if (notificacao.id_solicitacao) {
-    return ehFornecedor ? '/fornecedor/solicitacoes' : '/minhas-solicitacoes';
+    // UC 017, passo 6 — "a tela do item relacionado à notificação". Para o
+    // cliente isso agora é a solicitação em si: antes só existia a lista, e
+    // quem clicava num aviso sobre a solicitação 3 caía numa lista de doze
+    // para procurá-la de novo. O fornecedor continua na lista enquanto a
+    // página dele não existe.
+    return ehFornecedor
+      ? '/fornecedor/solicitacoes'
+      : `/minhas-solicitacoes/${notificacao.id_solicitacao}`;
   }
   // O aviso de serviço aprovado ou recusado leva à vitrine: é lá que o
   // serviço aparece, com o motivo da recusa junto quando há um.

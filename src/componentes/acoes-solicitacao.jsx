@@ -46,8 +46,11 @@ export function BarraAcoes({ children }) {
   );
 }
 
+// `IconeFim` existe para o botão que LEVA a algum lugar, em vez de fazer
+// algo: ali a seta pertence ao fim, apontando para onde se vai. À
+// esquerda, antes do texto, ela lê como um ícone de "tocar".
 export function BotaoAcao({
-  tom = 'secundario', Icone, href, onClick, disabled, contador, children,
+  tom = 'secundario', Icone, IconeFim, href, onClick, disabled, contador, children,
 }) {
   // O discreto é menor de propósito: é o que se lê por último.
   const medida = tom === 'discreto'
@@ -69,6 +72,7 @@ export function BotaoAcao({
           {contador}
         </span>
       )}
+      {IconeFim && <IconeFim className="h-4 w-4 shrink-0" aria-hidden="true" />}
     </>
   );
 

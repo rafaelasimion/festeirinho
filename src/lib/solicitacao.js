@@ -112,3 +112,55 @@ export function chatAberto({ status, conclusaoRegistrada }) {
   return ['aguardando_pagamento', 'confirmado'].includes(status)
     && !conclusaoRegistrada;
 }
+
+// A situação de uma solicitação vista pelo cliente.
+//
+// Nem tudo que a tela precisa saber está na coluna `status`: "o fornecedor
+// registrou a conclusão e falta você confirmar" é a combinação de quatro
+// campos, e "está em contestação" é um quinto. Essas contas moram aqui
+// porque agora duas telas as fazem — a lista, para escolher o rótulo do
+// botão, e a página da solicitação, para decidir o que mostrar. Repetidas,
+// um dia uma das cópias mudaria sozinha e o botão prometeria uma coisa
+// enquanto a página faz outra.
+export function situacaoCliente(solicitacao) {
+  const contestacaoPendente = solicitacao.status_contestacao === 'pendente';
+
+  // UC 020 / UC 042 — a janela em que a bola está com o cliente.
+  const aguardandoConfirmacao =
+    solicitacao.status === 'confirmado'
+    && Boolean(solicitacao.data_registro_conclusao_fornecedor)
+    && !solicitacao.data_confirmacao_conclusao_cliente
+    && !solicitacao.status_contestacao;
+
+  const podeAvaliar = solicitacao.status === 'concluido' && !solicitacao.id_avaliacao;
+
+  return { contestacaoPendente, aguardandoConfirmacao, podeAvaliar };
+}
+
+// O botão que leva da lista para a página da solicitação.
+//
+// O destino é sempre o mesmo — a página da solicitação. O que muda é o
+// rótulo, que anuncia o que está esperando lá dentro: a pessoa varre a
+// lista e vê, de relance, em qual delas ela precisa fazer alguma coisa.
+// A ação de verdade acontece na página, com o contexto à vista; pagar ou
+// confirmar uma conclusão direto de um item de lista é decidir no escuro.
+//
+// A ordem importa: é uma régua de urgência, e a primeira que casar vence.
+export function chamadaCliente(solicitacao) {
+  const { contestacaoPendente, aguardandoConfirmacao, podeAvaliar } =
+    situacaoCliente(solicitacao);
+
+  if (contestacaoPendente) {
+    return { rotulo: 'Acompanhar contestação', tom: 'atencao' };
+  }
+  if (aguardandoConfirmacao) {
+    return { rotulo: 'Confirmar conclusão', tom: 'principal' };
+  }
+  if (solicitacao.status === 'aguardando_pagamento' && solicitacao.id_pagamento) {
+    return { rotulo: 'Pagar', tom: 'principal' };
+  }
+  if (podeAvaliar) {
+    return { rotulo: 'Avaliar serviço', tom: 'principal' };
+  }
+  return { rotulo: 'Ver detalhes', tom: 'secundario' };
+}
