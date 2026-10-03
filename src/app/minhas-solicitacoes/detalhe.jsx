@@ -318,7 +318,7 @@ export default function DetalheSolicitacao({
         local={`${solicitacao.cidade}/${solicitacao.estado}`}
         hrefTitulo={`/servicos/${solicitacao.id_servico}`}
         hrefSubtitulo={`/fornecedores/${solicitacao.id_fornecedor}`}
-        painel={conteudoPainel}>
+        >
 
         {solicitacao.status === 'aguardando_analise' && (
           <AvisoCartao>
@@ -480,8 +480,7 @@ export default function DetalheSolicitacao({
           </div>
         )}
 
-        {painel === null && (
-          <BarraAcoes>
+        <BarraAcoes>
             {solicitacao.status === 'aguardando_pagamento' && solicitacao.id_pagamento && (
               <BotaoAcao tom="principal" Icone={CreditCard}
                 href={`/pagamento/${solicitacao.id_pagamento}`}>
@@ -534,8 +533,7 @@ export default function DetalheSolicitacao({
                 Denunciar
               </BotaoAcao>
             )}
-          </BarraAcoes>
-        )}
+        </BarraAcoes>
       </CartaoSolicitacao>
   );
 
@@ -551,6 +549,20 @@ export default function DetalheSolicitacao({
       {erro && <p className="mb-4 text-sm text-perigo-600">{erro}</p>}
 
       {cartao}
+
+      {/* O painel aberto — conversa, cancelamento, recusa, denúncia,
+          contestação, avaliação — é um cartão à parte, abaixo do resumo.
+          Antes ele abria DENTRO do cartão, empurrado para o rodapé, e num
+          celular isso significava um chat de 500px nascendo embaixo da
+          foto: quem clicava em "Conversar" via o cartão crescer e tinha de
+          rolar para descobrir onde a conversa começava. Fora dele, cada
+          coisa tem a sua moldura — o resumo é o resumo, o que você abriu
+          é o que você abriu. */}
+      {conteudoPainel && (
+        <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+          {conteudoPainel}
+        </div>
+      )}
 
       {/* RF023 — o histórico embaixo do resumo: primeiro o que a
           solicitação é, depois como ela chegou até aqui. */}

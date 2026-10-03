@@ -168,8 +168,20 @@ export default async function Favoritos() {
               </h2>
               <ul className="space-y-3">
                 {fornecedores.map((fornecedor) => (
+                  // O cartão inteiro é o link, não um botão espremido no
+                  // canto. Com avatar, nome, cidade, contagem de serviços E
+                  // um botão, a 360px não sobrava largura para nada: o
+                  // flex-wrap quebrava "Ana Deco" em duas linhas, cortava
+                  // "Franca/SP" no meio e empilhava a contagem em três.
+                  //
+                  // O truque é o link do nome carregar um ::before de
+                  // inset-0, que cobre o cartão inteiro e o torna clicável
+                  // sem aninhar um botão dentro de um link — o que seria
+                  // HTML inválido e deixaria o coração sem função. O
+                  // coração sobe de camada (relative z-10) para continuar
+                  // acima dessa cobertura.
                   <li key={fornecedor.id}
-                    className="flex flex-wrap items-center gap-4 rounded-2xl border border-slate-200 bg-white p-4">
+                    className="relative flex items-center gap-4 rounded-2xl border border-slate-200 bg-white p-4 transition-colors hover:border-festa-300">
                     <div className="h-14 w-14 shrink-0 overflow-hidden rounded-full bg-festa-100">
                       {fornecedor.foto_perfil ? (
                         // eslint-disable-next-line @next/next/no-img-element
@@ -182,8 +194,20 @@ export default async function Favoritos() {
                     </div>
 
                     <div className="min-w-0 flex-1">
-                      <p className="flex flex-wrap items-center gap-1.5 font-medium text-slate-900">
-                        {fornecedor.nome_exibicao}
+                      <p className="flex items-center gap-1.5 font-medium text-slate-900">
+                        {/* Só o fornecedor ativo vira link: a vitrine
+                            responde 404 a quem não é o dono quando ele está
+                            pausado ou suspenso, e um cartão inteiro clicável
+                            que leva a "página não encontrada" é pior do que
+                            um cartão que não clica. */}
+                        {fornecedor.status_fornecedor === 'ativo' ? (
+                          <Link href={`/fornecedores/${fornecedor.id}`}
+                            className="truncate rounded before:absolute before:inset-0 before:rounded-2xl hover:text-festa-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-festa-600/40">
+                            {fornecedor.nome_exibicao}
+                          </Link>
+                        ) : (
+                          <span className="truncate">{fornecedor.nome_exibicao}</span>
+                        )}
                         {fornecedor.status_verificacao === 'aprovado' && (
                           <BadgeCheck className="h-4 w-4 shrink-0 text-festa-600"
                             aria-label="Fornecedor verificado" />
@@ -200,24 +224,9 @@ export default async function Favoritos() {
                       </p>
                     </div>
 
-                    {/* Sem isto o fornecedor favoritado era um beco sem
-                        saída: aparecia salvo, mas não havia como abrir a
-                        vitrine dele. O cartão de serviço ao lado sempre
-                        teve o "Ver detalhes"; faltava o par aqui.
-
-                        O botão só existe com o fornecedor ativo porque
-                        /fornecedores/[id] devolve 404 para quem não é o
-                        dono quando o fornecedor está pausado ou suspenso —
-                        um link que leva a "página não encontrada" é pior
-                        que link nenhum. Nesse caso a linha acima já
-                        explica: "Indisponível no momento". */}
-                    <div className="flex shrink-0 items-center gap-2">
-                      {fornecedor.status_fornecedor === 'ativo' && (
-                        <Link href={`/fornecedores/${fornecedor.id}`}
-                          className="rounded-lg bg-festa-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-festa-700">
-                          Ver vitrine
-                        </Link>
-                      )}
+                    {/* z-10 para o coração ficar acima da cobertura do
+                        link; sem isso, clicar nele abriria a vitrine. */}
+                    <div className="relative z-10 shrink-0">
                       <BotaoFavorito tipo="fornecedor" id={fornecedor.id} favorito
                         rotulo={fornecedor.nome_exibicao} />
                     </div>

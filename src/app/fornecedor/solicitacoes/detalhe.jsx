@@ -239,7 +239,7 @@ export default function DetalheSolicitacaoRecebida({
             solicitacao.complemento ? ` — ${solicitacao.complemento}` : ''
           } · ${solicitacao.bairro} · ${solicitacao.cidade}/${solicitacao.estado} · CEP ${solicitacao.cep}`
           : `${solicitacao.bairro}, ${solicitacao.cidade}/${solicitacao.estado}`}
-        painel={conteudoPainel}>
+        >
 
         {(solicitacao.tema || solicitacao.nome_aniversariante || solicitacao.observacoes) && (
           <div className="mt-4 space-y-1 rounded-lg bg-slate-50 p-3 text-sm text-slate-700">
@@ -392,8 +392,7 @@ export default function DetalheSolicitacaoRecebida({
           </div>
         )}
 
-        {painel === null && (
-          <BarraAcoes>
+        <BarraAcoes>
             {aberta && (
               <BotaoAcao tom="principal" Icone={Check} disabled={processando}
                 onClick={() => acionar(
@@ -451,8 +450,7 @@ export default function DetalheSolicitacaoRecebida({
                   Denunciar comentário
                 </BotaoAcao>
               )}
-          </BarraAcoes>
-        )}
+        </BarraAcoes>
       </CartaoSolicitacao>
   );
 
@@ -468,6 +466,20 @@ export default function DetalheSolicitacaoRecebida({
       {erroGeral && <p className="mb-4 text-sm text-perigo-600">{erroGeral}</p>}
 
       {cartao}
+
+      {/* O painel aberto — conversa, cancelamento, recusa, denúncia,
+          contestação, avaliação — é um cartão à parte, abaixo do resumo.
+          Antes ele abria DENTRO do cartão, empurrado para o rodapé, e num
+          celular isso significava um chat de 500px nascendo embaixo da
+          foto: quem clicava em "Conversar" via o cartão crescer e tinha de
+          rolar para descobrir onde a conversa começava. Fora dele, cada
+          coisa tem a sua moldura — o resumo é o resumo, o que você abriu
+          é o que você abriu. */}
+      {conteudoPainel && (
+        <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+          {conteudoPainel}
+        </div>
+      )}
 
       {/* RF023 — o histórico embaixo do resumo: primeiro o que a
           solicitação é, depois como ela chegou até aqui. */}

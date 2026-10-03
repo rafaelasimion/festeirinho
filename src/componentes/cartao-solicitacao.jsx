@@ -21,7 +21,7 @@ import MolduraFoto from '@/componentes/moldura-foto';
 export default function CartaoSolicitacao({
   como: Tag = 'li',
   titulo, subtitulo, preco, foto, etiquetas, quando, convidados, local,
-  hrefTitulo, hrefSubtitulo, painel, children,
+  hrefTitulo, hrefSubtitulo, children,
 }) {
   return (
     // Corpo branco, e quem dá peso ao cartão é a foto.
@@ -98,14 +98,6 @@ export default function CartaoSolicitacao({
         </div>
       </div>
 
-      {/* O painel aberto — conversa, cancelamento, recusa, denúncia,
-          contestação — mora FORA da linha da foto, em largura cheia.
-          Dentro dela, um chat de 500px de altura esticava a faixa lateral
-          junto, e a foto virava uma tira comprida e deformada. Aqui o
-          cartão cresce para baixo e a faixa continua do tamanho do resumo. */}
-      {painel && (
-        <div className="border-t border-slate-200 p-4 sm:p-5">{painel}</div>
-      )}
     </Tag>
   );
 }
