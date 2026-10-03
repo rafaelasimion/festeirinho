@@ -37,6 +37,7 @@ import {
   ROTULO_RESULTADO_CONTESTACAO,
 } from '@/lib/contestacao';
 import { formatarDataHora } from '@/lib/datas';
+import LinhaDoTempo from '@/componentes/linha-do-tempo';
 
 // UC 014, passos 3 e 4 — a página de UMA solicitação.
 //
@@ -550,6 +551,10 @@ export default function DetalheSolicitacao({
       {erro && <p className="mb-4 text-sm text-perigo-600">{erro}</p>}
 
       {cartao}
+
+      {/* RF023 — o histórico embaixo do resumo: primeiro o que a
+          solicitação é, depois como ela chegou até aqui. */}
+      <LinhaDoTempo solicitacao={solicitacao} />
     </main>
   );
 }

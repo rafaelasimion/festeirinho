@@ -49,6 +49,10 @@ export async function buscarSolicitacoes(idUsuario, { id = null } = {}) {
             so.data_contestacao_cliente, so.status_contestacao,
             so.resultado_contestacao, so.justificativa_contestacao,
             so.data_analise_contestacao,
+            -- RF023 — os marcos que faltavam para a linha do tempo. A
+            -- coluna data_resposta_fornecedor já existia no modelo, com o
+            -- RF023 citado no comentário da DDL; só não estava sendo lida.
+            so.data_resposta_fornecedor,
             s.nome AS servico, f.nome_exibicao AS fornecedor,
             -- Os dois ids que o cartão usa para linkar: o nome do serviço
             -- leva à página dele, o do fornecedor à vitrine.
@@ -58,12 +62,14 @@ export async function buscarSolicitacoes(idUsuario, { id = null } = {}) {
             fp.imagem_url AS foto_principal,
             e.cidade, e.estado,
             p.id AS id_pagamento, p.status AS status_pagamento,
-            p.data_limite, p.valor_bruto, p.forma_pagamento,
+            p.data_limite, p.data_pagamento, p.valor_bruto, p.forma_pagamento,
             p.perc_multa_faixa_mais_7d, p.perc_multa_faixa_7d_48h,
             p.perc_multa_faixa_48h_24h, p.perc_multa_faixa_24h,
             ca.id AS id_cancelamento, ca.solicitado_por, ca.motivo AS motivo_cancelamento,
+            ca.data_solicitacao AS data_cancelamento,
             ca.valor_reembolso, ca.valor_multa, ca.status AS status_cancelamento,
             av.id AS id_avaliacao, av.nota, av.comentario, av.status_avaliacao,
+            av.data_avaliacao,
             dr.id AS id_dados_reembolso, dr.status_validacao AS validacao_reembolso,
             dr.motivo_rejeicao AS motivo_rejeicao_reembolso,
             dr.tipo_recebimento, dr.chave_pix, dr.tipo_chave_pix,
@@ -120,6 +126,10 @@ function serializar(linhas) {
     data_confirmacao_conclusao_cliente: iso(linha.data_confirmacao_conclusao_cliente),
     data_contestacao_cliente: iso(linha.data_contestacao_cliente),
     data_analise_contestacao: iso(linha.data_analise_contestacao),
+    data_resposta_fornecedor: iso(linha.data_resposta_fornecedor),
+    data_pagamento: iso(linha.data_pagamento),
+    data_cancelamento: iso(linha.data_cancelamento),
+    data_avaliacao: iso(linha.data_avaliacao),
     data_limite: iso(linha.data_limite),
     duracao: Number(linha.duracao),
     valor_final: Number(linha.valor_final),

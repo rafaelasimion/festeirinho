@@ -164,3 +164,127 @@ export function chamadaCliente(solicitacao) {
   }
   return { rotulo: 'Ver detalhes', tom: 'secundario' };
 }
+
+// A situação de uma solicitação vista pelo fornecedor. Mesma razão da
+// gêmea do cliente: a lista e a página precisam concordar.
+export function situacaoFornecedor(solicitacao) {
+  const aberta = solicitacao.status === 'aguardando_analise';
+
+  // UC 019, pré-condição — só depois do término previsto do evento.
+  const eventoTerminou = new Date(solicitacao.termino_previsto) <= new Date();
+
+  const podeRegistrarConclusao =
+    solicitacao.status === 'confirmado'
+    && eventoTerminou
+    && !solicitacao.data_registro_conclusao_fornecedor;
+
+  const aguardandoCliente =
+    solicitacao.status === 'confirmado'
+    && Boolean(solicitacao.data_registro_conclusao_fornecedor);
+
+  const contestacaoPendente = solicitacao.status_contestacao === 'pendente';
+
+  return {
+    aberta, eventoTerminou, podeRegistrarConclusao,
+    aguardandoCliente, contestacaoPendente,
+  };
+}
+
+// O botão que leva da lista de recebidas à solicitação. Mesma ideia da
+// chamadaCliente: destino fixo, rótulo que anuncia o que espera lá dentro.
+export function chamadaFornecedor(solicitacao) {
+  const { aberta, podeRegistrarConclusao, contestacaoPendente } =
+    situacaoFornecedor(solicitacao);
+
+  if (aberta) {
+    return { rotulo: 'Analisar', tom: 'principal' };
+  }
+  if (contestacaoPendente) {
+    return { rotulo: 'Acompanhar contestação', tom: 'atencao' };
+  }
+  if (podeRegistrarConclusao) {
+    return { rotulo: 'Registrar conclusão', tom: 'principal' };
+  }
+  return { rotulo: 'Ver detalhes', tom: 'secundario' };
+}
+
+// RF023 — os marcos da solicitação, em ordem cronológica.
+//
+// Não existe tabela de histórico no modelo, e não precisa existir: cada
+// transição do ciclo já tem a sua coluna de data, e a DDL diz isso em voz
+// alta no comentário de data_resposta_fornecedor — "aprovação, recusa ou
+// expiração (RF023)". A linha do tempo é a leitura dessas colunas.
+//
+// A ordem sai do próprio dado, não de uma sequência escrita aqui: os
+// marcos são ordenados pela data. Uma ordem fixa seria uma segunda versão
+// do ciclo de vida, escrita em JavaScript, que um dia discordaria da
+// primeira — e discordaria logo, porque o ciclo tem desvios (contestação,
+// cancelamento pelas três origens) que não cabem numa fila única.
+//
+// A comparação é de texto porque as datas são relógio de parede no formato
+// AAAA-MM-DD HH:MM — ordenar alfabeticamente é ordenar cronologicamente, e
+// sem construir Date nenhum, que é a regra de lib/datas.js.
+export function marcosDaSolicitacao(solicitacao) {
+  const marcos = [];
+  const pôr = (data, titulo, detalhe = null, tom = 'neutro') => {
+    if (data) marcos.push({ data, titulo, detalhe, tom });
+  };
+
+  pôr(solicitacao.data_solicitacao, 'Solicitação enviada');
+
+  // Uma coluna, três desfechos. O status desempata: cancelado só acontece
+  // depois de aprovada, então tudo que não é recusado nem expirado passou
+  // pela aprovação.
+  if (solicitacao.data_resposta_fornecedor) {
+    if (solicitacao.status === 'recusado') {
+      pôr(solicitacao.data_resposta_fornecedor, 'Recusada pelo fornecedor',
+        solicitacao.motivo_recusa ? ROTULO_MOTIVO_RECUSA[solicitacao.motivo_recusa] : null,
+        'perigo');
+    } else if (solicitacao.status === 'expirado') {
+      pôr(solicitacao.data_resposta_fornecedor, 'Expirada sem resposta do fornecedor',
+        null, 'perigo');
+    } else {
+      pôr(solicitacao.data_resposta_fornecedor, 'Aprovada pelo fornecedor',
+        'Pagamento gerado.', 'sucesso');
+    }
+  }
+
+  pôr(solicitacao.data_pagamento, 'Pagamento confirmado',
+    solicitacao.forma_pagamento ? ROTULO_FORMA_PAGAMENTO[solicitacao.forma_pagamento] : null,
+    'sucesso');
+
+  pôr(solicitacao.data_registro_conclusao_fornecedor,
+    'Conclusão registrada pelo fornecedor');
+
+  pôr(solicitacao.data_contestacao_cliente, 'Conclusão contestada pelo cliente',
+    null, 'atencao');
+
+  pôr(solicitacao.data_analise_contestacao, 'Contestação analisada',
+    solicitacao.resultado_contestacao === 'procedente' ? 'Procedente.'
+      : solicitacao.resultado_contestacao === 'improcedente' ? 'Improcedente.'
+        : null,
+    solicitacao.resultado_contestacao === 'procedente' ? 'perigo' : 'sucesso');
+
+  pôr(solicitacao.data_confirmacao_conclusao_cliente, 'Conclusão confirmada',
+    null, 'sucesso');
+
+  pôr(solicitacao.data_cancelamento, 'Cancelamento registrado',
+    solicitacao.solicitado_por
+      ? `Solicitado por: ${ROTULO_ORIGEM_CANCELAMENTO_CURTO[solicitacao.solicitado_por]}.`
+      : null,
+    'perigo');
+
+  pôr(solicitacao.data_avaliacao, 'Serviço avaliado',
+    solicitacao.nota ? `Nota ${solicitacao.nota} de 5.` : null);
+
+  return marcos.sort((a, b) => String(a.data).localeCompare(String(b.data)));
+}
+
+// Versão curta da origem do cancelamento, para caber numa linha do tempo.
+// A longa, em lib/cancelamento.js, é uma frase ("Cancelamento solicitado
+// pelo cliente") e aqui repetiria a palavra que já está no título.
+const ROTULO_ORIGEM_CANCELAMENTO_CURTO = {
+  cliente: 'cliente',
+  fornecedor: 'fornecedor',
+  sistema: 'sistema',
+};
