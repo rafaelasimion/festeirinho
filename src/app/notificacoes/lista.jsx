@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   Bell, CalendarCheck, CreditCard, XCircle, Star, Store, UserCog, Wallet,
+  MessageCircle,
 } from 'lucide-react';
 import { formatarDataHora } from '@/lib/datas';
 
@@ -13,6 +14,7 @@ import { formatarDataHora } from '@/lib/datas';
 // relacionada (RN065).
 const TIPOS = {
   solicitacao: { Icone: CalendarCheck, rotulo: 'Solicitação' },
+  mensagem: { Icone: MessageCircle, rotulo: 'Mensagem' },
   pagamento: { Icone: CreditCard, rotulo: 'Pagamento' },
   cancelamento: { Icone: XCircle, rotulo: 'Cancelamento' },
   avaliacao: { Icone: Star, rotulo: 'Avaliação' },

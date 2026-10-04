@@ -2,7 +2,9 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ShieldCheck, Image as ImageIcon, Check, X, Pencil, Gavel } from 'lucide-react';
+import {
+  ShieldCheck, Image as ImageIcon, Check, X, Pencil, Gavel, ChevronRight,
+} from 'lucide-react';
 import Etiqueta from '@/componentes/etiqueta';
 import CartaoAdmin, {
   Fatos, Fato, Bloco, AcoesAdmin, PeDecidido,
@@ -512,6 +514,11 @@ function ItemContestacao({ contestacao, processando, aoAnalisar }) {
         {contestacao.descricao_contestacao_cliente}
       </Bloco>
 
+      {/* UC 043 — a prova que existe. Só nas pendentes: depois de julgada,
+          a conversa sai do alcance da administração (ver a consulta em
+          admin/page.jsx). */}
+      {pendente && <ConversaDaContestacao mensagens={contestacao.conversa ?? []} />}
+
       {!pendente && (
         <Bloco rotulo="Justificativa da decisão">
           {contestacao.justificativa_contestacao}
@@ -521,6 +528,64 @@ function ItemContestacao({ contestacao, processando, aoAnalisar }) {
         </Bloco>
       )}
     </CartaoAdmin>
+  );
+}
+
+// UC 043 / RN069 — a conversa da solicitação contestada.
+//
+// Até aqui o admin julgava com a palavra de um lado só: motivo padronizado,
+// descrição do cliente e os dados da solicitação. O fornecedor não é ouvido
+// em lugar nenhum do sistema, e isso continua sendo verdade — mas o chat é
+// onde a execução foi combinada (UC 016), e é a prova que já existe no
+// banco sem que ninguém precise anexar nada.
+//
+// Somente leitura, de propósito: a administração julga a conversa, não
+// participa dela. E recolhida por padrão, porque é conteúdo de comunicação
+// privada — quem vai julgar abre; quem passa os olhos na fila, não.
+function ConversaDaContestacao({ mensagens }) {
+  if (mensagens.length === 0) {
+    return (
+      <Bloco rotulo="Conversa">
+        <span className="text-slate-500">
+          Cliente e fornecedor não trocaram nenhuma mensagem nesta solicitação.
+        </span>
+      </Bloco>
+    );
+  }
+
+  return (
+    <details className="group rounded-xl border border-slate-200 bg-slate-50">
+      <summary className="flex cursor-pointer list-none items-center gap-2 p-3">
+        <ChevronRight className="h-4 w-4 shrink-0 text-slate-500 transition-transform group-open:rotate-90"
+          aria-hidden="true" />
+        <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+          Conversa
+        </span>
+        <span className="text-sm text-slate-600">
+          {mensagens.length === 1 ? '1 mensagem' : `${mensagens.length} mensagens`}
+        </span>
+      </summary>
+
+      <div className="space-y-2 border-t border-slate-200 p-3">
+        {mensagens.map((m) => (
+          <div key={m.id}
+            className={`rounded-lg border p-2.5 text-sm ${m.doCliente
+              ? 'border-festa-200 bg-white'
+              : 'border-slate-200 bg-white'}`}>
+            <p className="flex flex-wrap items-baseline justify-between gap-2">
+              <span className="font-medium text-slate-800">
+                {m.autor}
+                <span className="ml-1.5 font-normal text-xs text-slate-500">
+                  {m.doCliente ? 'cliente' : 'fornecedor'}
+                </span>
+              </span>
+              <span className="text-xs text-slate-500">{formatarDataHora(m.dataHora)}</span>
+            </p>
+            <p className="mt-1 whitespace-pre-line text-slate-700">{m.conteudo}</p>
+          </div>
+        ))}
+      </div>
+    </details>
   );
 }
 

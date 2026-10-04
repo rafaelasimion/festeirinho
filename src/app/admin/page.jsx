@@ -80,6 +80,41 @@ export default async function Admin() {
                so.data_contestacao_cliente DESC`
   );
 
+  // UC 043 / RN069 — a conversa da solicitação contestada, para o admin
+  // julgar com alguma prova em vez de só com a palavra do cliente. O chat é
+  // onde se combina horário de chegada, montagem e acesso ao local (UC 016):
+  // se o cliente alega que o serviço não foi prestado e há mensagens do dia
+  // combinando a entrada, isso é o que decide o caso.
+  //
+  // O WHERE é a salvaguarda, e é deliberadamente estreito: SÓ solicitações
+  // com contestação PENDENTE. Analisada a contestação, a conversa sai do
+  // alcance da administração — ler o chat é tratamento de comunicação
+  // privada (Marco Civil, art. 7º, III), e a LGPD exige que se trate apenas
+  // o estritamente necessário para a finalidade (art. 6º, III). A finalidade
+  // acaba quando a decisão é tomada.
+  const [mensagensContestadas] = await pool.query(
+    `SELECT m.id, m.id_solicitacao, m.conteudo, m.data_hora,
+            u.nome AS autor,
+            (m.id_usuario = c.id_usuario) AS do_cliente
+       FROM mensagem m
+       JOIN usuario u      ON u.id  = m.id_usuario
+       JOIN solicitacao so ON so.id = m.id_solicitacao
+       JOIN cliente c      ON c.id  = so.id_cliente
+      WHERE so.status_contestacao = 'pendente'
+      ORDER BY m.id`
+  );
+
+  const conversaPorSolicitacao = {};
+  for (const m of mensagensContestadas) {
+    (conversaPorSolicitacao[m.id_solicitacao] ??= []).push({
+      id: m.id,
+      autor: m.autor,
+      doCliente: Boolean(m.do_cliente),
+      conteudo: m.conteudo,
+      dataHora: paraSerializar(m.data_hora),
+    });
+  }
+
   // UC 038 — dados de recebimento pendentes, dos dois fluxos. Cada linha
   // traz também o documento e o nome da conta na plataforma, para o painel
   // comparar com o titular informado (RN061).
@@ -250,6 +285,8 @@ export default async function Admin() {
         duracao: Number(c.duracao),
         valor_final: Number(c.valor_final),
         valor_bruto: c.valor_bruto === null ? null : Number(c.valor_bruto),
+        // Vazio para as já analisadas: a consulta acima só traz as pendentes.
+        conversa: conversaPorSolicitacao[c.id] ?? [],
       }))}
       denuncias={denuncias.map((d) => ({
         ...d,

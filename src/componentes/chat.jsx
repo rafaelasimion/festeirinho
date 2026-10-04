@@ -133,9 +133,18 @@ export default function Chat({ idSolicitacao, titulo, aoFechar, aoAlterar }) {
         )}
       </header>
 
+      {/* A segunda frase é o que torna legítima a leitura da conversa pela
+          administração numa contestação. A LGPD mede o tratamento pela
+          expectativa de quem é titular do dado: o que se avisa antes é
+          esperado, o que se descobre depois é quebra de confiança. O aviso
+          fica aqui, no canal, e não escondido numa política que ninguém
+          lê — e a leitura, do outro lado, é limitada à solicitação
+          contestada e ao tempo em que a contestação está pendente. */}
       <p className="border-b border-slate-200 bg-slate-50 px-4 py-2 text-xs text-slate-600">
         Combine aqui a execução — horário de chegada, montagem, acesso ao local.
         Valores e condições da contratação não mudam por este canal.
+        {' '}Em caso de contestação da conclusão, esta conversa fica visível à
+        administração enquanto a análise durar.
       </p>
 
       {/* Altura fixa: a conversa tem o mesmo tamanho com uma ou com trinta

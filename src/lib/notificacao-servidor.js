@@ -10,7 +10,7 @@ import { pool } from '@/lib/db';
 // tipo. A conferência abaixo repete essa divisão para que uma chamada
 // errada falhe aqui, com mensagem clara, em vez de estourar no banco.
 
-const TIPOS_COM_SOLICITACAO = ['solicitacao', 'pagamento', 'cancelamento', 'avaliacao'];
+const TIPOS_COM_SOLICITACAO = ['solicitacao', 'pagamento', 'cancelamento', 'avaliacao', 'mensagem'];
 const TIPOS_SEM_SOLICITACAO = ['servico', 'conta', 'financeiro'];
 
 // Notificar NUNCA pode derrubar a operação que a originou: é melhor um
@@ -87,5 +87,43 @@ export async function contarNaoLidas(idUsuario) {
   } catch (erro) {
     console.error('[contarNaoLidas]', erro);
     return 0;
+  }
+}
+
+// RN065 — aviso de mensagem nova no chat (UC 016).
+//
+// Separado do notificar() comum por uma razão: uma conversa não é um
+// evento, é vários. Vinte mensagens trocadas numa tarde virariam vinte
+// linhas na central, e a pessoa perderia no meio delas o aviso de que o
+// pagamento venceu. Então vale uma por conversa: havendo um aviso de
+// mensagem ainda não lido para esta solicitação, o novo não é criado.
+//
+// O contador exato de não lidas continua existindo e sendo exato — ele
+// mora no cartão da solicitação e dentro do chat, contado direto na tabela
+// de mensagens. A notificação aqui é só a batida na porta.
+export async function notificarMensagemNova(
+  { idDestinatario, idSolicitacao, nomeRemetente, servico },
+  conexao = pool
+) {
+  try {
+    const [pendentes] = await conexao.execute(
+      `SELECT 1 FROM notificacao
+        WHERE id_usuario = ? AND id_solicitacao = ?
+          AND tipo = 'mensagem' AND lida = FALSE
+        LIMIT 1`,
+      [idDestinatario, idSolicitacao]
+    );
+    if (pendentes.length > 0) return;
+
+    await notificar({
+      idUsuario: idDestinatario,
+      tipo: 'mensagem',
+      titulo: 'Nova mensagem',
+      mensagem: `${nomeRemetente} enviou uma mensagem sobre ${servico}.`,
+      idSolicitacao,
+    }, conexao);
+  } catch (erro) {
+    // Mesma regra do notificar(): o aviso nunca derruba o envio da mensagem.
+    console.error('[notificarMensagemNova]', erro);
   }
 }

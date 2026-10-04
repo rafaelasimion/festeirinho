@@ -3,6 +3,7 @@ import { pool } from '@/lib/db';
 import { lerSessao } from '@/lib/sessao';
 import { chatAberto } from '@/lib/solicitacao';
 import { paraSerializar } from '@/lib/datas';
+import { notificarMensagemNova, partesDaSolicitacao } from '@/lib/notificacao-servidor';
 
 // UC 016 / RN022 — chat vinculado à solicitação.
 //   GET   lista as mensagens e marca como lidas as recebidas
@@ -146,6 +147,20 @@ export async function POST(request, { params }) {
       'INSERT INTO mensagem (id_solicitacao, id_usuario, conteudo) VALUES (?, ?, ?)',
       [idSolicitacao, sessao.id, conteudo]
     );
+
+    // RN065 — avisa quem está do outro lado. O destinatário é a parte que
+    // NÃO enviou: comparar com a sessão é o que evita notificar a própria
+    // pessoa que acabou de escrever.
+    const partes = await partesDaSolicitacao(idSolicitacao);
+    if (partes) {
+      const ehCliente = partes.cliente === sessao.id;
+      await notificarMensagemNova({
+        idDestinatario: ehCliente ? partes.fornecedor : partes.cliente,
+        idSolicitacao,
+        nomeRemetente: ehCliente ? partes.nome_cliente : partes.nome_fornecedor,
+        servico: partes.servico,
+      });
+    }
 
     return NextResponse.json({ id: resultado.insertId }, { status: 201 });
   } catch (erroEnvio) {
