@@ -35,6 +35,7 @@ import {
   MOTIVOS_CONTESTACAO,
   ROTULO_MOTIVO_CONTESTACAO,
   ROTULO_RESULTADO_CONTESTACAO,
+  TOM_RESULTADO_CONTESTACAO,
 } from '@/lib/contestacao';
 import { formatarDataHora } from '@/lib/datas';
 import LinhaDoTempo from '@/componentes/linha-do-tempo';
