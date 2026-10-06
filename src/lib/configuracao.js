@@ -10,22 +10,42 @@ import { pool } from '@/lib/db';
 // minuto fica como rede de segurança para alterações feitas por fora, direto
 // no banco.
 
-let cache = null;
-let carregadoEm = 0;
+// O cache vive no objeto global, e não em variáveis de módulo, pelo mesmo
+// motivo que o pool do lib/db.js: o Next.js mantém grafos de módulo separados
+// entre rota de API e página, e recarrega os módulos em desenvolvimento. Com
+// `let cache` solto, cada lado ficava com a SUA cópia — e o
+// limparCacheConfiguracoes() chamado pela rota do admin limpava a cópia da
+// rota, não a que a página lia.
+//
+// O efeito disso era visível: a administração mudava a carência do repasse,
+// o fornecedor recarregava o financeiro e nada acontecia; só depois de passar
+// o minuto do vencimento o valor novo entrava em vigor. A carência zero
+// parecia não funcionar, quando na verdade era o parâmetro antigo que ainda
+// estava valendo.
+//
+// Em produção com mais de um processo o aviso continua valendo para o cache de
+// OUTROS processos — é para isso que o vencimento de um minuto segue existindo.
+const globalParaCache = globalThis;
+globalParaCache._configFesteirinho ??= { valores: null, carregadoEm: 0 };
+
 const DURACAO_CACHE_MS = 60_000;
 
 export async function obterConfiguracoes() {
-  if (cache && Date.now() - carregadoEm < DURACAO_CACHE_MS) return cache;
+  const guardado = globalParaCache._configFesteirinho;
+  if (guardado.valores && Date.now() - guardado.carregadoEm < DURACAO_CACHE_MS) {
+    return guardado.valores;
+  }
 
   const [linhas] = await pool.query('SELECT chave, valor FROM configuracao');
-  cache = Object.fromEntries(linhas.map((linha) => [linha.chave, Number(linha.valor)]));
-  carregadoEm = Date.now();
-  return cache;
+  guardado.valores = Object.fromEntries(
+    linhas.map((linha) => [linha.chave, Number(linha.valor)])
+  );
+  guardado.carregadoEm = Date.now();
+  return guardado.valores;
 }
 
 export function limparCacheConfiguracoes() {
-  cache = null;
-  carregadoEm = 0;
+  globalParaCache._configFesteirinho = { valores: null, carregadoEm: 0 };
 }
 
 // RN046 — a antecedência mínima que o fornecedor pode exigir para um
