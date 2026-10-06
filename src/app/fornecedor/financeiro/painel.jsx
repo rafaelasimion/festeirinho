@@ -14,6 +14,14 @@ export default function PainelFinanceiro({
   const emCarencia = movimentacoes.filter((m) => m.status_repasse === 'pendente');
   const totalEmCarencia = emCarencia.reduce((soma, m) => soma + m.valor, 0);
   const podeSacar = saldoDisponivel >= valorMinimoSaque;
+  // As frases da carência mudam de forma, e não só de número: "0 dias" não é
+  // prazo nenhum, e "1 dias contados" não concorda. Montar o texto aqui deixa
+  // os dois lugares que falam de carência dizendo a mesma coisa.
+  const prazoEmDias = diasCarencia === 1 ? '1 dia' : `${diasCarencia} dias`;
+  const contadosDa = diasCarencia === 1 ? 'contado da' : 'contados da';
+  const avisoDoCartao = diasCarencia === 0
+    ? `${emCarencia.length} valor(es) aguardando liberação.`
+    : `${emCarencia.length} valor(es) aguardando o prazo de ${prazoEmDias}.`;
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-10">
@@ -46,16 +54,21 @@ export default function PainelFinanceiro({
           <p className="mt-1 text-xs text-slate-600">
             {emCarencia.length === 0
               ? 'Nada aguardando liberação.'
-              : `${emCarencia.length} valor(es) aguardando o prazo de ${diasCarencia} dias.`}
+              : avisoDoCartao}
           </p>
         </div>
       </div>
 
+      {/* A frase muda de forma com a carência em vez de interpolar o número
+          numa frase fixa: em zero ela dizia "fica retido por 0 dias", e em um
+          dizia "1 dias". */}
       <p className="mt-4 text-sm text-slate-600">
-        O valor de cada serviço concluído fica retido por {diasCarencia} dias contados da
-        confirmação da conclusão, e então é liberado para saque. A plataforma retém{' '}
-        {percentualComissao}% de comissão, já descontada nos valores abaixo. Multas de
-        cancelamento são liberadas sem carência. O saque não tem taxa.
+        {diasCarencia === 0
+          ? 'O valor de cada serviço concluído é liberado para saque assim que a conclusão é confirmada, sem carência.'
+          : `O valor de cada serviço concluído fica retido por ${prazoEmDias} ${contadosDa} confirmação da conclusão, e então é liberado para saque.`}
+        {' '}A plataforma retém {percentualComissao}% de comissão, já descontada nos
+        valores abaixo. Multas de cancelamento são liberadas sem carência. O saque
+        não tem taxa.
       </p>
 
       <Saques

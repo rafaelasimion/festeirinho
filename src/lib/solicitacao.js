@@ -1,3 +1,5 @@
+import { lerDecimal } from '@/lib/validacao';
+
 // RN029 — o valor final não é negociado: é calculado pelo sistema.
 //
 //   cobrança "hora"   → preço base × duração informada
@@ -9,15 +11,60 @@
 // e o valor já calculado (valor_final): mudanças posteriores no serviço não
 // alteram solicitações que já saíram.
 
-export function calcularValorFinal({ precoBase, cobranca, duracao, numeroConvidados }) {
-  const multiplicador =
-    cobranca === 'fixo' ? 1
-    : cobranca === 'hora' ? Number(duracao)
-    : Number(numeroConvidados);
+// RF017 — a duração é informada em meias horas.
+//
+// A granularidade não está escrita em regra nenhuma; o RF017 pede "duração
+// estimada", e meia hora é como pacote de festa é vendido. A escolha também
+// tem efeito na conta: preço (2 casas) × duração (1 casa) dá até 3 casas, e
+// valor_final é DECIMAL(10,2). Com uma casa decimal livre, 73% das
+// combinações de preço e duração precisariam de arredondamento; em meias
+// horas, 25%.
+//
+// Devolve null para "não serve", como o lerInteiro e o lerDecimal.
+export function lerDuracao(valor) {
+  const horas = lerDecimal(valor, { casas: 1 });
+  if (horas === null) return null;
+  // Em décimos inteiros, "é meia hora" é só resto 0 na divisão por 5 — sem
+  // comparar frações em ponto flutuante.
+  return Math.round(horas * 10) % 5 === 0 ? horas : null;
+}
 
-  const valor = Number(precoBase) * multiplicador;
-  if (!Number.isFinite(valor)) return null;
-  return Math.round(valor * 100) / 100;
+// O cálculo é feito em CENTAVOS INTEIROS, e não com o número decimal.
+//
+// A versão anterior era `Math.round(preco * duracao * 100) / 100`, que parece
+// certa e não é: preço × duração cai exatamente no meio do centavo
+// (R$ ...,xx5) em todo caso de meia hora com preço de centavo ímpar, e aí o
+// resultado depende de o produto em ponto flutuante ter caído um fio acima ou
+// abaixo do meio. Em 2,8% das combinações de meia hora o JavaScript arredonda
+// para baixo onde a conta decimal arredonda para cima. É um centavo, e nada
+// no banco quebra por causa dele — mas é um centavo que ninguém consegue
+// explicar olhando o comprovante, e some ao trabalhar com inteiros.
+export function calcularValorFinal({ precoBase, cobranca, duracao, numeroConvidados }) {
+  const centavos = Math.round(Number(precoBase) * 100);
+  if (!Number.isFinite(centavos)) return null;
+
+  if (cobranca === 'fixo') return centavos / 100;
+
+  if (cobranca === 'pessoa') {
+    const convidados = Number(numeroConvidados);
+    if (!Number.isFinite(convidados)) return null;
+    // Multiplicador inteiro: não há casa a arredondar.
+    return (centavos * Math.round(convidados)) / 100;
+  }
+
+  // Forma de cobrança desconhecida não cai num multiplicador por descuido:
+  // a tabela cobranca tem três linhas, e qualquer outra coisa aqui é defeito.
+  if (cobranca !== 'hora') return null;
+
+  // Cobrança por hora: a duração tem uma casa decimal, que vira décimos.
+  const decimos = Math.round(Number(duracao) * 10);
+  if (!Number.isFinite(decimos)) return null;
+
+  const milesimos = centavos * decimos;
+  const resto = milesimos % 10;
+  const inteiros = (milesimos - resto) / 10;
+  // Meio centavo para cima, que é o arredondamento comercial.
+  return (resto >= 5 ? inteiros + 1 : inteiros) / 100;
 }
 
 export function formatarPreco(valor) {

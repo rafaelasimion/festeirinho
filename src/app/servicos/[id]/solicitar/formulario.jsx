@@ -4,9 +4,10 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Lock } from 'lucide-react';
-import { UFS, lerInteiro, lerDecimal } from '@/lib/validacao';
+import { UFS, lerInteiro } from '@/lib/validacao';
 import {
   calcularValorFinal,
+  lerDuracao,
   formatarPreco,
   SUFIXO_PRECO,
   EXPLICACAO_COBRANCA,
@@ -62,18 +63,24 @@ export default function FormularioSolicitacao({ servico, tiposLocal }) {
   }
 
   // RF028 — o cliente vê o total antes de enviar. Mesma conta do servidor.
+  // O total da prévia sai dos MESMOS leitores que validam o campo, e não de
+  // Number(): com Number, uma duração de 4,25 — recusada pela validação logo
+  // ao lado — ainda rendia um total na tela, como se fosse aceitável.
+  const duracaoLida = lerDuracao(campos.duracao);
+  const convidadosLidos = lerInteiro(campos.numeroConvidados);
+
   const multiplicador =
     servico.cobranca === 'fixo' ? 1
-      : servico.cobranca === 'hora' ? Number(campos.duracao)
-        : Number(campos.numeroConvidados);
+      : servico.cobranca === 'hora' ? duracaoLida
+        : convidadosLidos;
 
   const valorFinal =
-    multiplicador > 0
+    multiplicador !== null && multiplicador > 0
       ? calcularValorFinal({
         precoBase: servico.precoBase,
         cobranca: servico.cobranca,
-        duracao: Number(campos.duracao),
-        numeroConvidados: Number(campos.numeroConvidados),
+        duracao: duracaoLida,
+        numeroConvidados: convidadosLidos,
       })
       : null;
 
@@ -116,14 +123,13 @@ export default function FormularioSolicitacao({ servico, tiposLocal }) {
 
   // A validação da duração era uma função anônima que só olhava `> 0`, e o
   // JSX tinha DOIS atributos `validar` no mesmo campo — o segundo vencia
-  // calado. Uma casa decimal porque a coluna é DECIMAL(4,1): com duas, o
-  // valor gravado deixaria de bater com o total mostrado aqui (RN029).
+  // calado. Agora usa a mesma função do servidor.
   function validarDuracao(valor) {
-    const n = lerDecimal(valor, { casas: 1 });
+    const n = lerDuracao(valor);
     if (n === null) {
       return String(valor ?? '').trim() === ''
         ? 'Informe a duração em horas.'
-        : 'Informe a duração com no máximo uma casa decimal (ex.: 2, 2.5, 3.5).';
+        : 'Informe a duração em horas ou meias horas (ex.: 2, 2.5, 3).';
     }
     if (n <= 0) return 'A duração precisa ser maior que zero.';
     if (n > 999.9) return 'Duração máxima de 999,9 horas.';
@@ -208,7 +214,7 @@ export default function FormularioSolicitacao({ servico, tiposLocal }) {
 
           <Campo label="Duração (horas)" name="duracao" type="number" step="0.5" min="0.5"
             value={campos.duracao} onChange={aoDigitar} erro={erros.duracao}
-            dica="Horas, com no máximo uma casa decimal — ex.: 2, 2.5, 3."
+            dica="Em horas ou meias horas — ex.: 2, 2.5, 3."
             validar={validarDuracao} />
 
           <Campo label="Número de convidados" name="numeroConvidados" type="number" min="1"

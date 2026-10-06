@@ -3,8 +3,8 @@ import { pool } from '@/lib/db';
 import { notificar, partesDaSolicitacao } from '@/lib/notificacao-servidor';
 import { obterClienteLogado } from '@/lib/autorizacao';
 import { obterConfiguracoes } from '@/lib/configuracao';
-import { calcularValorFinal } from '@/lib/solicitacao';
-import { somenteDigitos, validarUF, lerInteiro, lerDecimal } from '@/lib/validacao';
+import { calcularValorFinal, lerDuracao } from '@/lib/solicitacao';
+import { somenteDigitos, validarUF, lerInteiro } from '@/lib/validacao';
 
 // RF017 — envio de solicitação pelo cliente.
 // É a rota com mais regras do sistema até aqui: RN016, RN017, RN029,
@@ -53,11 +53,9 @@ export async function POST(request) {
 
   // ---------- dados do evento ----------
   const dataHoraEvento = String(corpo.dataHoraEvento ?? '').trim();
-  // Uma casa decimal, e não duas: a coluna é DECIMAL(4,1). Com duas, 4,25
-  // seria gravado como 4,3 e o valor final — calculado aqui sobre 4,25 —
-  // deixaria de ser o preço base vezes a duração gravada, contrariando a
-  // RN029 e saindo errado no comprovante.
-  const duracao = lerDecimal(corpo.duracao, { casas: 1 });
+  // Meias horas (RF017). A regra mora no lib/solicitacao, junto do cálculo
+  // que depende dela, e é a mesma que a tela usa.
+  const duracao = lerDuracao(corpo.duracao);
   const numeroConvidados = lerInteiro(corpo.numeroConvidados);
   const idTipoLocal = Number(corpo.idTipoLocal);
   const tema = String(corpo.tema ?? '').trim();
@@ -107,7 +105,7 @@ export async function POST(request) {
   if (duracao === null) {
     erros.duracao = String(corpo.duracao ?? '').trim() === ''
       ? 'Informe a duração em horas.'
-      : 'Informe a duração com no máximo uma casa decimal (ex.: 2, 2.5, 3.5).';
+      : 'Informe a duração em horas ou meias horas (ex.: 2, 2.5, 3).';
   } else if (duracao <= 0) {
     erros.duracao = 'A duração precisa ser maior que zero.';
   } else if (duracao > 999.9) {
