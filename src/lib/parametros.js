@@ -2,6 +2,10 @@
 // banco. A tela usa para montar o formulário e conferir antes de enviar; o
 // servidor usa exatamente as mesmas regras para gravar.
 
+// O lib/validacao não importa banco nenhum, então continua podendo ser
+// carregado pela tela de configurações, que é componente de cliente.
+import { lerInteiro, lerDecimal } from '@/lib/validacao';
+
 export const GRUPOS = [
   { id: 'financeiro', titulo: 'Financeiro' },
   { id: 'multas', titulo: 'Multas por cancelamento do cliente' },
@@ -88,10 +92,17 @@ export function validarParametro(chave, valor) {
   const definicao = PARAMETROS[chave];
   if (!definicao) return 'Parâmetro desconhecido.';
 
-  const numero = Number(valor);
-  if (!Number.isFinite(numero)) return 'Informe um número.';
-  if (definicao.inteiro && !Number.isInteger(numero)) {
-    return `Informe um número inteiro de ${definicao.unidade}.`;
+  // O Number() que havia aqui transformava entrada inválida em ZERO, porque
+  // Number(null) e Number('') são 0. Num parâmetro cujo mínimo é 0 — como a
+  // carência do repasse — isso gravava zero silenciosamente em vez de recusar.
+  const numero = definicao.inteiro
+    ? lerInteiro(valor)
+    : lerDecimal(valor, { casas: 2 });
+
+  if (numero === null) {
+    return definicao.inteiro
+      ? `Informe um número inteiro de ${definicao.unidade}.`
+      : 'Informe um número com no máximo duas casas decimais.';
   }
   if (numero < definicao.min || numero > definicao.max) {
     return `O valor precisa estar entre ${definicao.min} e ${definicao.max} ${definicao.unidade}.`;

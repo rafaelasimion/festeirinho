@@ -12,6 +12,53 @@ export function somenteDigitos(valor) {
   return String(valor ?? '').replace(/\D/g, '');
 }
 
+// Leitura de número vindo de formulário.
+//
+// O Number() não serve sozinho para isto, e os motivos não são teóricos:
+//
+//   Number('4e5')      -> 400000     notação científica
+//   Number('0x10')     -> 16         hexadecimal
+//   Number('Infinity') -> Infinity
+//   Number('  4  ')    -> 4          espaço em volta
+//   Number('')         -> 0          vazio virando zero, o pior deles
+//
+// Nenhum desses é o que alguém digitou num campo de duração ou de preço, mas
+// todos passam por `Number.isFinite` e por `> 0`. O último é o mais traiçoeiro:
+// campo em branco e campo com zero ficam indistinguíveis, e a mensagem de erro
+// sai errada.
+//
+// Estas duas funções devolvem `null` para "não é um número que eu possa usar",
+// o que é diferente de 0 — e por isso quem chama precisa testar `=== null`, não
+// a veracidade do resultado.
+const NUMERAL_INTEIRO = /^\d{1,10}$/;
+const NUMERAL_DECIMAL = /^\d{1,10}(?:\.\d{1,4})?$/;
+
+// A vírgula é aceita aqui também. O <Campo> já a traduz na tecla, mas isto é o
+// servidor: ele não pode depender de nada que a tela tenha feito.
+function normalizar(valor) {
+  if (typeof valor === 'number') return Number.isFinite(valor) ? String(valor) : '';
+  return String(valor ?? '').trim().replace(',', '.');
+}
+
+export function lerInteiro(valor) {
+  const texto = normalizar(valor);
+  if (!NUMERAL_INTEIRO.test(texto)) return null;
+  return Number(texto);
+}
+
+// `casas` é o limite de casas decimais, e existe por causa do banco: gravar
+// 4,25 numa coluna DECIMAL(4,1) guarda 4,3 sem reclamar, e aí a duração do
+// registro deixa de bater com o valor final calculado sobre ela — a RN029 diz
+// que o valor final é o preço base multiplicado pela duração informada, e com
+// o arredondamento essa multiplicação para de fechar no comprovante.
+export function lerDecimal(valor, { casas = 2 } = {}) {
+  const texto = normalizar(valor);
+  if (!NUMERAL_DECIMAL.test(texto)) return null;
+  const fracao = texto.split('.')[1];
+  if (fracao && fracao.length > casas) return null;
+  return Number(texto);
+}
+
 // RN037 — validação formal de CPF: formato e dígito verificador.
 export function validarCPF(entrada) {
   const cpf = somenteDigitos(entrada);

@@ -67,6 +67,85 @@ function useValidacao({ erro, validar, onChange, onBlur }) {
   return { mensagem, aoSair, aoMudar };
 }
 
+// Campo numérico: por que ele NÃO é um <input type="number">.
+//
+// O type="number" não guarda o texto que foi digitado. Ele sanitiza o valor e
+// descarta o que não formar um número no padrão INGLÊS. A vírgula decimal
+// brasileira não forma, então é jogada fora SEM AVISO, e o que sobra são os
+// dígitos colados:
+//
+//     a pessoa digita     o campo guardava   o sistema entendia
+//     1,5 horas      ->   "15"          ->   15 horas      (dez vezes mais)
+//     R$ 89,90       ->   "8990"        ->   R$ 8.990,00   (cem vezes mais)
+//     150,50 de saque->   "15050"       ->   R$ 15.050,00  (cem vezes mais)
+//
+// Não era erro de validação: o número chegava ao servidor bem formado,
+// inteiro e positivo, passando por qualquer conferência. Simplesmente não era
+// o número que a pessoa quis dizer. Oito dos onze campos numéricos do sistema
+// estavam assim, e os dois piores eram preço base e valor de saque.
+//
+// O ponto enganava no sentido contrário: "1.000" convidados é mil para quem
+// digita e UM para o Number(), que lê o ponto como separador decimal.
+//
+// A primeira tentativa de correção foi traduzir a vírgula em ponto na tecla,
+// mantendo o type="number". NÃO FUNCIONA, e vale registrar por quê: ao digitar
+// "1" e depois a vírgula, o valor viraria "1." — que não é um número válido, e
+// que o navegador portanto sanitiza para VAZIO. O campo esvaziava no meio da
+// digitação e "1,5" acabava virando 5. O type="number" não consegue sustentar
+// o estado intermediário de um decimal sendo digitado.
+//
+// Então o controle passa a ser type="text" com inputMode: o teclado do celular
+// continua numérico, o texto digitado é preservado como está, e a filtragem é
+// nossa. O que se perde são as setinhas de incremento e a validação nativa de
+// min/max/step — esta última nunca era consultada, porque o formulário envia
+// por botão e ninguém chamava checkValidity().
+//
+// Fica aqui, e não em cada tela, pelo mesmo motivo da seta do <select> no
+// globals.css: são onze campos, e o próximo que alguém criar nasce certo sem
+// precisar lembrar desta armadilha.
+
+// Um campo aceita fração quando tem step fracionário (0.01 em preço, 0.5 em
+// duração). Sem step, ou com step inteiro, é campo de contagem.
+function aceitaFracao(step) {
+  return step !== undefined && Number(step) !== Math.trunc(Number(step));
+}
+
+// Mantém só dígitos e separadores, e traduz a vírgula em ponto para que todo
+// `Number(campos.x)` espalhado pelas telas continue valendo.
+//
+// Texto malformado NÃO é consertado por adivinhação: "1.000,00" fica
+// "1.000.00" e é recusado pela validação com mensagem clara, em vez de virar
+// 1,00 ou 100000 no silêncio. Em campo de contagem o separador é preservado
+// pelo mesmo motivo — "7,5" precisa aparecer e receber "informe um número
+// inteiro", não virar 75 sem ninguém notar.
+function filtrarNumero(texto) {
+  return String(texto ?? '').replace(/[^\d.,]/g, '').replace(/,/g, '.');
+}
+
+export function entradaNumerica({ type, step, onChange }) {
+  if (type !== 'number') return onChange;
+
+  return function aoMudarNumero(evento) {
+    const original = evento.target.value;
+    const filtrado = filtrarNumero(original);
+
+    // Reescreve só quando algo foi barrado, para não mexer no cursor à toa.
+    if (filtrado !== original) {
+      const campo = evento.target;
+      const posicao = campo.selectionStart;
+      const removidos = original.length - filtrado.length;
+      campo.value = filtrado;
+      // O cursor volta para onde estava, descontando o que saiu antes dele.
+      if (posicao !== null) {
+        const nova = Math.max(0, posicao - removidos);
+        campo.setSelectionRange(nova, nova);
+      }
+    }
+
+    if (onChange) onChange(evento);
+  };
+}
+
 // Rótulo em cima, dica e erro embaixo: a moldura é a mesma para os três.
 function Moldura({ label, name, dica, mensagem, children }) {
   return (
@@ -100,10 +179,34 @@ export default function Campo({
   ...resto
 }) {
   const [revelada, setRevelada] = useState(false);
-  const { mensagem, aoSair, aoMudar } = useValidacao({ erro, validar, onChange, onBlur });
+
+  // O filtro do campo numérico entra ANTES da validação, para que `validar`
+  // receba o texto já normalizado — senão a tela recusaria "1,5" enquanto o
+  // servidor o aceitaria.
+  const ehNumero = type === 'number';
+  const onChangeFiltrado = entradaNumerica({ type, step: resto.step, onChange });
+
+  const { mensagem, aoSair, aoMudar } = useValidacao({
+    erro, validar, onChange: onChangeFiltrado, onBlur,
+  });
 
   const ehSenha = type === 'password';
-  const tipoEfetivo = ehSenha && revelada ? 'text' : type;
+  const tipoEfetivo = ehSenha && revelada
+    ? 'text'
+    // O porquê do texto no lugar de "number" está no comentário grande acima.
+    : ehNumero ? 'text' : type;
+
+  // `step`, `min` e `max` não valem nada num input de texto, e deixá-los no
+  // DOM só enganaria quem fosse ler o HTML. Saem daqui; quem vale são as
+  // funções `validar` das telas e a conferência do servidor.
+  const { step, min, max, ...semAtributosNativos } = resto;
+  const atributosNumero = ehNumero
+    ? {
+      // Teclado do celular: com fração, o que tem separador; sem, só dígitos.
+      inputMode: aceitaFracao(step) ? 'decimal' : 'numeric',
+      autoComplete: 'off',
+    }
+    : null;
 
   return (
     <Moldura label={label} name={name} dica={dica} mensagem={mensagem}>
@@ -114,7 +217,8 @@ export default function Campo({
           type={tipoEfetivo}
           onChange={aoMudar}
           onBlur={aoSair}
-          {...resto}
+          {...(ehNumero ? semAtributosNativos : resto)}
+          {...atributosNumero}
           aria-invalid={mensagem ? 'true' : undefined}
           aria-describedby={mensagem ? `${name}-erro` : undefined}
           className={classesControle(mensagem, ehSenha ? 'px-4 pr-12' : 'px-4')}

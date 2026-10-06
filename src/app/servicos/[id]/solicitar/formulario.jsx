@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Lock } from 'lucide-react';
-import { UFS } from '@/lib/validacao';
+import { UFS, lerInteiro, lerDecimal } from '@/lib/validacao';
 import {
   calcularValorFinal,
   formatarPreco,
@@ -97,11 +97,36 @@ export default function FormularioSolicitacao({ servico, tiposLocal }) {
   }
 
   // RN017 — capacidade máxima do serviço, quando houver.
+  //
+  // As mensagens são as mesmas da rota, palavra por palavra: quando a tela
+  // dizia uma coisa e o servidor outra, a pessoa recebia duas explicações
+  // diferentes para o mesmo campo, dependendo de onde o erro foi pego.
   function validarConvidados(valor) {
-    const n = Number(valor);
-    if (!(n > 0)) return 'Informe o número de convidados.';
+    const n = lerInteiro(valor);
+    if (n === null) {
+      return String(valor ?? '').trim() === ''
+        ? 'Informe o número de convidados.'
+        : 'O número de convidados precisa ser um número inteiro.';
+    }
+    if (n <= 0) return 'O número de convidados precisa ser maior que zero.';
     if (servico.capacidadeMax !== null && n > servico.capacidadeMax)
       return `Este serviço atende no máximo ${servico.capacidadeMax} convidados.`;
+    return null;
+  }
+
+  // A validação da duração era uma função anônima que só olhava `> 0`, e o
+  // JSX tinha DOIS atributos `validar` no mesmo campo — o segundo vencia
+  // calado. Uma casa decimal porque a coluna é DECIMAL(4,1): com duas, o
+  // valor gravado deixaria de bater com o total mostrado aqui (RN029).
+  function validarDuracao(valor) {
+    const n = lerDecimal(valor, { casas: 1 });
+    if (n === null) {
+      return String(valor ?? '').trim() === ''
+        ? 'Informe a duração em horas.'
+        : 'Informe a duração com no máximo uma casa decimal (ex.: 2, 2.5, 3.5).';
+    }
+    if (n <= 0) return 'A duração precisa ser maior que zero.';
+    if (n > 999.9) return 'Duração máxima de 999,9 horas.';
     return null;
   }
 
@@ -183,7 +208,8 @@ export default function FormularioSolicitacao({ servico, tiposLocal }) {
 
           <Campo label="Duração (horas)" name="duracao" type="number" step="0.5" min="0.5"
             value={campos.duracao} onChange={aoDigitar} erro={erros.duracao}
-            validar={(v) => Number(v) > 0 ? null : 'Informe a duração em horas.'} />
+            dica="Horas, com no máximo uma casa decimal — ex.: 2, 2.5, 3."
+            validar={validarDuracao} />
 
           <Campo label="Número de convidados" name="numeroConvidados" type="number" min="1"
             value={campos.numeroConvidados} onChange={aoDigitar} erro={erros.numeroConvidados}

@@ -4,7 +4,7 @@ import { notificar, partesDaSolicitacao } from '@/lib/notificacao-servidor';
 import { obterClienteLogado } from '@/lib/autorizacao';
 import { obterConfiguracoes } from '@/lib/configuracao';
 import { calcularValorFinal } from '@/lib/solicitacao';
-import { somenteDigitos, validarUF } from '@/lib/validacao';
+import { somenteDigitos, validarUF, lerInteiro, lerDecimal } from '@/lib/validacao';
 
 // RF017 — envio de solicitação pelo cliente.
 // É a rota com mais regras do sistema até aqui: RN016, RN017, RN029,
@@ -53,16 +53,26 @@ export async function POST(request) {
 
   // ---------- dados do evento ----------
   const dataHoraEvento = String(corpo.dataHoraEvento ?? '').trim();
-  const duracao = Number(corpo.duracao);
-  const numeroConvidados = Number(corpo.numeroConvidados);
+  // Uma casa decimal, e não duas: a coluna é DECIMAL(4,1). Com duas, 4,25
+  // seria gravado como 4,3 e o valor final — calculado aqui sobre 4,25 —
+  // deixaria de ser o preço base vezes a duração gravada, contrariando a
+  // RN029 e saindo errado no comprovante.
+  const duracao = lerDecimal(corpo.duracao, { casas: 1 });
+  const numeroConvidados = lerInteiro(corpo.numeroConvidados);
   const idTipoLocal = Number(corpo.idTipoLocal);
   const tema = String(corpo.tema ?? '').trim();
   const nomeAniversariante = String(corpo.nomeAniversariante ?? '').trim();
-  const idadeAniversariante =
-    corpo.idadeAniversariante === '' || corpo.idadeAniversariante === null ||
-      corpo.idadeAniversariante === undefined
-      ? null
-      : Number(corpo.idadeAniversariante);
+  // A idade é opcional, e `lerInteiro` devolve null para "não é número". Os
+  // dois nulos precisam ser distinguidos, senão "não informei a idade" e
+  // "digitei bobagem na idade" acabam no mesmo caso.
+  const idadeInformada = !(
+    corpo.idadeAniversariante === '' ||
+    corpo.idadeAniversariante === null ||
+    corpo.idadeAniversariante === undefined
+  );
+  const idadeAniversariante = idadeInformada
+    ? lerInteiro(corpo.idadeAniversariante)
+    : null;
   const observacoes = String(corpo.observacoes ?? '').trim();
 
   // ---------- endereço ----------
@@ -91,12 +101,25 @@ export async function POST(request) {
     }
   }
 
-  if (!Number.isFinite(duracao) || duracao <= 0 || duracao > 999.9) {
-    erros.duracao = 'Informe a duração em horas.';
+  // As mensagens separam "não informou" de "informou algo que não serve": a
+  // mensagem única dizia "Informe a duração" para quem havia informado 4,25,
+  // e a pessoa relia o campo preenchido sem entender o que faltava.
+  if (duracao === null) {
+    erros.duracao = String(corpo.duracao ?? '').trim() === ''
+      ? 'Informe a duração em horas.'
+      : 'Informe a duração com no máximo uma casa decimal (ex.: 2, 2.5, 3.5).';
+  } else if (duracao <= 0) {
+    erros.duracao = 'A duração precisa ser maior que zero.';
+  } else if (duracao > 999.9) {
+    erros.duracao = 'Duração máxima de 999,9 horas.';
   }
 
-  if (!Number.isInteger(numeroConvidados) || numeroConvidados <= 0) {
-    erros.numeroConvidados = 'Informe o número de convidados.';
+  if (numeroConvidados === null) {
+    erros.numeroConvidados = String(corpo.numeroConvidados ?? '').trim() === ''
+      ? 'Informe o número de convidados.'
+      : 'O número de convidados precisa ser um número inteiro.';
+  } else if (numeroConvidados <= 0) {
+    erros.numeroConvidados = 'O número de convidados precisa ser maior que zero.';
   } else if (servico.capacidade_max !== null && numeroConvidados > servico.capacidade_max) {
     // RN017
     erros.numeroConvidados =
@@ -113,9 +136,8 @@ export async function POST(request) {
   if (complemento.length > 100) erros.complemento = 'Complemento muito longo.';
   if (tema.length > 100) erros.tema = 'Tema muito longo.';
   if (nomeAniversariante.length > 150) erros.nomeAniversariante = 'Nome muito longo.';
-  if (idadeAniversariante !== null &&
-    (!Number.isInteger(idadeAniversariante) || idadeAniversariante < 0 || idadeAniversariante > 255)) {
-    erros.idadeAniversariante = 'Idade inválida.';
+  if (idadeInformada && (idadeAniversariante === null || idadeAniversariante > 255)) {
+    erros.idadeAniversariante = 'Informe a idade em anos completos.';
   }
 
   if (!erros.idTipoLocal) {

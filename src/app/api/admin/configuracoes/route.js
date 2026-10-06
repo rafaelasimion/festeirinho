@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { pool } from '@/lib/db';
 import { obterAdministradorLogado } from '@/lib/sessao-admin';
 import { limparCacheConfiguracoes } from '@/lib/configuracao';
+import { lerDecimal } from '@/lib/validacao';
 import {
   PARAMETROS,
   validarParametro,
@@ -25,7 +26,9 @@ export async function PATCH(request) {
   }
 
   const chave = String(corpo.chave ?? '');
-  const valor = Number(corpo.valor);
+  // configuracao.valor é DECIMAL(10,2). Os parâmetros inteiros são
+  // conferidos pelo validarParametro, que já olha o `inteiro` da definição.
+  const valor = lerDecimal(corpo.valor, { casas: 2 });
 
   // A chave é conferida contra uma lista fechada. Nunca vai para o SQL sem
   // essa conferência — e mesmo depois dela, entra como parâmetro.

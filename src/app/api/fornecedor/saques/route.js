@@ -3,6 +3,7 @@ import { pool } from '@/lib/db';
 import { obterFornecedorLogado } from '@/lib/autorizacao';
 import { obterConfiguracoes } from '@/lib/configuracao';
 import { validarDadosRecebimento } from '@/lib/recebimento';
+import { lerDecimal } from '@/lib/validacao';
 
 // UC 037 / RN060 — solicitação de saque pelo fornecedor.
 // RN061 — dados de recebimento e reenvio após rejeição.
@@ -31,7 +32,10 @@ export async function POST(request) {
   }
 
   // Duas casas decimais: DECIMAL(10,2) no banco.
-  const valor = Math.round(Number(corpo.valor) * 100) / 100;
+  // O arredondamento que havia aqui escondia entrada suja: 150,50 chegava
+  // como 15050 (a vírgula descartada pelo type="number") e passava inteiro.
+  // Agora o valor ou é um decimal de duas casas, ou é null.
+  const valor = lerDecimal(corpo.valor, { casas: 2 });
   if (!Number.isFinite(valor) || valor <= 0) {
     return NextResponse.json({ erros: { valor: 'Informe o valor do saque.' } }, { status: 400 });
   }

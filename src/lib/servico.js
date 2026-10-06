@@ -1,5 +1,6 @@
 import { pool } from '@/lib/db';
 import { calcularAntecedenciaMinimaDias } from '@/lib/configuracao';
+import { lerInteiro, lerDecimal } from '@/lib/validacao';
 
 // Regras de validação do serviço, compartilhadas entre criação e edição.
 // Ficam aqui, e não num route.js, porque arquivo de rota deve exportar
@@ -8,32 +9,37 @@ import { calcularAntecedenciaMinimaDias } from '@/lib/configuracao';
 export async function validarServico(corpo) {
   const nome = String(corpo.nome ?? '').trim();
   const descricao = String(corpo.descricao ?? '').trim();
-  const precoBase = Number(corpo.precoBase);
+  // DECIMAL(10,2) na coluna: duas casas, nem mais.
+  const precoBase = lerDecimal(corpo.precoBase, { casas: 2 });
   const idCategoria = Number(corpo.idCategoria);
   const idCobranca = Number(corpo.idCobranca);
-  const diasAntecedencia = Number(corpo.diasAntecedencia);
+  const diasAntecedencia = lerInteiro(corpo.diasAntecedencia);
 
   // capacidade_max NULL significa "sem limite" (RN017).
   const semLimite =
     corpo.capacidadeMax === null ||
     corpo.capacidadeMax === undefined ||
     corpo.capacidadeMax === '';
-  const capacidadeMax = semLimite ? null : Number(corpo.capacidadeMax);
+  const capacidadeMax = semLimite ? null : lerInteiro(corpo.capacidadeMax);
 
   const erros = {};
   if (nome.length < 3 || nome.length > 150) erros.nome = 'Informe o nome do serviço.';
   if (descricao.length < 20) erros.descricao = 'Descreva o serviço em ao menos 20 caracteres.';
-  if (!Number.isFinite(precoBase) || precoBase <= 0)
+  if (precoBase === null)
+    erros.precoBase = String(corpo.precoBase ?? '').trim() === ''
+      ? 'Informe o preço base.'
+      : 'Informe o preço com no máximo duas casas decimais (ex.: 89,90).';
+  else if (precoBase <= 0)
     erros.precoBase = 'Informe um preço maior que zero.';
   if (precoBase > 99999999.99) erros.precoBase = 'Preço acima do limite permitido.';
   if (!Number.isInteger(idCategoria)) erros.idCategoria = 'Selecione a categoria.';
   if (!Number.isInteger(idCobranca)) erros.idCobranca = 'Selecione a forma de cobrança.';
-  if (!semLimite && (!Number.isInteger(capacidadeMax) || capacidadeMax <= 0))
-    erros.capacidadeMax = 'Informe uma capacidade maior que zero ou deixe em branco.';
+  if (!semLimite && (capacidadeMax === null || capacidadeMax <= 0))
+    erros.capacidadeMax = 'Informe uma capacidade inteira maior que zero, ou deixe em branco.';
 
   // RN046 — o piso da antecedência é calculado a partir da configuração.
   const antecedenciaMinima = await calcularAntecedenciaMinimaDias();
-  if (!Number.isInteger(diasAntecedencia) || diasAntecedencia < antecedenciaMinima)
+  if (diasAntecedencia === null || diasAntecedencia < antecedenciaMinima)
     erros.diasAntecedencia = `A antecedência mínima permitida é de ${antecedenciaMinima} dias.`;
 
   // As chaves precisam existir. Validar aqui devolve mensagem por campo;

@@ -1,19 +1,7 @@
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { pool } from '@/lib/db';
-import {
-  somenteDigitos,
-  normalizarCNPJ,
-  validarCPF,
-  validarCNPJ,
-  validarEmail,
-  validarTelefone,
-  validarURL,
-  validarUF,
-  validarNomeUsuario,
-  validarMaioridade,
-  IDADE_MINIMA,
-} from '@/lib/validacao';
+import { somenteDigitos, normalizarCNPJ, validarCPF, validarCNPJ, validarEmail, validarTelefone, validarURL, validarUF, validarNomeUsuario, validarMaioridade, IDADE_MINIMA, lerInteiro } from '@/lib/validacao';
 
 // RF002 — Cadastro de fornecedor.
 // Mesma estrutura do cadastro de cliente: transação gravando em usuario +
@@ -47,7 +35,8 @@ export async function POST(request) {
   const instagramUrl = String(corpo.instagramUrl ?? '').trim();
   const whatsappUrl = String(corpo.whatsappUrl ?? '').trim();
   const site = String(corpo.site ?? '').trim();
-  const raioAtendimentoKm = Number(corpo.raioAtendimentoKm);
+  // SMALLINT na coluna, e a chk_fornecedor_raio exige 1..200.
+  const raioAtendimentoKm = lerInteiro(corpo.raioAtendimentoKm);
 
   // RN001 — PF preenche CPF e data de nascimento; PJ preenche CNPJ e razão
   // social. Pessoa jurídica não tem data de nascimento, então o campo é nulo.

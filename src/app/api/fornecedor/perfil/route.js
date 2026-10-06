@@ -2,17 +2,7 @@ import { NextResponse } from 'next/server';
 import { pool } from '@/lib/db';
 import { obterFornecedorLogado } from '@/lib/autorizacao';
 import { mudouDadoDaVitrine } from '@/lib/fornecedor';
-import {
-  somenteDigitos,
-  normalizarCNPJ,
-  validarCPF,
-  validarCNPJ,
-  validarTelefone,
-  validarURL,
-  validarUF,
-  validarMaioridade,
-  IDADE_MINIMA,
-} from '@/lib/validacao';
+import { somenteDigitos, normalizarCNPJ, validarCPF, validarCNPJ, validarTelefone, validarURL, validarUF, validarMaioridade, IDADE_MINIMA, lerInteiro } from '@/lib/validacao';
 
 // RF004 — o fornecedor consulta e edita o próprio perfil.
 // Nenhuma rota recebe id de fornecedor: o dono do dado é sempre quem
@@ -73,7 +63,7 @@ export async function PUT(request) {
   const instagramUrl = String(corpo.instagramUrl ?? '').trim();
   const whatsappUrl = String(corpo.whatsappUrl ?? '').trim();
   const site = String(corpo.site ?? '').trim();
-  const raioAtendimentoKm = Number(corpo.raioAtendimentoKm);
+  const raioAtendimentoKm = lerInteiro(corpo.raioAtendimentoKm);
 
   const ehPF = fornecedor.tipo_pessoa === 'PF';
   const razaoSocial = ehPF ? null : String(corpo.razaoSocial ?? '').trim();

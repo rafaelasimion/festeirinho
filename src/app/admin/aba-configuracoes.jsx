@@ -12,6 +12,7 @@ import {
   formatarValorParametro,
 } from '@/lib/parametros';
 import { formatarDataHora as formatarData } from '@/lib/datas';
+import { entradaNumerica } from '@/componentes/campo';
 
 // UC 028 — painel de configurações.
 //
@@ -170,10 +171,21 @@ export default function AbaConfiguracoes({ configuracoes }) {
                     {emEdicao && (
                       <div className="mt-3 space-y-3">
                         <div className="flex flex-wrap items-center gap-2">
-                          <input type="number" value={valorNovo}
-                            step={definicao.inteiro ? 1 : 0.01}
-                            min={definicao.min} max={definicao.max}
-                            onChange={(e) => { setValorNovo(e.target.value); setErro(''); }}
+                          {/* Este é o único campo numérico do sistema que não
+                              passa pelo <Campo>, então o filtro da vírgula
+                              decimal vem importado de lá — sem ele, uma
+                              comissão de "12,5" era gravada como 125%. O
+                              type é text pelo mesmo motivo explicado no
+                              componente: o type="number" descarta a vírgula. */}
+                          <input type="text"
+                            inputMode={definicao.inteiro ? 'numeric' : 'decimal'}
+                            autoComplete="off"
+                            value={valorNovo}
+                            onChange={entradaNumerica({
+                              type: 'number',
+                              step: definicao.inteiro ? 1 : 0.01,
+                              onChange: (e) => { setValorNovo(e.target.value); setErro(''); },
+                            })}
                             onKeyDown={(e) => { if (e.key === 'Enter') salvar(chave); }}
                             aria-label={definicao.rotulo}
                             className="w-40 rounded-xl border border-festa-200 bg-white px-4 py-3 text-slate-900 focus:border-festa-600 focus:outline-none focus:ring-2 focus:ring-festa-600/25" />
