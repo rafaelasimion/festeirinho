@@ -39,8 +39,16 @@ export async function validarServico(corpo) {
 
   // RN046 — o piso da antecedência é calculado a partir da configuração.
   const antecedenciaMinima = await calcularAntecedenciaMinimaDias();
-  if (diasAntecedencia === null || diasAntecedencia < antecedenciaMinima)
+  // Duas mensagens, porque são dois erros: "4,5" não é inferior ao mínimo de
+  // 4 dias — o que falha nele é ser fracionário, e a mensagem antiga dizia a
+  // coisa errada. Mesmas frases da tela.
+  if (diasAntecedencia === null) {
+    erros.diasAntecedencia = String(corpo.diasAntecedencia ?? '').trim() === ''
+      ? 'Informe a antecedência mínima em dias.'
+      : 'A antecedência precisa ser um número inteiro de dias.';
+  } else if (diasAntecedencia < antecedenciaMinima) {
     erros.diasAntecedencia = `A antecedência mínima permitida é de ${antecedenciaMinima} dias.`;
+  }
 
   // As chaves precisam existir. Validar aqui devolve mensagem por campo;
   // sem isso o erro só apareceria como falha de chave estrangeira.

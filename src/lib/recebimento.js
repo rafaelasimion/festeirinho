@@ -111,7 +111,12 @@ export function validarDadosRecebimento(entrada) {
       if (!validarCNPJ(chave)) erros.chavePix = 'CNPJ inválido.';
     } else if (tipoChave === 'email') {
       chave = chave.toLowerCase();
+      // A coluna chave_pix é VARCHAR(140), mas o validarEmail aceita até 255
+      // — que é o tamanho certo para usuario.email, e por isso ele não muda.
+      // O teto menor é desta coluna, então vive aqui. Sem ele, um e-mail
+      // comprido derrubava o pedido de saque inteiro no rollback.
       if (!validarEmail(chave)) erros.chavePix = 'E-mail inválido.';
+      else if (chave.length > 140) erros.chavePix = 'E-mail muito longo para chave Pix.';
     } else if (tipoChave === 'telefone') {
       chave = somenteDigitos(chave);
       if (!validarTelefone(chave)) erros.chavePix = 'Informe o telefone com DDD.';

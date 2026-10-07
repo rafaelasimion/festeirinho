@@ -14,32 +14,66 @@ import { notificar, partesDaSolicitacao } from '@/lib/notificacao-servidor';
 // RN069 — não se aplica quando há contestação registrada e ainda não
 // analisada: nesse caso a solicitação permanece em "confirmado" até a decisão
 // da administração.
+// Esta rotina é chamada pelas DUAS listas de solicitação, a do cliente e a do
+// fornecedor, que podem estar abertas ao mesmo tempo. Sem transação e com o
+// UPDATE sem nenhuma das condições do SELECT, as duas execuções confirmavam a
+// mesma solicitação e a segunda regravava data_confirmacao_conclusao_cliente
+// — que é o marco de onde a carência do repasse conta (RN056), então o
+// repasse atrasava um dia e saíam duas notificações do mesmo fato.
+//
+// Pior: se uma contestação fosse registrada entre o SELECT e o UPDATE, o
+// UPDATE sem guarda violaria a chk_solicitacao_contestacao_pendente e, sem
+// try/catch, derrubaria a renderização da página.
+//
+// O FOR UPDATE serializa as duas execuções; a guarda no UPDATE repete as
+// condições que tornam a linha elegível.
 export async function confirmarConclusoesVencidas() {
   const configuracoes = await obterConfiguracoes();
+  const conexao = await pool.getConnection();
+  let ids = [];
 
-  // Os ids são levantados ANTES da atualização: depois dela, as linhas não
-  // se distinguem mais das que já estavam concluídas, e não haveria como
-  // saber quem notificar (RN065).
-  const [vencidas] = await pool.execute(
-    `SELECT id FROM solicitacao
-      WHERE status = 'confirmado'
-        AND data_registro_conclusao_fornecedor IS NOT NULL
-        AND data_confirmacao_conclusao_cliente IS NULL
-        AND status_contestacao IS NULL
-        AND DATE_ADD(data_registro_conclusao_fornecedor, INTERVAL ? HOUR) < NOW()`,
-    [configuracoes.prazo_confirmacao_conclusao_horas]
-  );
+  try {
+    await conexao.beginTransaction();
 
-  if (vencidas.length === 0) return;
+    // Os ids são levantados ANTES da atualização: depois dela, as linhas não
+    // se distinguem mais das que já estavam concluídas, e não haveria como
+    // saber quem notificar (RN065).
+    const [vencidas] = await conexao.execute(
+      `SELECT id FROM solicitacao
+        WHERE status = 'confirmado'
+          AND data_registro_conclusao_fornecedor IS NOT NULL
+          AND data_confirmacao_conclusao_cliente IS NULL
+          AND status_contestacao IS NULL
+          AND DATE_ADD(data_registro_conclusao_fornecedor, INTERVAL ? HOUR) < NOW()
+        FOR UPDATE`,
+      [configuracoes.prazo_confirmacao_conclusao_horas]
+    );
 
-  const ids = vencidas.map((linha) => linha.id);
-  await pool.query(
-    `UPDATE solicitacao
-        SET data_confirmacao_conclusao_cliente = NOW(),
-            status = 'concluido'
-      WHERE id IN (?)`,
-    [ids]
-  );
+    ids = vencidas.map((linha) => linha.id);
+
+    if (ids.length > 0) {
+      await conexao.query(
+        `UPDATE solicitacao
+            SET data_confirmacao_conclusao_cliente = NOW(),
+                status = 'concluido'
+          WHERE id IN (?)
+            AND status = 'confirmado'
+            AND data_confirmacao_conclusao_cliente IS NULL
+            AND status_contestacao IS NULL`,
+        [ids]
+      );
+    }
+
+    await conexao.commit();
+  } catch (erro) {
+    await conexao.rollback();
+    console.error('[confirmarConclusoesVencidas]', erro);
+    return;
+  } finally {
+    conexao.release();
+  }
+
+  if (ids.length === 0) return;
 
   for (const idSolicitacao of ids) {
     const partes = await partesDaSolicitacao(idSolicitacao);

@@ -95,6 +95,15 @@ export async function PATCH(request) {
         { status: 400 }
       );
     }
+    // Teto da coluna motivo_ocultacao. A justificativa ao lado já tinha o
+    // seu; este faltava, e as duas escritas vivem na mesma transação — o
+    // estouro desfazia também a análise da denúncia, que voltava a pendente.
+    if (motivoOcultacao.length > 500) {
+      return NextResponse.json(
+        { erro: 'O motivo da remoção não pode passar de 500 caracteres.' },
+        { status: 400 }
+      );
+    }
   }
 
   const conexao = await pool.getConnection();

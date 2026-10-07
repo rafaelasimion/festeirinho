@@ -71,8 +71,28 @@ export function calcularValores({ solicitadoPor, dataEvento, pagamento }) {
   }
 
   const { percentual, rotulo } = calcularFaixa(dataEvento, pagamento);
-  const valorMulta = Math.round(valorBruto * percentual) / 100;
-  const valorReembolso = Math.round((valorBruto - valorMulta) * 100) / 100;
+
+  // Em centavos inteiros, pelo mesmo motivo do calcularValorFinal (RN029): a
+  // multa cai exatamente no meio do centavo com frequência, e aí
+  // `Math.round(bruto * percentual)` depende de o produto em ponto flutuante
+  // ter caído um fio acima ou abaixo do meio. Medido: na faixa de 50% isso
+  // acontecia em 3,3% dos valores entre R$ 20 e R$ 5.000, e na de 25% em
+  // 1,6% — sempre um centavo, sempre no dinheiro que vai para o fornecedor
+  // (RN057) e aparece no comprovante de cancelamento (RN059).
+  //
+  // Exemplo: R$ 512,05 a 50% dava multa 256,02 e reembolso 256,03, quando a
+  // conta decimal dá 256,03 e 256,02 — porque 512.05 * 50 em ponto flutuante
+  // é 25602.499999999996, e não 25602,5.
+  const brutoCentavos = Math.round(valorBruto * 100);
+  const percentualCentesimos = Math.round(percentual * 100);
+
+  const escalado = brutoCentavos * percentualCentesimos;   // escala 10.000
+  const resto = escalado % 10000;
+  const inteiros = (escalado - resto) / 10000;
+  const multaCentavos = resto >= 5000 ? inteiros + 1 : inteiros;
+
+  const valorMulta = multaCentavos / 100;
+  const valorReembolso = (brutoCentavos - multaCentavos) / 100;
 
   return { valorMulta, valorReembolso, percentual, rotulo, pago: true };
 }

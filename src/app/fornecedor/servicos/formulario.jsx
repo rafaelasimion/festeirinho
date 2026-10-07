@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Info } from 'lucide-react';
@@ -8,6 +8,7 @@ import Campo, { CampoSelecao, CampoTexto } from '@/componentes/campo';
 import SecaoFormulario from '@/componentes/secao-formulario';
 import GerenciarFotos from '@/componentes/gerenciar-fotos';
 import { ROTULO_COBRANCA } from '@/lib/solicitacao';
+import { lerInteiro, lerDecimal } from '@/lib/validacao';
 
 const CAMPOS_VAZIOS = {
   nome: '',
@@ -66,8 +67,25 @@ export default function FormularioServico() {
 
   // Abre o formulário assim que os dados chegam. Depende de `servicos`
   // porque editar precisa do serviço carregado para preencher os campos.
+  //
+  // O `?editar=5` da URL é uma intenção que se cumpre UMA vez, e é isso que o
+  // useRef marca. Sem ele, o efeito voltava a disparar depois de salvar: o
+  // salvar() fecha o formulário com setEditando(null) e recarrega a lista,
+  // `servicos` ganha identidade nova, a guarda `editando !== null` já não
+  // vale, e o efeito reabria o formulário chamando abrirEdicao — que limpa a
+  // mensagem. Resultado medido no navegador: a confirmação não aparecia em
+  // nenhum instante, e com ela se perdia o aviso da RN067 de que o serviço
+  // saiu da vitrine até a nova aprovação, que é justamente o que o
+  // fornecedor precisa saber ali.
+  const intencaoDaUrlAtendida = useRef(false);
+
   useEffect(() => {
     if (servicos === null || opcoes === null || editando !== null) return;
+
+    // Marcada só aqui, depois dos nulos: antes disso os dados ainda não
+    // chegaram, e consumir a intenção cedo deixaria o formulário sem abrir.
+    if (intencaoDaUrlAtendida.current) return;
+    intencaoDaUrlAtendida.current = true;
 
     if (parametros.get('novo') !== null) {
       abrirNovo();
@@ -89,6 +107,46 @@ export default function FormularioServico() {
   }, [servicos, opcoes]);
 
   const antecedenciaMinima = opcoes?.antecedenciaMinimaDias ?? 1;
+
+  // As três validações numéricas usam os MESMOS leitores do servidor e dizem
+  // as MESMAS frases que ele. Antes eram funções anônimas sobre Number(), e
+  // discordavam dele em todos os casos não inteiros: capacidade "7,5" passava
+  // no blur e era recusada no envio, e "4,5" de antecedência levava
+  // "o mínimo é 4 dias" — que não descreve o erro, porque 4,5 está acima de 4.
+  // O que falha ali é ser fracionário, e agora a mensagem diz isso.
+  function validarPreco(valor) {
+    const n = lerDecimal(valor, { casas: 2 });
+    if (n === null) {
+      return String(valor ?? '').trim() === ''
+        ? 'Informe o preço base.'
+        : 'Informe o preço com no máximo duas casas decimais (ex.: 89,90).';
+    }
+    if (n <= 0) return 'Informe um preço maior que zero.';
+    if (n > 99999999.99) return 'Preço acima do limite permitido.';
+    return null;
+  }
+
+  function validarCapacidade(valor) {
+    if (String(valor ?? '').trim() === '') return null;   // em branco: sem limite
+    const n = lerInteiro(valor);
+    if (n === null || n <= 0) {
+      return 'Informe uma capacidade inteira maior que zero, ou deixe em branco.';
+    }
+    return null;
+  }
+
+  function validarAntecedencia(valor) {
+    const n = lerInteiro(valor);
+    if (n === null) {
+      return String(valor ?? '').trim() === ''
+        ? 'Informe a antecedência mínima em dias.'
+        : 'A antecedência precisa ser um número inteiro de dias.';
+    }
+    if (n < antecedenciaMinima) {
+      return `A antecedência mínima permitida é de ${antecedenciaMinima} dias.`;
+    }
+    return null;
+  }
 
   function aoDigitar(evento) {
     const { name, value } = evento.target;
@@ -129,13 +187,22 @@ export default function FormularioServico() {
     setSalvando(true);
 
     const ehNovo = editando === 'novo';
+
+    // Os números vão como TEXTO, e a conversão é do servidor.
+    //
+    // Este era o único formulário do sistema que convertia antes de enviar, e
+    // isso desmontava as mensagens de erro: Number('1.000.00') é NaN, o
+    // JSON.stringify serializa NaN como null, e o servidor recebia null —
+    // isto é, "não informou" — para um campo visivelmente preenchido. A
+    // pessoa lia "Informe o preço base" olhando o preço digitado.
+    //
+    // Só as duas seleções continuam convertidas: ali o valor vem de um
+    // <option>, não de digitação.
     const corpo = {
       ...campos,
       idCategoria: Number(campos.idCategoria),
       idCobranca: Number(campos.idCobranca),
-      precoBase: Number(campos.precoBase),
-      diasAntecedencia: Number(campos.diasAntecedencia),
-      capacidadeMax: campos.capacidadeMax === '' ? null : Number(campos.capacidadeMax),
+      capacidadeMax: campos.capacidadeMax === '' ? null : campos.capacidadeMax,
     };
 
     try {
@@ -256,23 +323,19 @@ export default function FormularioServico() {
 
             <Campo label="Preço base (R$)" name="precoBase" type="number" step="0.01" min="0.01"
               value={campos.precoBase} onChange={aoDigitar} erro={erros.precoBase}
-              validar={(v) => Number(v) > 0 ? null : 'Informe um preço maior que zero.'} />
+              validar={validarPreco} />
 
             <div className="grid gap-5 sm:grid-cols-2">
               <Campo label="Capacidade máxima" name="capacidadeMax" type="number" min="1"
                 value={campos.capacidadeMax} onChange={aoDigitar} erro={erros.capacidadeMax}
                 dica="Em branco: sem limite."
-                validar={(v) => v === '' || Number(v) > 0
-                  ? null
-                  : 'Informe uma capacidade maior que zero ou deixe em branco.'} />
+                validar={validarCapacidade} />
 
               <Campo label="Antecedência mínima (dias)" name="diasAntecedencia" type="number"
                 min={antecedenciaMinima}
                 value={campos.diasAntecedencia} onChange={aoDigitar} erro={erros.diasAntecedencia}
                 dica={`Mínimo da plataforma: ${opcoes ? antecedenciaMinima : '...'} dias.`}
-                validar={(v) => Number(v) >= antecedenciaMinima
-                  ? null
-                  : `A antecedência mínima permitida é de ${antecedenciaMinima} dias.`} />
+                validar={validarAntecedencia} />
             </div>
           </SecaoFormulario>
 

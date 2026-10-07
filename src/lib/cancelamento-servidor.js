@@ -11,6 +11,22 @@ export async function registrarCancelamento({ idSolicitacao, solicitadoPor, moti
   const conexao = await pool.getConnection();
 
   try {
+    // A transação abre ANTES da leitura, e a leitura trava as linhas.
+    //
+    // Antes ela abria só na hora de gravar, e a consulta corria solta: multa,
+    // reembolso e as transições de status saíam todos de um retrato tirado
+    // fora de qualquer transação, e eram gravados depois sem reconferir nada.
+    // A janela entre os dois é pequena, mas o que cabe nela é grave — se o
+    // pagamento fosse confirmado ali, o cancelamento gravava reembolso zero
+    // (calculado quando o pagamento ainda estava pendente, RN026) e marcava o
+    // pagamento como "cancelado" em vez de "estornado", deixando o cliente
+    // cobrado e sem estorno.
+    //
+    // Com o FOR UPDATE, a confirmação do pagamento espera o cancelamento
+    // terminar e então encontra o status já mudado, falhando limpo na própria
+    // guarda dela.
+    await conexao.beginTransaction();
+
     const [linhas] = await conexao.execute(
       `SELECT so.id, so.status, so.data_hora_evento,
               so.data_registro_conclusao_fornecedor, so.status_contestacao,
@@ -23,11 +39,16 @@ export async function registrarCancelamento({ idSolicitacao, solicitadoPor, moti
          FROM solicitacao so
          LEFT JOIN pagamento p ON p.id_solicitacao = so.id
         WHERE so.id = ?
-        LIMIT 1`,
+        LIMIT 1
+        FOR UPDATE`,
       [idSolicitacao]
     );
 
     if (linhas.length === 0) {
+      // A transação está aberta desde o começo, então cada saída antecipada
+      // precisa desfazê-la — sem isso a conexão voltaria ao pool com
+      // transação em aberto, para azar de quem a pegasse depois.
+      await conexao.rollback();
       return { erro: 'Solicitação não encontrada.', status: 404 };
     }
 
@@ -48,7 +69,10 @@ export async function registrarCancelamento({ idSolicitacao, solicitadoPor, moti
           contestacaoPendente: dados.status_contestacao === 'pendente',
         });
 
-    if (impedimento) return { erro: impedimento, status: 409 };
+    if (impedimento) {
+      await conexao.rollback();
+      return { erro: impedimento, status: 409 };
+    }
 
     const pagamento = dados.id_pagamento ? {
       status: dados.status_pagamento,
@@ -90,8 +114,6 @@ export async function registrarCancelamento({ idSolicitacao, solicitadoPor, moti
       }
     }
 
-    await conexao.beginTransaction();
-
     const [resultado] = await conexao.execute(
       `INSERT INTO cancelamento
          (id_solicitacao, solicitado_por, motivo,
@@ -120,8 +142,9 @@ export async function registrarCancelamento({ idSolicitacao, solicitadoPor, moti
 
       if (novoStatusPagamento) {
         await conexao.execute(
-          `UPDATE pagamento SET status = ?, status_repasse = 'cancelado' WHERE id = ?`,
-          [novoStatusPagamento, dados.id_pagamento]
+          `UPDATE pagamento SET status = ?, status_repasse = 'cancelado'
+            WHERE id = ? AND status = ?`,
+          [novoStatusPagamento, dados.id_pagamento, dados.status_pagamento]
         );
       } else {
         await conexao.execute(

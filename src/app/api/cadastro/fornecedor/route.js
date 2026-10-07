@@ -46,9 +46,15 @@ export async function POST(request) {
   const cnpj = ehPF ? null : normalizarCNPJ(corpo.cnpj);
   const razaoSocial = ehPF ? null : String(corpo.razaoSocial ?? '').trim();
 
+  // String vazia não é coordenada: `'' !== null` é verdadeiro, Number('') é 0
+  // e Number.isNaN(0) é falso, então um latitude: '' passava pela conferência
+  // e gravava 0,0 — que a chk_usuario_geo aceita, porque zero está na faixa.
+  // O efeito aparecia longe daqui: o filtro de proximidade da RN068 passava a
+  // medir distâncias a partir do golfo da Guiné, e a busca não devolvia
+  // fornecedor nenhum, sem erro em lugar algum.
   const temCoordenadas =
-    corpo.latitude !== undefined && corpo.latitude !== null &&
-    corpo.longitude !== undefined && corpo.longitude !== null;
+    corpo.latitude !== undefined && corpo.latitude !== null && corpo.latitude !== '' &&
+    corpo.longitude !== undefined && corpo.longitude !== null && corpo.longitude !== '';
   const latitude = temCoordenadas ? Number(corpo.latitude) : null;
   const longitude = temCoordenadas ? Number(corpo.longitude) : null;
 
@@ -89,8 +95,16 @@ export async function POST(request) {
   if (!validarURL(site)) erros.site = 'Endereço inválido.';
   if (!Number.isInteger(raioAtendimentoKm) || raioAtendimentoKm < 1 || raioAtendimentoKm > 200)
     erros.raioAtendimentoKm = 'Informe um raio entre 1 e 200 km.';
-  if (temCoordenadas && (Number.isNaN(latitude) || Number.isNaN(longitude)))
-    erros.localizacao = 'Coordenadas inválidas.';
+  // A faixa é conferida aqui pelo mesmo motivo que em perfil/localizacao: a
+  // chk_usuario_geo recusaria, e o erro cru do banco viraria um 500 sem
+  // explicação. As duas rotas de cadastro não tinham esta conferência.
+  if (temCoordenadas) {
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+      erros.localizacao = 'Coordenadas inválidas.';
+    } else if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
+      erros.localizacao = 'Coordenadas fora da faixa válida.';
+    }
+  }
 
   if (Object.keys(erros).length > 0) {
     return NextResponse.json({ erros }, { status: 400 });

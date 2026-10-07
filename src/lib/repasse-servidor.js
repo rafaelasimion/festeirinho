@@ -18,31 +18,59 @@ import { notificar } from '@/lib/notificacao-servidor';
 //
 // A CHECK chk_pagamento_data_repasse exige que "liberado" venha sempre com
 // data preenchida — por isso os dois campos são gravados juntos.
+// Esta rotina roda quando o fornecedor abre o financeiro, e duas abas abertas
+// ao mesmo tempo chamavam as duas. Sem transação e com o UPDATE sem guarda, a
+// segunda regravava data_repasse em cima da primeira e mandava uma segunda
+// notificação do mesmo repasse. A data importa: a RN058 agrupa o relatório
+// pelo mês em que o repasse foi liberado, e uma regravação à meia-noite do
+// dia 31 passava o valor para o mês seguinte.
+//
+// O FOR UPDATE é o que resolve de verdade, e é o mesmo recurso que a rota de
+// saque usa: a segunda execução espera a primeira, e aí já não encontra
+// linha nenhuma, porque a condição deixou de valer. A guarda no UPDATE fica
+// como segunda linha de defesa.
 export async function liberarRepassesVencidos() {
   const configuracoes = await obterConfiguracoes();
+  const conexao = await pool.getConnection();
+  let liberaveis = [];
 
-  // Levanta antes de atualizar, para saber quem avisar e de quanto.
-  const [liberaveis] = await pool.execute(
-    `SELECT p.id, p.valor_repassado, f.id_usuario, s.nome AS servico
-       FROM pagamento p
-       JOIN solicitacao so ON so.id = p.id_solicitacao
-       JOIN servico s      ON s.id  = so.id_servico
-       JOIN fornecedor f   ON f.id  = s.id_fornecedor
-      WHERE p.status_repasse = 'pendente'
-        AND p.status = 'pago'
-        AND so.status = 'concluido'
-        AND so.data_confirmacao_conclusao_cliente IS NOT NULL
-        AND DATE_ADD(so.data_confirmacao_conclusao_cliente, INTERVAL ? DAY) < NOW()`,
-    [configuracoes.periodo_carencia_repasse_dias]
-  );
+  try {
+    await conexao.beginTransaction();
+
+    const [linhas] = await conexao.execute(
+      `SELECT p.id, p.valor_repassado, f.id_usuario, s.nome AS servico
+         FROM pagamento p
+         JOIN solicitacao so ON so.id = p.id_solicitacao
+         JOIN servico s      ON s.id  = so.id_servico
+         JOIN fornecedor f   ON f.id  = s.id_fornecedor
+        WHERE p.status_repasse = 'pendente'
+          AND p.status = 'pago'
+          AND so.status = 'concluido'
+          AND so.data_confirmacao_conclusao_cliente IS NOT NULL
+          AND DATE_ADD(so.data_confirmacao_conclusao_cliente, INTERVAL ? DAY) < NOW()
+        FOR UPDATE`,
+      [configuracoes.periodo_carencia_repasse_dias]
+    );
+    liberaveis = linhas;
+
+    if (liberaveis.length > 0) {
+      await conexao.query(
+        `UPDATE pagamento SET status_repasse = 'liberado', data_repasse = NOW()
+          WHERE id IN (?) AND status_repasse = 'pendente'`,
+        [liberaveis.map((linha) => linha.id)]
+      );
+    }
+
+    await conexao.commit();
+  } catch (erro) {
+    await conexao.rollback();
+    console.error('[liberarRepassesVencidos]', erro);
+    return;
+  } finally {
+    conexao.release();
+  }
 
   if (liberaveis.length === 0) return;
-
-  await pool.query(
-    `UPDATE pagamento SET status_repasse = 'liberado', data_repasse = NOW()
-      WHERE id IN (?)`,
-    [liberaveis.map((linha) => linha.id)]
-  );
 
   for (const repasse of liberaveis) {
     // Tipo "financeiro" não guarda referência de solicitação: leva o

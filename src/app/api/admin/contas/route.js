@@ -74,6 +74,13 @@ export async function PATCH(request) {
           { status: 400 }
         );
       }
+      // Teto da coluna motivo_suspensao.
+      if (motivo.length > 500) {
+        return NextResponse.json(
+          { erro: 'O motivo da suspensão não pode passar de 500 caracteres.' },
+          { status: 400 }
+        );
+      }
       if (conta.status === 'suspenso') {
         return NextResponse.json({ erro: 'Esta conta já está suspensa.' }, { status: 409 });
       }
@@ -163,6 +170,13 @@ export async function PATCH(request) {
     if (resultado.length < 20) {
       return NextResponse.json(
         { erro: 'Descreva o resultado da análise em ao menos 20 caracteres.' },
+        { status: 400 }
+      );
+    }
+    // Teto da coluna resultado_solicitacao_revisao.
+    if (resultado.length > 1000) {
+      return NextResponse.json(
+        { erro: 'O resultado da análise não pode passar de 1000 caracteres.' },
         { status: 400 }
       );
     }

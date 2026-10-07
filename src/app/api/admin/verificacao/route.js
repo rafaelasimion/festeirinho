@@ -69,6 +69,15 @@ export async function PATCH(request) {
       { status: 400 }
     );
   }
+  // O teto é o da coluna (VARCHAR(500)). Sem ele, um parecer colado de outro
+  // documento estourava o limite e a administração recebia "não foi possível
+  // registrar a análise", sem pista de que o problema era o tamanho.
+  if (motivoRejeicao.length > 500) {
+    return NextResponse.json(
+      { erro: 'O motivo da rejeição não pode passar de 500 caracteres.' },
+      { status: 400 }
+    );
+  }
 
   try {
     if (acao === 'aprovar') {

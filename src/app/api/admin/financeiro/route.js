@@ -81,6 +81,13 @@ async function validarDados(corpo) {
       { status: 400 }
     );
   }
+  // Teto da coluna motivo_rejeicao.
+  if (motivo.length > 500) {
+    return NextResponse.json(
+      { erro: 'O motivo da rejeição não pode passar de 500 caracteres.' },
+      { status: 400 }
+    );
+  }
 
   const [linhas] = await pool.execute(
     `SELECT id, id_saque, id_cancelamento, status_validacao
@@ -192,6 +199,14 @@ async function concluirSaque(corpo) {
   if (resultado === 'recusado' && motivo.length < 10) {
     return NextResponse.json(
       { erro: 'Descreva o motivo da falha em ao menos 10 caracteres.' },
+      { status: 400 }
+    );
+  }
+  // Teto da coluna motivo_recusa. Sem ele, o saque ficava preso em
+  // "processando": o UPDATE falhava e o status não avançava.
+  if (motivo.length > 500) {
+    return NextResponse.json(
+      { erro: 'O motivo da falha não pode passar de 500 caracteres.' },
       { status: 400 }
     );
   }
