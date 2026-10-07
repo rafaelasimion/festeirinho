@@ -272,23 +272,36 @@ export function CampoSelecao({
 // exigência ("Mínimo de 20 caracteres"), porque "faltam 20 para o mínimo
 // de 20" diz a mesma coisa duas vezes. Passado o mínimo a linha some: daí
 // em diante ela não informa mais nada.
+//
+// `maximo` é o teto da COLUNA do banco, e aparece só quando a pessoa chega
+// perto dele — a 50 caracteres do fim. Antes ele não existia: o texto longo
+// era aceito pela tela, recusado pelo banco, e a administração lia um "não
+// foi possível registrar a análise" genérico, no topo da página, longe do
+// botão que ela acabara de clicar. Colar um parecer de outro documento
+// bastava para cair nisso.
 export function CampoTexto({
-  label, name, erro, dica, validar, onChange, onBlur, minimo, value, ...resto
+  label, name, erro, dica, validar, onChange, onBlur, minimo, maximo, value, ...resto
 }) {
   const { mensagem, aoSair, aoMudar } = useValidacao({ erro, validar, onChange, onBlur });
 
   const escrito = String(value ?? '').trim().length;
   const faltam = minimo ? minimo - escrito : 0;
+  const excedeu = maximo ? escrito - maximo : 0;
 
   let dicaEfetiva = dica;
   if (faltam > 0) {
     if (escrito === 0) dicaEfetiva = `Mínimo de ${minimo} caracteres.`;
     else if (faltam === 1) dicaEfetiva = 'Falta 1 caractere.';
     else dicaEfetiva = `Faltam ${faltam} caracteres.`;
+  } else if (maximo && escrito > maximo - 50) {
+    dicaEfetiva = excedeu > 0
+      ? `${excedeu} caractere${excedeu === 1 ? '' : 's'} além do limite de ${maximo}.`
+      : `${maximo - escrito} caractere${maximo - escrito === 1 ? '' : 's'} até o limite de ${maximo}.`;
   }
 
   return (
-    <Moldura label={label} name={name} dica={dicaEfetiva} mensagem={mensagem}>
+    <Moldura label={label} name={name} dica={dicaEfetiva}
+      mensagem={mensagem ?? (excedeu > 0 ? `O texto não pode passar de ${maximo} caracteres.` : null)}>
       <textarea
         id={name}
         name={name}
@@ -296,9 +309,9 @@ export function CampoTexto({
         onChange={aoMudar}
         onBlur={aoSair}
         {...resto}
-        aria-invalid={mensagem ? 'true' : undefined}
-        aria-describedby={mensagem ? `${name}-erro` : undefined}
-        className={classesControle(mensagem, 'resize-y px-4')}
+        aria-invalid={mensagem || excedeu > 0 ? 'true' : undefined}
+        aria-describedby={mensagem || excedeu > 0 ? `${name}-erro` : undefined}
+        className={classesControle(mensagem || excedeu > 0, 'resize-y px-4')}
       />
     </Moldura>
   );

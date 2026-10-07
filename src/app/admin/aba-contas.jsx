@@ -10,6 +10,7 @@ import CartaoAdmin, {
 import { BotaoAcao } from '@/componentes/acoes-solicitacao';
 import { CampoTexto } from '@/componentes/campo';
 import { formatarDataHora } from '@/lib/datas';
+import AvisoPainel from '@/componentes/aviso-painel';
 
 // UC 027 / UC 035 — contas da plataforma: suspensão, reativação e análise
 // das solicitações de revisão.
@@ -114,12 +115,7 @@ export default function AbaContas({ contas }) {
         </button>
       </div>
 
-      {mensagem && (
-        <p className="rounded-xl bg-sucesso-50 px-4 py-3 text-sm text-sucesso-800">{mensagem}</p>
-      )}
-      {erro && (
-        <p className="rounded-xl bg-perigo-50 px-4 py-3 text-sm text-perigo-700">{erro}</p>
-      )}
+      <AvisoPainel mensagem={mensagem} erro={erro} />
 
       {visiveis.length === 0 ? (
         <ListaVazia>
@@ -160,12 +156,12 @@ function ItemConta({ conta, processando, aoExecutar }) {
   ) : suspendendo ? (
     <div className="space-y-3">
       <CampoTexto label="Motivo da suspensão" name={`motivo-suspensao-${conta.tipo}-${conta.id}`}
-        rows={3} value={motivo} minimo={10}
+        rows={3} value={motivo} minimo={10} maximo={500}
         onChange={(e) => setMotivo(e.target.value)}
         placeholder="O texto é exibido ao usuário na tela de bloqueio." />
       <AcoesAdmin>
         <BotaoAcao tom="perigoCheio" Icone={Ban}
-          disabled={processando || motivo.trim().length < 10}
+          disabled={processando || motivo.trim().length < 10 || motivo.trim().length > 500}
           onClick={async () => {
             const certo = await aoExecutar(
               { ...corpoBase, acao: 'suspender', motivo },
@@ -184,12 +180,12 @@ function ItemConta({ conta, processando, aoExecutar }) {
     <div className="space-y-3">
       <CampoTexto label="Resposta à solicitação de revisão"
         name={`resposta-revisao-${conta.tipo}-${conta.id}`}
-        rows={4} value={resultado} minimo={20}
+        rows={4} value={resultado} minimo={20} maximo={1000}
         onChange={(e) => setResultado(e.target.value)}
         placeholder="Explique a decisão. O texto é exibido ao usuário na tela de bloqueio." />
       <AcoesAdmin>
         <BotaoAcao tom="sucesso" Icone={Check}
-          disabled={processando || resultado.trim().length < 20}
+          disabled={processando || resultado.trim().length < 20 || resultado.trim().length > 1000}
           onClick={async () => {
             const certo = await aoExecutar(
               { ...corpoBase, acao: 'analisar_revisao', resultado, manterSuspensao: false },
@@ -200,7 +196,7 @@ function ItemConta({ conta, processando, aoExecutar }) {
           Acolher e reativar
         </BotaoAcao>
         <BotaoAcao tom="perigo" Icone={Ban}
-          disabled={processando || resultado.trim().length < 20}
+          disabled={processando || resultado.trim().length < 20 || resultado.trim().length > 1000}
           onClick={async () => {
             const certo = await aoExecutar(
               { ...corpoBase, acao: 'analisar_revisao', resultado, manterSuspensao: true },

@@ -27,6 +27,7 @@ import AbaConfiguracoes from './aba-configuracoes';
 import AbaContas from './aba-contas';
 import AbaDenuncias from './aba-denuncias';
 import { formatarDataHora } from '@/lib/datas';
+import AvisoPainel from '@/componentes/aviso-painel';
 
 export default function PainelVerificacao({
   nomeAdministrador, fornecedores, servicos, contestacoes = [],
@@ -162,16 +163,7 @@ export default function PainelVerificacao({
           rotulo="Configurações" pendentes={0} />
       </div>
 
-      {mensagem && (
-        <p className="mb-4 rounded-xl bg-sucesso-50 px-4 py-3 text-sm text-sucesso-800">
-          {mensagem}
-        </p>
-      )}
-      {erro && (
-        <p className="mb-4 rounded-xl bg-perigo-50 px-4 py-3 text-sm text-perigo-700">
-          {erro}
-        </p>
-      )}
+      <AvisoPainel mensagem={mensagem} erro={erro} margem />
 
       {aba === 'fornecedores' && (
         <Lista vazio="Nenhum fornecedor cadastrado.">
@@ -355,12 +347,12 @@ function Item({
   const rodape = rejeitando ? (
     <div className="space-y-3">
       <CampoTexto label="Motivo da rejeição" name={`motivo-rejeicao-${titulo}`}
-        rows={3} value={motivo} minimo={10}
+        rows={3} value={motivo} minimo={10} maximo={500}
         onChange={(e) => aoMudarMotivo(e.target.value)}
         placeholder="Explique o que precisa ser corrigido. O texto é exibido ao fornecedor." />
       <AcoesAdmin>
         <BotaoAcao tom="perigoCheio" Icone={X} onClick={aoRejeitar}
-          disabled={processando || motivo.trim().length < 10}>
+          disabled={processando || motivo.trim().length < 10 || motivo.trim().length > 500}>
           Confirmar rejeição
         </BotaoAcao>
         <BotaoAcao tom="discreto" onClick={aoCancelarRejeicao}>Voltar</BotaoAcao>
@@ -443,14 +435,14 @@ function ItemContestacao({ contestacao, processando, aoAnalisar }) {
       </p>
 
       <CampoTexto label="Justificativa da decisão" name={`justificativa-${contestacao.id}`}
-        rows={4} value={justificativa} minimo={20}
+        rows={4} value={justificativa} minimo={20} maximo={1000}
         onChange={(e) => setJustificativa(e.target.value)}
         placeholder="Explique a decisão. O texto é exibido ao cliente e ao fornecedor." />
 
       <AcoesAdmin>
         <BotaoAcao tom={decidindo === 'procedente' ? 'principal' : 'perigoCheio'}
           Icone={Gavel}
-          disabled={processando || justificativa.trim().length < 20}
+          disabled={processando || justificativa.trim().length < 20 || justificativa.trim().length > 1000}
           onClick={() => aoAnalisar(decidindo, justificativa)}>
           Confirmar decisão
         </BotaoAcao>

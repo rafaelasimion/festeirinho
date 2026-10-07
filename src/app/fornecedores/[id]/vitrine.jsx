@@ -40,14 +40,26 @@ export default function Vitrine({
 
   // UC 010 — ativar e desativar sem sair da vitrine. Atualização
   // otimista: o interruptor vira na hora e volta sozinho se der erro.
+  //
+  // O desfazimento devolve só o serviço que falhou, e não a lista inteira.
+  //
+  // Antes ele fazia `setServicos(servicosIniciais)`, voltando para a PROP —
+  // que é o retrato do servidor no render em que o clique aconteceu, e não o
+  // estado de agora. Desativando dois serviços em sequência, com o segundo
+  // falhando, o desfazimento ressuscitava o primeiro como ativo na tela
+  // enquanto ele já estava inativo no banco. Mexer só na linha que falhou,
+  // a partir da lista corrente, não tem como desfazer o que deu certo.
   async function alternarAtivo(servico) {
     const acao = servico.status_servico === 'ativo' ? 'inativar' : 'reativar';
     const novo = acao === 'inativar' ? 'inativo' : 'ativo';
+    const anterior = servico.status_servico;
+
+    const aplicar = (status) => setServicos((lista) => lista.map((s) =>
+      s.id === servico.id ? { ...s, status_servico: status } : s));
 
     setErroServico('');
     setAlternando(servico.id);
-    setServicos((lista) => lista.map((s) =>
-      s.id === servico.id ? { ...s, status_servico: novo } : s));
+    aplicar(novo);
 
     try {
       const resposta = await fetch(`/api/fornecedor/servicos/${servico.id}`, {
@@ -58,13 +70,13 @@ export default function Vitrine({
       const dados = await resposta.json();
 
       if (!resposta.ok) {
-        setServicos(servicosIniciais);
+        aplicar(anterior);
         setErroServico(dados.erro ?? 'Não foi possível alterar o serviço.');
         return;
       }
       router.refresh();
     } catch {
-      setServicos(servicosIniciais);
+      aplicar(anterior);
       setErroServico('Falha de conexão. Tente novamente.');
     } finally {
       setAlternando(null);

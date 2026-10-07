@@ -15,6 +15,7 @@ import {
   TOM_RESULTADO_DENUNCIA,
 } from '@/lib/denuncia';
 import { formatarDataHora } from '@/lib/datas';
+import AvisoPainel from '@/componentes/aviso-painel';
 
 // RF068 / UC 026 — análise das denúncias.
 
@@ -76,12 +77,7 @@ export default function AbaDenuncias({ denuncias }) {
         </NotaAba>
       )}
 
-      {mensagem && (
-        <p className="rounded-xl bg-sucesso-50 px-4 py-3 text-sm text-sucesso-800">{mensagem}</p>
-      )}
-      {erro && (
-        <p className="rounded-xl bg-perigo-50 px-4 py-3 text-sm text-perigo-700">{erro}</p>
-      )}
+      <AvisoPainel mensagem={mensagem} erro={erro} />
 
       {denuncias.length === 0 ? (
         <ListaVazia>Nenhuma denúncia registrada.</ListaVazia>
@@ -117,7 +113,7 @@ function ItemDenuncia({ denuncia, processando, aoAnalisar }) {
   ) : decidindo ? (
     <div className="space-y-3">
       <CampoTexto label="Justificativa da decisão" name={`justificativa-denuncia-${denuncia.id}`}
-        rows={3} value={justificativa} minimo={20}
+        rows={3} value={justificativa} minimo={20} maximo={500}
         onChange={(e) => setJustificativa(e.target.value)}
         placeholder="O texto é exibido a quem denunciou." />
 
@@ -145,7 +141,7 @@ function ItemDenuncia({ denuncia, processando, aoAnalisar }) {
           {ocultar && (
             <div className="mt-3">
               <CampoTexto label="Motivo da remoção" name={`motivo-ocultacao-${denuncia.id}`}
-                rows={2} value={motivoOcultacao} minimo={10}
+                rows={2} value={motivoOcultacao} minimo={10} maximo={500}
                 onChange={(e) => setMotivoOcultacao(e.target.value)}
                 placeholder="Fica registrado e é informado a quem escreveu." />
             </div>
@@ -158,7 +154,9 @@ function ItemDenuncia({ denuncia, processando, aoAnalisar }) {
           Icone={Gavel}
           disabled={processando
             || justificativa.trim().length < 20
-            || (ocultar && motivoOcultacao.trim().length < 10)}
+            || justificativa.trim().length > 500
+            || (ocultar && motivoOcultacao.trim().length < 10)
+            || (ocultar && motivoOcultacao.trim().length > 500)}
           onClick={async () => {
             const certo = await aoAnalisar({
               id: denuncia.id,

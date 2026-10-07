@@ -10,6 +10,7 @@ import { CampoTexto } from '@/componentes/campo';
 import { formatarPreco } from '@/lib/solicitacao';
 import { descreverRecebimento, TIPOS_CHAVE_PIX } from '@/lib/recebimento';
 import { formatarDataHora } from '@/lib/datas';
+import AvisoPainel from '@/componentes/aviso-painel';
 
 // Aba "Financeiro" do painel administrativo.
 //
@@ -60,12 +61,7 @@ export default function AbaFinanceiro({ dadosPendentes, processamentos }) {
 
   return (
     <div className="space-y-10">
-      {mensagem && (
-        <p className="rounded-xl bg-sucesso-50 px-4 py-3 text-sm text-sucesso-800">{mensagem}</p>
-      )}
-      {erro && (
-        <p className="rounded-xl bg-perigo-50 px-4 py-3 text-sm text-perigo-700">{erro}</p>
-      )}
+      <AvisoPainel mensagem={mensagem} erro={erro} />
 
       <section>
         <h2 className="mb-1 text-base font-semibold text-slate-900">
@@ -137,12 +133,12 @@ function ItemValidacao({ dados, processando, aoDecidir }) {
   const rodape = rejeitando ? (
     <div className="space-y-3">
       <CampoTexto label="Motivo da rejeição" name={`motivo-dados-${dados.id}`}
-        rows={3} value={motivo} minimo={10}
+        rows={3} value={motivo} minimo={10} maximo={500}
         onChange={(e) => setMotivo(e.target.value)}
         placeholder="Explique o que está errado. O texto é exibido para quem enviou os dados." />
       <AcoesAdmin>
         <BotaoAcao tom="perigoCheio" Icone={X}
-          disabled={processando || motivo.trim().length < 10}
+          disabled={processando || motivo.trim().length < 10 || motivo.trim().length > 500}
           onClick={() => aoDecidir('rejeitado', motivo)}>
           Confirmar rejeição
         </BotaoAcao>
@@ -218,12 +214,12 @@ function ItemProcessamento({ item, processando, aoConcluir }) {
   const rodape = falhando ? (
     <div className="space-y-3">
       <CampoTexto label="Motivo da falha" name={`motivo-falha-${item.origem}-${item.id}`}
-        rows={2} value={motivo} minimo={10}
+        rows={2} value={motivo} minimo={10} maximo={500}
         onChange={(e) => setMotivo(e.target.value)}
         placeholder="Motivo da falha informado pelo gateway." />
       <AcoesAdmin>
         <BotaoAcao tom="perigoCheio" Icone={X}
-          disabled={processando || motivo.trim().length < 10}
+          disabled={processando || motivo.trim().length < 10 || motivo.trim().length > 500}
           onClick={() => aoConcluir('recusado', motivo)}>
           Registrar falha
         </BotaoAcao>
