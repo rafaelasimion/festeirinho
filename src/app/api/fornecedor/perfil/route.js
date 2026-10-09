@@ -16,7 +16,7 @@ export async function GET() {
   const [linhas] = await pool.execute(
     `SELECT u.nome, u.telefone, u.cidade, u.estado, u.foto_perfil,
             u.latitude, u.longitude,
-            f.tipo_pessoa, f.cpf, f.data_nascimento, f.cnpj, f.razao_social,
+            f.tipo_pessoa, f.razao_social,
             f.nome_exibicao, f.descricao,
             f.instagram_url, f.whatsapp_url, f.site,
             f.raio_atendimento_km,
@@ -28,16 +28,10 @@ export async function GET() {
     [idUsuario]
   );
 
-  const perfil = linhas[0];
-
-  // O driver devolve DATE como objeto Date. A tela precisa de 'aaaa-mm-dd'
-  // para preencher um input type="date".
-  return NextResponse.json({
-    ...perfil,
-    data_nascimento: perfil.data_nascimento
-      ? String(perfil.data_nascimento).slice(0, 10)
-      : null,
-  });
+  // CPF, CNPJ e data de nascimento não vão: esta tela não os mostra, e o
+  // que não é usado não deve sair do servidor (RNF018). Eles aparecem em
+  // Dados da conta (RN001).
+  return NextResponse.json(linhas[0]);
 }
 
 export async function PUT(request) {

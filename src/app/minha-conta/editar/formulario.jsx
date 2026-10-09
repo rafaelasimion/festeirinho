@@ -163,15 +163,27 @@ export default function FormularioConta({ dados, documento, ehFornecedor }) {
           onChange={aoDigitar} erro={erros.cidade}
           validar={(v) => v.trim().length >= 2 ? null : 'Informe a cidade.'} />
 
-        {/* RN001 — o documento identifica a pessoa verificada pela
-            plataforma e não é editável por aqui. */}
+        {/* RN001 — documento e data de nascimento identificam a pessoa
+            verificada pela plataforma e não mudam depois do cadastro. */}
         {documento && (
           <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
-            <span className="font-medium">
-              {documento.tipo_pessoa === 'PJ' ? 'CNPJ: ' : 'CPF: '}
-            </span>
-            {documento.tipo_pessoa === 'PJ' ? documento.cnpj : documento.cpf}
-            <p className="mt-1 text-xs text-slate-500">O documento não pode ser alterado.</p>
+            <p>
+              <span className="font-medium">
+                {documento.tipo_pessoa === 'PJ' ? 'CNPJ: ' : 'CPF: '}
+              </span>
+              {documento.tipo_pessoa === 'PJ' ? documento.cnpj : documento.cpf}
+            </p>
+            {documento.data_nascimento && (
+              <p className="mt-1">
+                <span className="font-medium">Data de nascimento: </span>
+                {documento.data_nascimento}
+              </p>
+            )}
+            <p className="mt-1 text-xs text-slate-500">
+              {documento.data_nascimento
+                ? 'Não podem ser alterados.'
+                : 'O documento não pode ser alterado.'}
+            </p>
           </div>
         )}
 

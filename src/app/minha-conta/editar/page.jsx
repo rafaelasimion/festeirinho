@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { pool } from '@/lib/db';
 import { lerSessao } from '@/lib/sessao';
+import { formatarData } from '@/lib/datas';
 import FormularioConta from './formulario';
 
 export const metadata = { title: 'Editar conta — Festeirinho' };
@@ -16,19 +17,23 @@ export default async function EditarConta() {
   );
   if (linhas.length === 0) redirect('/login');
 
-  // CPF e data de nascimento não entram: o RF004 lista os dados editáveis
-  // e eles ficam de fora, por identificarem a pessoa por trás do cadastro.
-  const [documento] = await pool.execute(
+  // RN001 / RF004 — CPF, CNPJ e data de nascimento identificam a pessoa
+  // por trás do cadastro e não mudam depois dele. Ficam aqui, nos dados da
+  // conta, só para consulta: não são dados da vitrine.
+  const [documentos] = await pool.execute(
     sessao.tipoUsuario === 'fornecedor'
-      ? `SELECT tipo_pessoa, cpf, cnpj FROM fornecedor WHERE id_usuario = ? LIMIT 1`
-      : `SELECT 'PF' AS tipo_pessoa, cpf, NULL AS cnpj FROM cliente WHERE id_usuario = ? LIMIT 1`,
+      ? `SELECT tipo_pessoa, cpf, cnpj, data_nascimento FROM fornecedor WHERE id_usuario = ? LIMIT 1`
+      : `SELECT 'PF' AS tipo_pessoa, cpf, NULL AS cnpj, data_nascimento FROM cliente WHERE id_usuario = ? LIMIT 1`,
     [sessao.id]
   );
+  const documento = documentos[0]
+    ? { ...documentos[0], data_nascimento: formatarData(documentos[0].data_nascimento) }
+    : null;
 
   return (
     <FormularioConta
       dados={linhas[0]}
-      documento={documento[0] ?? null}
+      documento={documento}
       ehFornecedor={sessao.tipoUsuario === 'fornecedor'}
     />
   );

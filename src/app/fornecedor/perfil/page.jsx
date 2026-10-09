@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { UFS } from '@/lib/validacao';
 import Campo, { CampoSelecao } from '@/componentes/campo';
@@ -54,9 +55,6 @@ export default function PerfilFornecedor() {
           telefone: dados.telefone ?? '',
           cidade: dados.cidade ?? '',
           estado: dados.estado ?? '',
-          cpf: dados.cpf ?? '',
-          dataNascimento: dados.data_nascimento ?? '',
-          cnpj: dados.cnpj ?? '',
           razaoSocial: dados.razao_social ?? '',
           nomeExibicao: dados.nome_exibicao ?? '',
           descricao: dados.descricao ?? '',
@@ -171,9 +169,6 @@ export default function PerfilFornecedor() {
   }
 
   const ehPF = status.tipoPessoa === 'PF';
-  // RN001 — documento e data de nascimento não mudam depois do cadastro,
-  // como o tipo de pessoa. Aparecem só para consulta.
-  const avisoImutavel = 'Não pode ser alterado.';
 
   return (
     <main className="mx-auto max-w-xl p-6">
@@ -225,24 +220,20 @@ export default function PerfilFornecedor() {
         <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
           <span className="font-medium">Tipo de pessoa: </span>
           {ehPF ? 'Pessoa física' : 'Pessoa jurídica'}
-          <p className="mt-1 text-xs text-slate-500">Não pode ser alterado.</p>
+          {/* RN001 — documento e data de nascimento são da pessoa, não da
+              vitrine, e não mudam depois do cadastro: ficam para consulta
+              em Dados da conta. */}
+          <p className="mt-1 text-xs text-slate-500">
+            Não pode ser alterado. {ehPF ? 'O CPF e a data de nascimento ficam' : 'O CNPJ fica'} em{' '}
+            <Link href="/minha-conta/editar" className="font-medium text-festa-700 hover:underline">
+              Dados da conta
+            </Link>.
+          </p>
         </div>
 
-        {ehPF ? (
-          <>
-            <Campo label="CPF" name="cpf" value={campos.cpf}
-              disabled dica={avisoImutavel} />
-            <Campo label="Data de nascimento" name="dataNascimento" type="date"
-              value={campos.dataNascimento}
-              disabled dica={avisoImutavel} />
-          </>
-        ) : (
-          <>
-            <Campo label="CNPJ" name="cnpj" value={campos.cnpj}
-              disabled dica={avisoImutavel} />
-            <Campo label="Razão social" name="razaoSocial" value={campos.razaoSocial}
-              onChange={aoDigitar} erro={erros.razaoSocial} />
-          </>
+        {!ehPF && (
+          <Campo label="Razão social" name="razaoSocial" value={campos.razaoSocial}
+            onChange={aoDigitar} erro={erros.razaoSocial} />
         )}
 
         <Campo label="Nome de exibição" name="nomeExibicao" value={campos.nomeExibicao}
