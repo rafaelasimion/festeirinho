@@ -44,11 +44,19 @@ export default async function Financeiro() {
 
   // As duas origens de repasse: valor do serviço concluído (RN056) e multa
   // retida em cancelamento pelo cliente (RN057).
+  //
+  // RF057 / RN027 — a comissão exibida é a CONGELADA em cada pagamento, e
+  // não a da configuração atual: quem contratou com 10% continua com 10%
+  // mesmo que a administração mude o parâmetro amanhã. A multa não sofre
+  // comissão (RN058), por isso sai com zero.
   const [movimentacoes] = await pool.execute(
     `SELECT 'conclusao' AS origem,
             p.id                AS id_origem,
             s.nome              AS servico,
             p.valor_repassado   AS valor,
+            p.valor_bruto       AS valor_bruto,
+            p.percentual_comissao,
+            p.valor_comissao,
             p.status_repasse,
             p.data_repasse,
             so.data_confirmacao_conclusao_cliente AS marco,
@@ -67,6 +75,9 @@ export default async function Financeiro() {
             c.id                AS id_origem,
             s.nome              AS servico,
             c.valor_multa       AS valor,
+            c.valor_multa       AS valor_bruto,
+            0                   AS percentual_comissao,
+            0                   AS valor_comissao,
             c.status_repasse,
             c.data_repasse,
             c.data_solicitacao  AS marco,
@@ -78,7 +89,7 @@ export default async function Financeiro() {
       WHERE s.id_fornecedor = ?
         AND c.valor_multa > 0
 
-      ORDER BY marco DESC`,
+      ORDER BY marco IS NULL DESC, marco DESC`,
     [configuracoes.periodo_carencia_repasse_dias, fornecedor.id, fornecedor.id]
   );
 
@@ -114,6 +125,9 @@ export default async function Financeiro() {
       movimentacoes={movimentacoes.map((m) => ({
         ...m,
         valor: Number(m.valor),
+        valor_bruto: Number(m.valor_bruto),
+        percentual_comissao: Number(m.percentual_comissao),
+        valor_comissao: Number(m.valor_comissao),
         data_repasse: iso(m.data_repasse),
         marco: iso(m.marco),
         previsao: iso(m.previsao),

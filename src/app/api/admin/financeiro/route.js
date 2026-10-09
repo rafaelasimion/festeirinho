@@ -29,15 +29,43 @@ async function usuarioDoSaque(idSaque) {
   return linhas[0]?.id_usuario ?? null;
 }
 
-async function usuarioDoCancelamento(idCancelamento) {
+// O reembolso é do cliente e pertence a uma solicitação: o aviso leva à
+// página dela, que é onde ficam o andamento do reembolso e o formulário de
+// reenvio dos dados (UC 022, 7a.1). Com o tipo "financeiro" e sem
+// referência, o link apontava para o financeiro do FORNECEDOR, e o cliente
+// era devolvido para Minha conta sem achar onde corrigir os dados.
+async function destinoDoCancelamento(idCancelamento) {
   const [linhas] = await pool.execute(
-    `SELECT c.id_usuario FROM cancelamento ca
+    `SELECT c.id_usuario, so.id AS id_solicitacao FROM cancelamento ca
        JOIN solicitacao so ON so.id = ca.id_solicitacao
        JOIN cliente c      ON c.id = so.id_cliente
       WHERE ca.id = ? LIMIT 1`,
     [idCancelamento]
   );
-  return linhas[0]?.id_usuario ?? null;
+  return linhas[0]
+    ? { idUsuario: linhas[0].id_usuario, idSolicitacao: linhas[0].id_solicitacao }
+    : null;
+}
+
+// RN065 — o aviso de validação segue o dono do dado: o saque é do
+// fornecedor e vai para o financeiro dele; o reembolso é do cliente e vai
+// para a solicitação cancelada.
+async function avisarValidacao({ idSaque, idCancelamento, titulo, mensagem }) {
+  if (idSaque) {
+    const idUsuario = await usuarioDoSaque(idSaque);
+    if (idUsuario) await notificar({ idUsuario, tipo: 'financeiro', titulo, mensagem });
+    return;
+  }
+  const destino = await destinoDoCancelamento(idCancelamento);
+  if (destino) {
+    await notificar({
+      idUsuario: destino.idUsuario,
+      tipo: 'cancelamento',
+      titulo,
+      mensagem,
+      idSolicitacao: destino.idSolicitacao,
+    });
+  }
 }
 
 export async function PATCH(request) {
@@ -113,17 +141,12 @@ async function validarDados(corpo) {
         WHERE id = ? AND status_validacao = 'pendente'`,
       [motivo, idDados]
     );
-    const idUsuario = idSaque
-      ? await usuarioDoSaque(idSaque)
-      : await usuarioDoCancelamento(idCancelamento);
-    if (idUsuario) {
-      await notificar({
-        idUsuario,
-        tipo: 'financeiro',
-        titulo: 'Dados de recebimento rejeitados',
-        mensagem: `${motivo} Corrija os dados para que a transferência siga.`,
-      });
-    }
+    await avisarValidacao({
+      idSaque,
+      idCancelamento,
+      titulo: 'Dados de recebimento rejeitados',
+      mensagem: `${motivo} Corrija os dados para que a transferência siga.`,
+    });
 
     return NextResponse.json({ statusValidacao: 'rejeitado' });
   }
@@ -160,19 +183,14 @@ async function validarDados(corpo) {
 
     await conexao.commit();
 
-    const idUsuario = idSaque
-      ? await usuarioDoSaque(idSaque)
-      : await usuarioDoCancelamento(idCancelamento);
-    if (idUsuario) {
-      await notificar({
-        idUsuario,
-        tipo: 'financeiro',
-        titulo: 'Dados de recebimento validados',
-        mensagem: idSaque
-          ? 'Seu saque foi enviado para transferência.'
-          : 'Seu reembolso foi enviado para processamento.',
-      });
-    }
+    await avisarValidacao({
+      idSaque,
+      idCancelamento,
+      titulo: 'Dados de recebimento validados',
+      mensagem: idSaque
+        ? 'Seu saque foi enviado para transferência.'
+        : 'Seu reembolso foi enviado para processamento.',
+    });
 
     return NextResponse.json({ statusValidacao: 'validado' });
   } catch (erroValidacao) {
@@ -262,12 +280,15 @@ async function concluirReembolso(corpo) {
     return NextResponse.json({ erro: 'Cancelamento inválido.' }, { status: 400 });
   }
 
+  const conexao = await pool.getConnection();
   try {
+    await conexao.beginTransaction();
+
     // RN057 / UC 022 etapa 8a — ao concluir, a multa retida (quando houver)
     // é liberada ao fornecedor, sem carência. A CHECK
     // chk_cancelamento_data_repasse exige "liberado" com data preenchida,
     // por isso os dois campos mudam na mesma instrução.
-    const [retorno] = await pool.execute(
+    const [retorno] = await conexao.execute(
       `UPDATE cancelamento
           SET status = 'concluido',
               status_repasse = IF(valor_multa > 0, 'liberado', status_repasse),
@@ -277,24 +298,44 @@ async function concluirReembolso(corpo) {
     );
 
     if (retorno.affectedRows === 0) {
+      await conexao.rollback();
       return NextResponse.json(
         { erro: 'Este reembolso não está em processamento.' },
         { status: 409 }
       );
     }
-    const idUsuario = await usuarioDoCancelamento(idCancelamento);
-    if (idUsuario) {
-      await notificar({
-        idUsuario,
-        tipo: 'financeiro',
-        titulo: 'Reembolso concluído',
-        mensagem: 'O valor do cancelamento foi devolvido.',
-      });
-    }
 
-    return NextResponse.json({ status: 'concluido' });
+    // RN040 / UC 022 etapa 8 — "atualiza simultaneamente o cancelamento
+    // para concluído e o status do pagamento vinculado para estornado". O
+    // estorno é este momento, e não o registro do cancelamento: as duas
+    // escritas andam juntas, na mesma transação (RNF007).
+    await conexao.execute(
+      `UPDATE pagamento p
+         JOIN cancelamento ca ON ca.id_solicitacao = p.id_solicitacao
+          SET p.status = 'estornado'
+        WHERE ca.id = ? AND p.status = 'pago'`,
+      [idCancelamento]
+    );
+
+    await conexao.commit();
   } catch (erroReembolso) {
+    await conexao.rollback();
     console.error('[admin/financeiro concluir_reembolso]', erroReembolso);
     return NextResponse.json({ erro: 'Não foi possível concluir o reembolso.' }, { status: 500 });
+  } finally {
+    conexao.release();
   }
+
+  const destino = await destinoDoCancelamento(idCancelamento);
+  if (destino) {
+    await notificar({
+      idUsuario: destino.idUsuario,
+      tipo: 'cancelamento',
+      titulo: 'Reembolso concluído',
+      mensagem: 'O valor do cancelamento foi devolvido.',
+      idSolicitacao: destino.idSolicitacao,
+    });
+  }
+
+  return NextResponse.json({ status: 'concluido' });
 }

@@ -106,8 +106,10 @@ export async function PATCH(request) {
               idUsuario: alvo.idUsuario,
               tipo: 'conta',
               titulo: 'Cadastro aprovado',
-              mensagem: 'Seu perfil foi verificado e já aparece para os clientes, '
-                + 'com o selo de fornecedor verificado.',
+              // RN005 — o perfil já aparecia antes da aprovação; o que ela
+              // acrescenta é o selo.
+              mensagem: 'Seu perfil foi verificado e agora exibe o selo de '
+                + 'fornecedor verificado para os clientes.',
             }
           : {
               idUsuario: alvo.idUsuario,

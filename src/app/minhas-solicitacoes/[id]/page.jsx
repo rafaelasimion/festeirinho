@@ -35,11 +35,26 @@ export default async function PaginaSolicitacao({ params }) {
   const solicitacao = solicitacoes[0];
   if (!solicitacao) notFound();
 
+  // RN052 / UC 040, fluxo 2b — o prazo da denúncia conta da confirmação da
+  // conclusão ou do registro do cancelamento. Em solicitação só confirmada
+  // ele ainda não começou. É a mesma conta que a rota de denúncias faz; aqui
+  // ela decide se a tela oferece a denúncia ou o suporte, em vez de oferecer
+  // um botão que o servidor vai recusar.
+  const marcoDenuncia =
+    solicitacao.data_confirmacao_conclusao_cliente ?? solicitacao.data_cancelamento;
+  let denunciaNoPrazo = true;
+  if (marcoDenuncia) {
+    const limite = new Date(marcoDenuncia);
+    limite.setDate(limite.getDate() + configuracoes.prazo_denuncia_fornecedor_dias);
+    denunciaNoPrazo = limite >= new Date();
+  }
+
   return (
     <DetalheSolicitacao
       solicitacao={solicitacao}
       titular={titular}
       prazoConfirmacaoHoras={configuracoes.prazo_confirmacao_conclusao_horas}
+      denunciaNoPrazo={denunciaNoPrazo}
     />
   );
 }

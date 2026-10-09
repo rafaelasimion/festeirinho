@@ -65,7 +65,11 @@ export async function GET(request, { params }) {
        FROM solicitacao so
        JOIN servico s     ON s.id  = so.id_servico
        JOIN categoria c   ON c.id  = s.id_categoria
-       JOIN cobranca cb   ON cb.id = s.id_cobranca
+       -- RN029 — a cobrança da CONTRATAÇÃO, congelada na solicitação, e não
+       -- a atual do serviço: o fornecedor pode ter trocado "por hora" por
+       -- "por pessoa" depois, e o comprovante mostraria uma conta que não
+       -- fecha com o valor final.
+       JOIN cobranca cb   ON cb.id = so.id_cobranca
        JOIN tipo_local tl ON tl.id = so.id_tipo_local
        JOIN endereco e    ON e.id  = so.id_endereco
        JOIN fornecedor f  ON f.id  = s.id_fornecedor

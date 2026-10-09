@@ -30,7 +30,7 @@ export async function POST(request) {
   // voltou para verificação depois que a tela abriu não pode ser contratado.
   const [servicos] = await pool.execute(
     `SELECT s.id, s.preco_base, s.capacidade_max, s.dias_antecedencia,
-            cb.descricao AS cobranca
+            s.id_cobranca, cb.descricao AS cobranca
        FROM servico s
        JOIN fornecedor f ON f.id = s.id_fornecedor
        JOIN cobranca cb  ON cb.id = s.id_cobranca
@@ -187,17 +187,22 @@ export async function POST(request) {
 
     // RN035 — o prazo de resposta do fornecedor é contado a partir de agora,
     // com a duração que está na configuração.
+    //
+    // RN029 — o preço (valor_referencia) e o tipo de cobrança (id_cobranca)
+    // vigentes agora são congelados junto com o valor final calculado a
+    // partir deles. Os três juntos são o que o comprovante reproduz (RF058),
+    // por mais que o serviço mude depois.
     const [resultadoSolicitacao] = await conexao.execute(
       `INSERT INTO solicitacao
-         (id_cliente, id_servico, id_endereco, id_tipo_local,
+         (id_cliente, id_servico, id_endereco, id_tipo_local, id_cobranca,
           data_hora_evento, duracao, numero_convidados,
           tema, nome_aniversariante, idade_aniversariante, observacoes,
           valor_referencia, valor_final,
           data_limite_resposta_fornecedor)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
                DATE_ADD(NOW(), INTERVAL ? HOUR))`,
       [
-        cliente.id, idServico, resultadoEndereco.insertId, idTipoLocal,
+        cliente.id, idServico, resultadoEndereco.insertId, idTipoLocal, servico.id_cobranca,
         dataEventoSql, duracao, numeroConvidados,
         tema || null, nomeAniversariante || null, idadeAniversariante, observacoes || null,
         valorReferencia, valorFinal,

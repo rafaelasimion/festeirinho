@@ -48,7 +48,7 @@ export async function PATCH(request, { params }) {
 
   // O pagamento precisa ser de uma solicitação DESTE cliente.
   const [linhas] = await pool.execute(
-    `SELECT p.id, p.status, p.data_limite, p.numero_tentativas,
+    `SELECT p.id, p.status, p.data_limite, p.numero_tentativas, p.forma_pagamento,
             so.id AS id_solicitacao, so.status AS status_solicitacao,
             so.data_hora_evento
        FROM pagamento p
@@ -177,6 +177,38 @@ export async function PATCH(request, { params }) {
     );
   }
 
+  // RN024 (a) / RN048 — Pix e cartão valem o prazo contado da GERAÇÃO do
+  // pagamento. Se uma tentativa anterior por boleto estendeu a data-limite
+  // e foi recusada, ela não pode carregar esse prazo maior para o Pix: a
+  // data-limite é recalculada conforme a forma escolhida em cada tentativa.
+  // Quando o prazo do Pix e do cartão já passou, resta o boleto, que segue
+  // valendo pela data-limite dele.
+  //
+  // Só se recalcula quando a tentativa anterior foi por boleto, que é o
+  // único caso em que a data-limite gravada deixou de ser a do Pix. Nos
+  // demais, a data-limite gravada na geração (RF030) continua valendo como
+  // está — recalcular com o parâmetro de hoje mudaria o prazo de quem já
+  // estava pagando sempre que a administração alterasse a configuração.
+  const vinhaDoBoleto =
+    pagamento.forma_pagamento === 'boleto' && formaPagamento !== 'boleto';
+
+  if (vinhaDoBoleto) {
+    const [prazos] = await pool.execute(
+      `SELECT LEAST(DATE_ADD(p.data_geracao, INTERVAL ? HOUR),
+                    DATE_SUB(so.data_hora_evento, INTERVAL 24 HOUR)) < NOW() AS vencido
+         FROM pagamento p
+         JOIN solicitacao so ON so.id = p.id_solicitacao
+        WHERE p.id = ?`,
+      [configuracoes.prazo_pagamento_horas, idPagamento]
+    );
+    if (Number(prazos[0]?.vencido) === 1) {
+      return NextResponse.json(
+        { erro: 'O prazo para pagar com Pix ou cartão já terminou. Use o boleto, dentro do vencimento dele.' },
+        { status: 409 }
+      );
+    }
+  }
+
   const conexao = await pool.getConnection();
   try {
     await conexao.beginTransaction();
@@ -192,6 +224,14 @@ export async function PATCH(request, { params }) {
                                     DATE_SUB(?, INTERVAL 24 HOUR))
           WHERE id = ?`,
         [pagamento.data_hora_evento, idPagamento]
+      );
+    } else if (vinhaDoBoleto) {
+      await conexao.execute(
+        `UPDATE pagamento
+            SET data_limite = LEAST(DATE_ADD(data_geracao, INTERVAL ? HOUR),
+                                    DATE_SUB(?, INTERVAL 24 HOUR))
+          WHERE id = ?`,
+        [configuracoes.prazo_pagamento_horas, pagamento.data_hora_evento, idPagamento]
       );
     }
 

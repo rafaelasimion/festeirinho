@@ -191,19 +191,22 @@ export default function FormularioCadastroFornecedor({ raioPadrao }) {
 
           {/* RN001 — PF preenche CPF e nascimento; PJ, CNPJ e razão social.
               Os campos trocam junto com a escolha acima, e ficam logo
-              abaixo dela para que a troca seja visível. */}
+              abaixo dela para que a troca seja visível. CPF, CNPJ e data
+              de nascimento não podem ser alterados depois do cadastro, e a
+              dica avisa disso AGORA, que é quando ainda dá para conferir. */}
           {ehPF ? (
             <div className="grid gap-5 sm:grid-cols-2">
               <Campo label="CPF" name="cpf" value={campos.cpf}
                 inputMode="numeric"
                 onChange={aoDigitar} erro={erros.cpf} placeholder="Somente números"
+                dica="Confira: não é possível alterar depois do cadastro."
                 validar={(v) => validarCPF(v) ? null : 'CPF inválido.'} />
 
               <Campo label="Data de nascimento" name="dataNascimento" type="date"
                 max={dataMaximaNascimento()}
                 value={campos.dataNascimento} onChange={aoDigitar}
                 erro={erros.dataNascimento}
-                dica={`Mínimo de ${IDADE_MINIMA} anos completos.`}
+                dica={`Mínimo de ${IDADE_MINIMA} anos completos. Não é possível alterar depois.`}
                 validar={(v) => validarMaioridade(v)
                   ? null
                   : `É necessário ter ao menos ${IDADE_MINIMA} anos completos.`} />
@@ -213,6 +216,7 @@ export default function FormularioCadastroFornecedor({ raioPadrao }) {
               <Campo label="CNPJ" name="cnpj" value={campos.cnpj}
                 onChange={aoDigitar} erro={erros.cnpj}
                 placeholder="Números ou letras, sem pontuação"
+                dica="Confira: não é possível alterar depois do cadastro."
                 validar={(v) => validarCNPJ(v) ? null : 'CNPJ inválido.'} />
 
               <Campo label="Razão social" name="razaoSocial" value={campos.razaoSocial}

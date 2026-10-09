@@ -14,6 +14,7 @@ import {
   formatarPreco, SUFIXO_PRECO, ROTULO_VERIFICACAO, TOM_VERIFICACAO,
 } from '@/lib/solicitacao';
 import { formatarData } from '@/lib/datas';
+import { nomeAbreviado } from '@/lib/avaliacao';
 
 function Estrelas({ nota, tamanho = 'h-4 w-4' }) {
   return (
@@ -459,12 +460,12 @@ function AbaAvaliacoes({ avaliacoes, comentarios }) {
                     <img src={comentario.foto_perfil} alt="" className="h-full w-full object-cover" />
                   ) : (
                     <span className="text-sm font-semibold text-festa-700" aria-hidden="true">
-                      {comentario.cliente.slice(0, 1).toUpperCase()}
+                      {nomeAbreviado(comentario.cliente).slice(0, 1).toUpperCase()}
                     </span>
                   )}
                 </span>
                 <div>
-                  <p className="font-medium text-slate-900">{comentario.cliente}</p>
+                  <p className="font-medium text-slate-900">{nomeAbreviado(comentario.cliente)}</p>
                   <Estrelas nota={comentario.nota} />
                 </div>
               </div>

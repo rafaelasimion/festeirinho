@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   ArrowLeft, CreditCard, MessageCircle, XCircle, CheckCircle2,
-  AlertTriangle, Flag, Download,
+  AlertTriangle, Flag, Download, Headset,
 } from 'lucide-react';
 import Etiqueta from '@/componentes/etiqueta';
 import DialogoCancelamento from '@/componentes/dialogo-cancelamento';
@@ -53,7 +53,7 @@ import LinhaDoTempo from '@/componentes/linha-do-tempo';
 // sistema exibe os detalhes". A lista voltou a ser lista; o detalhe é
 // aqui.
 export default function DetalheSolicitacao({
-  solicitacao, titular, prazoConfirmacaoHoras,
+  solicitacao, titular, prazoConfirmacaoHoras, denunciaNoPrazo = true,
 }) {
   const router = useRouter();
   // Um painel de cada vez, e agora basta dizer QUAL: a página inteira
@@ -528,11 +528,21 @@ export default function DetalheSolicitacao({
               </LinkAcao>
             )}
 
-            {podeDenunciar && !solicitacao.id_denuncia && (
+            {podeDenunciar && !solicitacao.id_denuncia && denunciaNoPrazo && (
               <BotaoAcao tom="discreto" Icone={Flag}
                 onClick={() => setPainel('denunciar')}>
                 Denunciar
               </BotaoAcao>
+            )}
+
+            {/* UC 040, fluxo 2b — fora do prazo da RN052, a denúncia some e
+                o caminho passa a ser o suporte, já com o contexto. */}
+            {podeDenunciar && !solicitacao.id_denuncia && !denunciaNoPrazo && (
+              <LinkAcao
+                href={`/suporte?assunto=denuncia&origem=solicitacao&solicitacao=${solicitacao.id}`}
+                Icone={Headset}>
+                Relatar ao suporte
+              </LinkAcao>
             )}
         </BarraAcoes>
       </CartaoSolicitacao>

@@ -11,6 +11,7 @@ import Etiqueta from '@/componentes/etiqueta';
 import GaleriaFotos from '@/componentes/galeria-fotos';
 import BotaoFavorito from '@/componentes/botao-favorito';
 import { formatarData } from '@/lib/datas';
+import { nomeAbreviado } from '@/lib/avaliacao';
 
 // UC 011, passo 6 — detalhes do serviço e do fornecedor, com o indicador de
 // verificação, as fotos e as avaliações.
@@ -20,15 +21,8 @@ import { formatarData } from '@/lib/datas';
 // recebido o endereço de outra pessoa. A distância é exibida para que a
 // decisão seja informada.
 
-// O comentário é público (RF037), mas o nome completo de quem avaliou não
-// precisa ser: primeiro nome e a inicial do sobrenome bastam para dar
-// credibilidade sem expor o cliente.
-function nomeAbreviado(nome) {
-  const partes = String(nome ?? '').trim().split(/\s+/).filter(Boolean);
-  if (partes.length === 0) return 'Cliente';
-  if (partes.length === 1) return partes[0];
-  return `${partes[0]} ${partes[partes.length - 1][0]}.`;
-}
+// O nome de quem avaliou sai abreviado — a regra mora em lib/avaliacao,
+// porque a vitrine do fornecedor exibe os mesmos comentários.
 
 export default async function DetalheServico({ params }) {
   const { id } = await params;

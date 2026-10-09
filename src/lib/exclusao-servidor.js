@@ -1,5 +1,12 @@
 import { pool } from '@/lib/db';
 import { removerImagem } from '@/lib/imagens-servidor';
+import { expirarSolicitacoesVencidas } from '@/lib/solicitacao-servidor';
+import { expirarPagamentosVencidos } from '@/lib/pagamento-servidor';
+import {
+  confirmarConclusoesVencidas,
+  cancelarSemRegistroDeConclusao,
+} from '@/lib/conclusao-servidor';
+import { liberarRepassesVencidos } from '@/lib/repasse-servidor';
 
 // UC 007 / RN044 / RN044-A / RN044-B — exclusão de conta.
 //
@@ -20,6 +27,17 @@ const ROTULO_FORNECEDOR_REMOVIDO = 'Fornecedor removido';
 export async function impedimentosParaExcluir(idUsuario, tipoUsuario) {
   const ehFornecedor = tipoUsuario === 'fornecedor';
   const impedimentos = [];
+
+  // As rotinas por demanda (limitação 1 da matriz) rodam antes da
+  // conferência, para que ela olhe a situação real e não a da última vez
+  // que alguém abriu uma lista: uma solicitação já expirada não pode
+  // impedir a exclusão, e um repasse cuja carência venceu precisa aparecer
+  // como saldo a sacar, e não como "aguardando liberação".
+  await expirarSolicitacoesVencidas();
+  await expirarPagamentosVencidos();
+  await cancelarSemRegistroDeConclusao();
+  await confirmarConclusoesVencidas();
+  await liberarRepassesVencidos();
 
   // Contratação em andamento, dos dois lados: sair no meio deixaria a outra
   // parte sem contraparte.
@@ -42,6 +60,37 @@ export async function impedimentosParaExcluir(idUsuario, tipoUsuario) {
     impedimentos.push(
       `Você tem ${emAndamento[0].total} contratação(ões) em andamento. `
       + 'Conclua ou cancele antes de excluir a conta.'
+    );
+  }
+
+  // RN044 — solicitação ainda sem resposta também prende a conta. Do lado
+  // do cliente, o fornecedor poderia aprová-la depois da exclusão e gerar
+  // um pagamento para uma conta que não existe mais; do lado do
+  // fornecedor, o cliente ficaria esperando até a expiração uma resposta
+  // que ninguém mais pode dar. Ela não se cancela (RN041): se resolve com a
+  // resposta do fornecedor ou com a expiração (RN035).
+  const [semResposta] = await pool.execute(
+    ehFornecedor
+      ? `SELECT COUNT(*) AS total
+           FROM solicitacao so
+           JOIN servico s    ON s.id = so.id_servico
+           JOIN fornecedor f ON f.id = s.id_fornecedor
+          WHERE f.id_usuario = ?
+            AND so.status = 'aguardando_analise'`
+      : `SELECT COUNT(*) AS total
+           FROM solicitacao so
+           JOIN cliente c ON c.id = so.id_cliente
+          WHERE c.id_usuario = ?
+            AND so.status = 'aguardando_analise'`,
+    [idUsuario]
+  );
+  if (Number(semResposta[0].total) > 0) {
+    impedimentos.push(
+      ehFornecedor
+        ? `Você tem ${semResposta[0].total} solicitação(ões) aguardando a sua análise. `
+          + 'Aprove ou recuse antes de excluir a conta.'
+        : `Você tem ${semResposta[0].total} solicitação(ões) aguardando a resposta do fornecedor. `
+          + 'Aguarde a resposta ou o prazo de expiração antes de excluir a conta.'
     );
   }
 
@@ -81,6 +130,40 @@ export async function impedimentosParaExcluir(idUsuario, tipoUsuario) {
     if (Number(saldos[0]?.saldo_disponivel ?? 0) > 0) {
       impedimentos.push(
         'Você tem saldo disponível. Saque o valor antes de excluir a conta.'
+      );
+    }
+
+    // RN044 — repasse que ainda não saiu da carência (RN056) ou multa ainda
+    // não liberada (RN057). O saldo acima só enxerga o que já foi
+    // liberado; sem esta conferência, o fornecedor excluía a conta com
+    // dinheiro a caminho, e esse valor ficava retido para sempre: a
+    // liberação aconteceria numa conta que ninguém mais acessa para sacar.
+    const [aLiberar] = await pool.execute(
+      `SELECT (
+          SELECT COUNT(*)
+            FROM pagamento p
+            JOIN solicitacao so ON so.id = p.id_solicitacao
+            JOIN servico s      ON s.id = so.id_servico
+            JOIN fornecedor f   ON f.id = s.id_fornecedor
+           WHERE f.id_usuario = ?
+             AND so.status = 'concluido'
+             AND p.status = 'pago'
+             AND p.status_repasse = 'pendente'
+        ) + (
+          SELECT COUNT(*)
+            FROM cancelamento ca
+            JOIN solicitacao so ON so.id = ca.id_solicitacao
+            JOIN servico s      ON s.id = so.id_servico
+            JOIN fornecedor f   ON f.id = s.id_fornecedor
+           WHERE f.id_usuario = ?
+             AND ca.status_repasse = 'pendente'
+        ) AS total`,
+      [idUsuario, idUsuario]
+    );
+    if (Number(aLiberar[0].total) > 0) {
+      impedimentos.push(
+        'Há repasse aguardando liberação. Aguarde o fim da carência e saque o valor '
+        + 'antes de excluir a conta.'
       );
     }
 

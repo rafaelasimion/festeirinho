@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { UFS, dataMaximaNascimento, IDADE_MINIMA } from '@/lib/validacao';
+import { UFS } from '@/lib/validacao';
 import Campo, { CampoSelecao } from '@/componentes/campo';
 import Etiqueta from '@/componentes/etiqueta';
 import FotoPerfil from '@/componentes/foto-perfil';
 import MinhaLocalizacao from '@/componentes/minha-localizacao';
+import { mudouDadoDaVitrine, AVISO_NOVA_VERIFICACAO } from '@/lib/fornecedor';
 
 const ROTULO_VERIFICACAO = {
   pendente: 'Verificação pendente',
@@ -23,6 +24,9 @@ const TOM_VERIFICACAO = {
 export default function PerfilFornecedor() {
   const router = useRouter();
   const [campos, setCampos] = useState(null);
+  // Os dados da vitrine como estão gravados — a base para saber, antes de
+  // salvar, se a alteração vai mandar o perfil para nova análise.
+  const [gravados, setGravados] = useState(null);
   const [status, setStatus] = useState(null);
   const [fotoPerfil, setFotoPerfil] = useState(null);
   const [coordenadas, setCoordenadas] = useState(null);
@@ -61,6 +65,14 @@ export default function PerfilFornecedor() {
           site: dados.site ?? '',
           raioAtendimentoKm: String(dados.raio_atendimento_km ?? 30),
         });
+        setGravados({
+          nome_exibicao: dados.nome_exibicao,
+          descricao: dados.descricao,
+          instagram_url: dados.instagram_url,
+          whatsapp_url: dados.whatsapp_url,
+          site: dados.site,
+          razao_social: dados.razao_social,
+        });
         setStatus({
           tipoPessoa: dados.tipo_pessoa,
           verificacao: dados.status_verificacao,
@@ -90,6 +102,20 @@ export default function PerfilFornecedor() {
     setErros({});
     setErroGeral('');
     setMensagem('');
+
+    // UC 004, fluxo 5c.1 — alterar dado da vitrine de um perfil aprovado
+    // devolve a verificação a "pendente" (RN067). A pessoa é avisada e
+    // confirma ANTES de gravar, como já acontece na tela de edição da
+    // vitrine; aqui o aviso só aparecia depois, como fato consumado.
+    const mudaVitrine = gravados && (
+      mudouDadoDaVitrine(gravados, campos)
+      || String(gravados.razao_social ?? '').trim() !== String(campos.razaoSocial ?? '').trim()
+    );
+    if (status?.verificacao === 'aprovado' && mudaVitrine
+        && !window.confirm(`${AVISO_NOVA_VERIFICACAO} Deseja salvar mesmo assim?`)) {
+      return;
+    }
+
     setSalvando(true);
 
     try {
@@ -106,6 +132,14 @@ export default function PerfilFornecedor() {
 
       if (resposta.ok) {
         setStatus((anterior) => ({ ...anterior, verificacao: dados.statusVerificacao }));
+        setGravados({
+          nome_exibicao: campos.nomeExibicao,
+          descricao: campos.descricao,
+          instagram_url: campos.instagramUrl,
+          whatsapp_url: campos.whatsappUrl,
+          site: campos.site,
+          razao_social: campos.razaoSocial,
+        });
         setMensagem(
           dados.voltouParaVerificacao
             ? 'Alterações salvas. Como você mudou dados da vitrine, seu perfil voltou para verificação.'
@@ -137,8 +171,9 @@ export default function PerfilFornecedor() {
   }
 
   const ehPF = status.tipoPessoa === 'PF';
-  const documentoEditavel = status.verificacao !== 'aprovado';
-  const avisoImutavel = 'Imutável após a aprovação da verificação.';
+  // RN001 — documento e data de nascimento não mudam depois do cadastro,
+  // como o tipo de pessoa. Aparecem só para consulta.
+  const avisoImutavel = 'Não pode ser alterado.';
 
   return (
     <main className="mx-auto max-w-xl p-6">
@@ -195,22 +230,16 @@ export default function PerfilFornecedor() {
 
         {ehPF ? (
           <>
-            <Campo label="CPF" name="cpf" value={campos.cpf} onChange={aoDigitar}
-              erro={erros.cpf} disabled={!documentoEditavel}
-              dica={documentoEditavel ? null : avisoImutavel} />
+            <Campo label="CPF" name="cpf" value={campos.cpf}
+              disabled dica={avisoImutavel} />
             <Campo label="Data de nascimento" name="dataNascimento" type="date"
-              max={dataMaximaNascimento()}
-              value={campos.dataNascimento} onChange={aoDigitar}
-              erro={erros.dataNascimento} disabled={!documentoEditavel}
-              dica={documentoEditavel
-                ? `É necessário ter ao menos ${IDADE_MINIMA} anos completos.`
-                : avisoImutavel} />
+              value={campos.dataNascimento}
+              disabled dica={avisoImutavel} />
           </>
         ) : (
           <>
-            <Campo label="CNPJ" name="cnpj" value={campos.cnpj} onChange={aoDigitar}
-              erro={erros.cnpj} disabled={!documentoEditavel}
-              dica={documentoEditavel ? null : avisoImutavel} />
+            <Campo label="CNPJ" name="cnpj" value={campos.cnpj}
+              disabled dica={avisoImutavel} />
             <Campo label="Razão social" name="razaoSocial" value={campos.razaoSocial}
               onChange={aoDigitar} erro={erros.razaoSocial} />
           </>

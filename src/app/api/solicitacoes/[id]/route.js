@@ -138,7 +138,7 @@ export async function PATCH(request, { params }) {
       // O estado "pendente" exige motivo, descrição e data preenchidos, e
       // resultado, justificativa e data de análise nulos — tudo na mesma
       // instrução, por isso o UPDATE grava o conjunto inteiro.
-      await pool.execute(
+      const [retorno] = await pool.execute(
         `UPDATE solicitacao
             SET motivo_contestacao_cliente = ?,
                 descricao_contestacao_cliente = ?,
@@ -150,6 +150,14 @@ export async function PATCH(request, { params }) {
             AND status_contestacao IS NULL`,
         [motivoContestacao, descricao, idSolicitacao]
       );
+
+      // A confirmação automática (RF036) chegou primeiro.
+      if (retorno.affectedRows === 0) {
+        return NextResponse.json(
+          { erro: 'Esta solicitação não está aguardando confirmação.' },
+          { status: 409 }
+        );
+      }
 
       // RN069 — a solicitação permanece em "confirmado", a confirmação
       // automática fica suspensa e o repasse não se torna elegível.
@@ -191,16 +199,36 @@ export async function PATCH(request, { params }) {
     );
   }
 
+  // RN069 — confirmar e contestar são alternativas: com a contestação
+  // registrada, quem decide é a administração (RF070). Sem esta guarda, o
+  // UPDATE abaixo violava a chk_solicitacao_contestacao_pendente e a
+  // pessoa recebia um erro genérico de servidor.
+  if (solicitacao.status_contestacao !== null) {
+    return NextResponse.json(
+      { erro: 'Há uma contestação registrada: a administração vai decidir sobre a conclusão.' },
+      { status: 409 }
+    );
+  }
+
   try {
-    await pool.execute(
+    const [retorno] = await pool.execute(
       `UPDATE solicitacao
           SET data_confirmacao_conclusao_cliente = NOW(),
               status = 'concluido'
         WHERE id = ?
           AND status = 'confirmado'
-          AND data_confirmacao_conclusao_cliente IS NULL`,
+          AND data_confirmacao_conclusao_cliente IS NULL
+          AND status_contestacao IS NULL`,
       [idSolicitacao]
     );
+
+    // A confirmação automática (RF036) chegou primeiro: nada a avisar.
+    if (retorno.affectedRows === 0) {
+      return NextResponse.json(
+        { erro: 'Esta solicitação não está aguardando confirmação.' },
+        { status: 409 }
+      );
+    }
 
     const partes = await partesDaSolicitacao(idSolicitacao);
     if (partes) {

@@ -171,11 +171,7 @@ export default function FormularioConta({ dados, documento, ehFornecedor }) {
               {documento.tipo_pessoa === 'PJ' ? 'CNPJ: ' : 'CPF: '}
             </span>
             {documento.tipo_pessoa === 'PJ' ? documento.cnpj : documento.cpf}
-            <p className="mt-1 text-xs text-slate-500">
-              {ehFornecedor
-                ? 'Para corrigir o documento, use Meu perfil enquanto a verificação não estiver aprovada.'
-                : 'O documento não pode ser alterado.'}
-            </p>
+            <p className="mt-1 text-xs text-slate-500">O documento não pode ser alterado.</p>
           </div>
         )}
 

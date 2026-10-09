@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { pool } from '@/lib/db';
 import { obterFornecedorLogado } from '@/lib/autorizacao';
 import { mudouDadoDaVitrine } from '@/lib/fornecedor';
-import { somenteDigitos, normalizarCNPJ, validarCPF, validarCNPJ, validarTelefone, validarURL, validarUF, validarMaioridade, IDADE_MINIMA, lerInteiro } from '@/lib/validacao';
+import { somenteDigitos, validarTelefone, validarURL, validarUF, lerInteiro } from '@/lib/validacao';
 
 // RF004 — o fornecedor consulta e edita o próprio perfil.
 // Nenhuma rota recebe id de fornecedor: o dono do dado é sempre quem
@@ -87,27 +87,9 @@ export async function PUT(request) {
   if (!ehPF && (razaoSocial.length < 2 || razaoSocial.length > 200))
     erros.razaoSocial = 'Informe a razão social.';
 
-  // Documento e data de nascimento só admitem correção enquanto a verificação
-  // não foi aprovada. Depois da aprovação tornam-se imutáveis: os dois foram
-  // conferidos pela administração, e trocá-los exigiria nova análise.
-  const documentoEditavel = fornecedor.status_verificacao !== 'aprovado';
-  let cpf = null;
-  let cnpj = null;
-  let dataNascimento = null;
-
-  if (documentoEditavel) {
-    if (ehPF) {
-      cpf = somenteDigitos(corpo.cpf);
-      dataNascimento = String(corpo.dataNascimento ?? '').trim();
-      if (!validarCPF(cpf)) erros.cpf = 'CPF inválido.';
-      if (!validarMaioridade(dataNascimento)) {
-        erros.dataNascimento = `É necessário ter ao menos ${IDADE_MINIMA} anos completos.`;
-      }
-    } else {
-      cnpj = normalizarCNPJ(corpo.cnpj);
-      if (!validarCNPJ(cnpj)) erros.cnpj = 'CNPJ inválido.';
-    }
-  }
+  // RN001 — CPF, CNPJ e data de nascimento são imutáveis desde o cadastro,
+  // como o tipo de pessoa: nem são lidos do corpo da requisição. Quem os
+  // informou errado faz novo cadastro.
 
   if (Object.keys(erros).length > 0) {
     return NextResponse.json({ erros }, { status: 400 });
@@ -152,39 +134,19 @@ export async function PUT(request) {
       [nome, telefone, cidade, estado, idUsuario]
     );
 
-    // Documento e data de nascimento só entram no UPDATE quando ainda
-    // são editáveis.
-    if (documentoEditavel) {
-      await conexao.execute(
-        `UPDATE fornecedor
-            SET nome_exibicao = ?, descricao = ?, razao_social = ?,
-                instagram_url = ?, whatsapp_url = ?, site = ?,
-                raio_atendimento_km = ?, status_verificacao = ?,
-                cpf = ?, data_nascimento = ?, cnpj = ?
-          WHERE id_usuario = ?`,
-        [
-          nomeExibicao, descricao, razaoSocial,
-          instagramUrl || null, whatsappUrl || null, site || null,
-          raioAtendimentoKm, novoStatusVerificacao,
-          cpf, dataNascimento, cnpj,
-          idUsuario,
-        ]
-      );
-    } else {
-      await conexao.execute(
-        `UPDATE fornecedor
-            SET nome_exibicao = ?, descricao = ?, razao_social = ?,
-                instagram_url = ?, whatsapp_url = ?, site = ?,
-                raio_atendimento_km = ?, status_verificacao = ?
-          WHERE id_usuario = ?`,
-        [
-          nomeExibicao, descricao, razaoSocial,
-          instagramUrl || null, whatsappUrl || null, site || null,
-          raioAtendimentoKm, novoStatusVerificacao,
-          idUsuario,
-        ]
-      );
-    }
+    await conexao.execute(
+      `UPDATE fornecedor
+          SET nome_exibicao = ?, descricao = ?, razao_social = ?,
+              instagram_url = ?, whatsapp_url = ?, site = ?,
+              raio_atendimento_km = ?, status_verificacao = ?
+        WHERE id_usuario = ?`,
+      [
+        nomeExibicao, descricao, razaoSocial,
+        instagramUrl || null, whatsappUrl || null, site || null,
+        raioAtendimentoKm, novoStatusVerificacao,
+        idUsuario,
+      ]
+    );
 
     await conexao.commit();
 
@@ -194,21 +156,6 @@ export async function PUT(request) {
     });
   } catch (erro) {
     await conexao.rollback();
-
-    if (erro.code === 'ER_DUP_ENTRY') {
-      const mensagem = String(erro.message);
-      if (mensagem.includes('uk_fornecedor_cpf'))
-        return NextResponse.json(
-          { erros: { cpf: 'Já existe um fornecedor com este CPF.' } },
-          { status: 409 }
-        );
-      if (mensagem.includes('uk_fornecedor_cnpj'))
-        return NextResponse.json(
-          { erros: { cnpj: 'Já existe um fornecedor com este CNPJ.' } },
-          { status: 409 }
-        );
-    }
-
     console.error('[fornecedor/perfil PUT]', erro);
     return NextResponse.json(
       { erro: 'Não foi possível salvar as alterações.' },

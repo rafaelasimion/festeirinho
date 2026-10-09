@@ -3,6 +3,7 @@ import { pool } from '@/lib/db';
 import { lerSessao } from '@/lib/sessao';
 import Vitrine from './vitrine';
 import { paraSerializar } from '@/lib/datas';
+import { nomeAbreviado } from '@/lib/avaliacao';
 
 // RF072 / UC 045 — vitrine do fornecedor.
 //
@@ -202,6 +203,10 @@ export default async function PaginaVitrine({ params }) {
       avaliacoes={avaliacoes}
       comentarios={comentarios.map((c) => ({
         ...c,
+        // O nome sai abreviado JÁ AQUI, no servidor: a vitrine é componente
+        // de cliente, e o que vai nesta prop chega inteiro ao HTML da página,
+        // apareça ou não na tela (RNF018).
+        cliente: nomeAbreviado(c.cliente),
         data_avaliacao: paraSerializar(c.data_avaliacao),
       }))}
       ehDono={ehDono}

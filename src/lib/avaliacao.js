@@ -20,14 +20,37 @@ export const VISIBILIDADES = [
     rotulo: 'Pública',
     detalhe: 'Seu comentário aparece na página do serviço.',
   },
+  // RN062 — "privada" tira o comentário da vitrine, não do fornecedor
+  // avaliado: ele lê o que recebeu na página da solicitação, e é isso que
+  // lhe permite denunciar um comentário inadequado (RN052). O texto antigo
+  // prometia "visível apenas para a plataforma", o que o sistema não fazia.
   {
     valor: 'oculta',
     rotulo: 'Privada',
-    detalhe: 'Só a nota é publicada; o comentário fica visível apenas para a plataforma.',
+    detalhe: 'Só a nota é publicada. O comentário não aparece na vitrine: só o fornecedor e a plataforma o leem.',
   },
 ];
 
 export function formatarMedia(media) {
   if (media === null || media === undefined) return null;
   return Number(media).toFixed(1);
+}
+
+// O comentário é público (RF037), mas o nome completo de quem avaliou não
+// precisa ser: primeiro nome e a inicial do sobrenome bastam para dar
+// credibilidade sem expor o cliente (RNF018).
+//
+// Mora aqui, e não dentro de uma página, porque duas telas exibem
+// comentários — a do serviço e a vitrine do fornecedor — e a vitrine
+// mostrava o nome completo enquanto a página do serviço já abreviava.
+//
+// O nome pode chegar nulo: a exclusão de conta anula os dados pessoais do
+// cliente (RN044-A) e preserva a avaliação (RN044-B). A vitrine fazia
+// `nome.slice(...)` sem essa guarda e caía inteira quando um cliente que
+// havia comentado excluía a conta.
+export function nomeAbreviado(nome) {
+  const partes = String(nome ?? '').trim().split(/\s+/).filter(Boolean);
+  if (partes.length === 0) return 'Cliente';
+  if (partes.length === 1) return partes[0];
+  return `${partes[0]} ${partes[partes.length - 1][0]}.`;
 }

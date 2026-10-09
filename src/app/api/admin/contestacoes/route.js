@@ -64,7 +64,7 @@ export async function PATCH(request) {
       // UC 043, etapa 5 — a data da análise VIRA a data de confirmação da
       // conclusão. É esse marco que inicia a carência do repasse (RN056) e
       // habilita a avaliação (RN006).
-      await pool.execute(
+      const [retorno] = await pool.execute(
         `UPDATE solicitacao
             SET status_contestacao = 'analisada',
                 resultado_contestacao = 'improcedente',
@@ -75,6 +75,14 @@ export async function PATCH(request) {
           WHERE id = ? AND status_contestacao = 'pendente'`,
         [justificativa, idSolicitacao]
       );
+
+      // Outra aba do painel decidiu primeiro: nada a avisar.
+      if (retorno.affectedRows === 0) {
+        return NextResponse.json(
+          { erro: 'Esta contestação não está pendente de análise.' },
+          { status: 409 }
+        );
+      }
 
       // UC 043 — as duas partes recebem a decisão e a justificativa.
       const partes = await partesDaSolicitacao(idSolicitacao);
@@ -103,29 +111,35 @@ export async function PATCH(request) {
     // reembolso integral, sem multa e sem repasse ao fornecedor. Passa pelo
     // mesmo motor que atende o pedido das partes e a ausência de registro.
     //
-    // O cancelamento vem PRIMEIRO de propósito. Se ele falhar, a contestação
-    // continua pendente e reaparece no painel para nova tentativa. Na ordem
-    // inversa, uma falha deixaria a contestação decidida sem cancelamento e
-    // sem nada indicando que ficou algo por fazer.
+    // A decisão da contestação é gravada DENTRO da transação do
+    // cancelamento (RNF007). Antes eram duas transações em sequência: se a
+    // segunda falhasse, a solicitação ficava cancelada com a contestação
+    // "pendente" para sempre — reaparecendo no painel sem poder ser
+    // decidida, porque já havia cancelamento registrado.
     const cancelamento = await registrarCancelamento({
       idSolicitacao,
       solicitadoPor: 'sistema',
       motivo: 'Contestação de conclusão julgada procedente pela administração.',
+      complemento: async (conexao) => {
+        const [retorno] = await conexao.execute(
+          `UPDATE solicitacao
+              SET status_contestacao = 'analisada',
+                  resultado_contestacao = 'procedente',
+                  justificativa_contestacao = ?,
+                  data_analise_contestacao = NOW()
+            WHERE id = ? AND status_contestacao = 'pendente'`,
+          [justificativa, idSolicitacao]
+        );
+        // Outra aba do painel decidiu primeiro: desfaz o cancelamento junto.
+        if (retorno.affectedRows === 0) {
+          throw new Error('contestação já analisada');
+        }
+      },
     });
 
     if (cancelamento.erro) {
       return NextResponse.json({ erro: cancelamento.erro }, { status: cancelamento.status });
     }
-
-    await pool.execute(
-      `UPDATE solicitacao
-          SET status_contestacao = 'analisada',
-              resultado_contestacao = 'procedente',
-              justificativa_contestacao = ?,
-              data_analise_contestacao = NOW()
-        WHERE id = ? AND status_contestacao = 'pendente'`,
-      [justificativa, idSolicitacao]
-    );
 
     // O cancelamento já avisou as duas partes do desfecho financeiro; aqui
     // vai a decisão em si, que é outra informação.

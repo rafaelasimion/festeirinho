@@ -7,7 +7,7 @@ import { ArrowLeft } from 'lucide-react';
 import Campo from '@/componentes/campo';
 import { AVISO_NOVA_VERIFICACAO } from '@/lib/fornecedor';
 
-// UC 008 — editar os dados da vitrine.
+// UC 045, fluxo 1a — editar os dados da vitrine.
 //
 // Era um painel que abria no fim da vitrine, ao clicar no lápis do topo.
 // Clicando lá em cima, o formulário nascia fora da vista, lá embaixo, e
@@ -86,8 +86,8 @@ export default function FormularioVitrine({ fornecedor }) {
         É o que o cliente vê no topo da sua vitrine.
       </p>
 
-      {/* UC 008, 6a.1 — o aviso vem ANTES de salvar, não depois. Sair da
-          busca é consequência séria demais para virar surpresa. */}
+      {/* UC 045, fluxo 1a.3 — o aviso vem ANTES de salvar, não depois.
+          Perder o selo de verificado não pode virar surpresa. */}
       {fornecedor.statusVerificacao === 'aprovado' && (
         <p className="mt-3 rounded-lg bg-atencao-50 p-3 text-sm text-atencao-800">
           {AVISO_NOVA_VERIFICACAO}

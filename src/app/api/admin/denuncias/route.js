@@ -87,6 +87,15 @@ export async function PATCH(request) {
         { status: 400 }
       );
     }
+    // UC 026, fluxo 3a — denúncia improcedente é crítica legítima, e crítica
+    // legítima não se oculta (RN045). A tela já não oferecia a combinação;
+    // a rota passa a recusá-la também.
+    if (resultado !== 'procedente') {
+      return NextResponse.json(
+        { erro: 'Só é possível ocultar o comentário quando a denúncia é procedente.' },
+        { status: 400 }
+      );
+    }
     // A chk_avaliacao_ocultacao exige motivo quando a origem é moderação —
     // ao contrário da ocultação pelo próprio autor, que não tem motivo.
     if (motivoOcultacao.length < 10) {

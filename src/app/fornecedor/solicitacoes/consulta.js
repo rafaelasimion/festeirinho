@@ -97,11 +97,28 @@ export async function buscarSolicitacoes(idUsuario, idFornecedor, { id = null } 
   return serializar(linhas);
 }
 
+// RF018 — enquanto a solicitação não foi aprovada, o fornecedor vê o local
+// do evento só até o bairro. Rua, número, complemento e CEP passam a
+// existir para ele a partir da aprovação, e nunca existem numa solicitação
+// que ele recusou ou deixou expirar.
+//
+// A regra é aplicada AQUI, e não só na tela, porque a página da
+// solicitação é componente de cliente: tudo o que este módulo devolve vai
+// parar no HTML enviado ao navegador, esteja ou não escrito na tela. A
+// tela escondia o logradouro, mas ele estava lá para quem abrisse o
+// código-fonte da página (RNF018).
+const STATUS_SEM_ENDERECO_COMPLETO = ['aguardando_analise', 'recusado', 'expirado'];
+
+function protegerEndereco(linha) {
+  if (!STATUS_SEM_ENDERECO_COMPLETO.includes(linha.status)) return linha;
+  return { ...linha, rua: null, numero: null, complemento: null, cep: null };
+}
+
 function serializar(linhas) {
   const iso = paraSerializar;
   const numero = (valor) => (valor === null || valor === undefined ? null : Number(valor));
 
-  return linhas.map((linha) => ({
+  return linhas.map(protegerEndereco).map((linha) => ({
     ...linha,
     data_hora_evento: iso(linha.data_hora_evento),
     data_solicitacao: iso(linha.data_solicitacao),

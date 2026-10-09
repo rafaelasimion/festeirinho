@@ -7,7 +7,14 @@ import { notificar, partesDaSolicitacao } from '@/lib/notificacao-servidor';
 // (UC 022), contestação procedente (RN069) e ausência de registro de
 // conclusão (RN066).
 
-export async function registrarCancelamento({ idSolicitacao, solicitadoPor, motivo }) {
+// `complemento`, opcional, é uma função que recebe a conexão e roda DENTRO
+// da transação do cancelamento, antes do commit. Existe para o caso em que
+// o cancelamento é consequência de outra decisão que também precisa ser
+// gravada — a contestação procedente (RF070): as duas escritas vivem ou
+// morrem juntas (RNF007). Se ela lançar erro, tudo é desfeito.
+export async function registrarCancelamento({
+  idSolicitacao, solicitadoPor, motivo, complemento = null,
+}) {
   const conexao = await pool.getConnection();
 
   try {
@@ -131,14 +138,23 @@ export async function registrarCancelamento({ idSolicitacao, solicitadoPor, moti
     );
 
     // RN040 — sincronização com o pagamento.
+    //
+    // Pagamento não efetivado vira "cancelado" já no registro: não há nada
+    // a devolver, e o cancelamento nasce concluído (RN026).
+    //
+    // Pagamento "pago" com reembolso NÃO vira "estornado" aqui. A RN040 e o
+    // passo 8 do UC 022 ligam o "estornado" à conclusão do cancelamento, que
+    // é quando o dinheiro de fato volta — por isso ele é gravado em
+    // concluirReembolso (api/admin/financeiro), no lugar do webhook do
+    // gateway. Gravado aqui, um reembolso por boleto que ainda esperava os
+    // dados do cliente já aparecia como estornado.
+    //
+    // Pago sem reembolso (multa de 100%): o pagamento mantém "pago".
     if (dados.id_pagamento) {
       let novoStatusPagamento = null;
       if (['pendente', 'processando', 'recusado'].includes(dados.status_pagamento)) {
         novoStatusPagamento = 'cancelado';
-      } else if (dados.status_pagamento === 'pago' && houveReembolso) {
-        novoStatusPagamento = 'estornado';
       }
-      // Pago sem reembolso (multa de 100%): o pagamento mantém "pago".
 
       if (novoStatusPagamento) {
         await conexao.execute(
@@ -185,6 +201,8 @@ export async function registrarCancelamento({ idSolicitacao, solicitadoPor, moti
         idSolicitacao,
       }, conexao);
     }
+
+    if (complemento) await complemento(conexao);
 
     await conexao.commit();
 

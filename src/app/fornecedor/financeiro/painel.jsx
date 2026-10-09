@@ -13,15 +13,23 @@ export default function PainelFinanceiro({
 }) {
   const emCarencia = movimentacoes.filter((m) => m.status_repasse === 'pendente');
   const totalEmCarencia = emCarencia.reduce((soma, m) => soma + m.valor, 0);
+
+  // RF057 / RN027 — comissão efetivamente retida: a dos repasses já
+  // liberados, cada um com o percentual congelado no seu pagamento. Soma em
+  // centavos inteiros pelo mesmo motivo do cálculo do valor final.
+  const liberados = movimentacoes.filter((m) => m.status_repasse === 'liberado');
+  const comissaoRetida = liberados
+    .reduce((soma, m) => soma + Math.round(m.valor_comissao * 100), 0) / 100;
   const podeSacar = saldoDisponivel >= valorMinimoSaque;
   // As frases da carência mudam de forma, e não só de número: "0 dias" não é
   // prazo nenhum, e "1 dias contados" não concorda. Montar o texto aqui deixa
   // os dois lugares que falam de carência dizendo a mesma coisa.
   const prazoEmDias = diasCarencia === 1 ? '1 dia' : `${diasCarencia} dias`;
   const contadosDa = diasCarencia === 1 ? 'contado da' : 'contados da';
-  const avisoDoCartao = diasCarencia === 0
-    ? `${emCarencia.length} valor(es) aguardando liberação.`
-    : `${emCarencia.length} valor(es) aguardando o prazo de ${prazoEmDias}.`;
+  // O cartão soma tudo o que ainda não foi liberado — inclusive serviços
+  // pagos que ainda não aconteceram, que não estão em carência nenhuma.
+  // Por isso a frase fala em liberação, e não no prazo da carência.
+  const avisoDoCartao = `${emCarencia.length} valor(es) aguardando liberação.`;
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-10">
@@ -46,7 +54,7 @@ export default function PainelFinanceiro({
         <div className="rounded-xl border border-slate-200 bg-white p-5">
           <div className="flex items-center gap-2 text-slate-600">
             <Clock className="h-5 w-5" aria-hidden="true" />
-            <span className="text-sm font-medium">Em carência</span>
+            <span className="text-sm font-medium">A liberar</span>
           </div>
           <p className="mt-2 text-3xl font-semibold text-slate-900">
             {formatarPreco(totalEmCarencia)}
@@ -66,9 +74,16 @@ export default function PainelFinanceiro({
         {diasCarencia === 0
           ? 'O valor de cada serviço concluído é liberado para saque assim que a conclusão é confirmada, sem carência.'
           : `O valor de cada serviço concluído fica retido por ${prazoEmDias} ${contadosDa} confirmação da conclusão, e então é liberado para saque.`}
-        {' '}A plataforma retém {percentualComissao}% de comissão, já descontada nos
-        valores abaixo. Multas de cancelamento são liberadas sem carência. O saque
-        não tem taxa.
+        {' '}A comissão da plataforma é descontada de cada serviço no percentual
+        vigente na data da contratação ({percentualComissao}% para as novas
+        contratações). Multas de cancelamento não têm comissão e são liberadas
+        sem carência. O saque não tem taxa.
+      </p>
+
+      {/* RF057 — o valor de comissão retido, e não só o percentual. */}
+      <p className="mt-2 text-sm text-slate-600">
+        Comissão retida nos repasses já liberados:{' '}
+        <span className="font-medium text-slate-900">{formatarPreco(comissaoRetida)}</span>
       </p>
 
       <Saques
@@ -95,9 +110,22 @@ export default function PainelFinanceiro({
                   {m.origem === 'conclusao' ? 'Serviço concluído' : 'Multa de cancelamento'}
                   {' · solicitação #'}{m.id_solicitacao}
                 </p>
+                {/* RF057 / RN027 — a conta de cada repasse, com o
+                    percentual congelado no pagamento daquela contratação. */}
+                {m.origem === 'conclusao' && (
+                  <p className="mt-1 text-xs text-slate-500">
+                    {formatarPreco(m.valor_bruto)} − comissão de{' '}
+                    {m.percentual_comissao.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}%
+                    {' '}({formatarPreco(m.valor_comissao)})
+                  </p>
+                )}
                 <p className="mt-1 text-xs text-slate-500">
                   {m.status_repasse === 'liberado' ? (
                     <>Liberado em {formatarData(m.data_repasse)}</>
+                  ) : m.origem === 'conclusao' && !m.marco ? (
+                    // Pago, mas o serviço ainda não foi concluído: não há
+                    // data de confirmação de onde contar a carência (RN056).
+                    <>Aguardando a conclusão do serviço</>
                   ) : m.origem === 'conclusao' ? (
                     <>Liberação prevista para {formatarData(m.previsao)}</>
                   ) : (
@@ -115,7 +143,9 @@ export default function PainelFinanceiro({
                       liberado
                     </Etiqueta>
                   ) : (
-                    <Etiqueta tom="atencao">em carência</Etiqueta>
+                    <Etiqueta tom="atencao">
+                      {m.origem === 'conclusao' && !m.marco ? 'a realizar' : 'em carência'}
+                    </Etiqueta>
                   )}
                 </div>
               </div>

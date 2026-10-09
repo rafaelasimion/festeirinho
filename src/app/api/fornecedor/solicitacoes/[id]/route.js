@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { pool } from '@/lib/db';
 import { obterFornecedorLogado } from '@/lib/autorizacao';
 import { gerarPagamento } from '@/lib/pagamento-servidor';
+import { expirarSolicitacoesVencidas } from '@/lib/solicitacao-servidor';
 import { registrarCancelamento } from '@/lib/cancelamento-servidor';
 import { notificar, partesDaSolicitacao } from '@/lib/notificacao-servidor';
 
@@ -150,14 +151,11 @@ export async function PATCH(request, { params }) {
     );
   }
 
-  // RN035 — passou do prazo, expira em vez de responder.
+  // RN035 — passou do prazo, expira em vez de responder. A expiração passa
+  // pela rotina comum, que é a que avisa o cliente (RF021): o UPDATE que
+  // havia aqui expirava em silêncio.
   if (new Date(solicitacao.data_limite_resposta_fornecedor) < new Date()) {
-    await pool.execute(
-      `UPDATE solicitacao
-          SET status = 'expirado', data_resposta_fornecedor = NOW()
-        WHERE id = ? AND status = 'aguardando_analise'`,
-      [idSolicitacao]
-    );
+    await expirarSolicitacoesVencidas();
     return NextResponse.json(
       { erro: 'O prazo de resposta desta solicitação expirou.' },
       { status: 409 }
