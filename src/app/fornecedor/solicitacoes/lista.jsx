@@ -48,7 +48,7 @@ export default function ListaSolicitacoesRecebidas({ solicitacoes }) {
                       {ROTULO_STATUS_SOLICITACAO[solicitacao.status]}
                     </Etiqueta>
                     {contestacaoPendente && (
-                      <Etiqueta tom="atencao" formato="ponto">em contestação</Etiqueta>
+                      <Etiqueta tom="atencao" formato="ponto">Em contestação</Etiqueta>
                     )}
                   </>
                 }

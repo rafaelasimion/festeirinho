@@ -102,37 +102,44 @@ export default function CartaoSolicitacao({
   );
 }
 
-// Detalhe que o cartão guarda fechado.
+// Cartão recolhível que fica ABAIXO do resumo, e não dentro dele.
 //
-// Uma contestação traz motivo, descrição, data de envio, resultado,
-// justificativa e data da análise — seis parágrafos que, abertos, fazem o
-// cartão passar de duas telas e empurram as ações para fora da vista.
-// Recolhido, sobra a linha que importa: do que se trata e como terminou.
+// Nasceu para a contestação, que traz motivo, descrição, data de envio,
+// resultado, justificativa, data da análise e, agora, as fotos (RF069-B).
+// Dentro do cartão do resumo, tudo isso esticava a coluna da foto do
+// serviço junto, e a foto virava uma tira de três telas de altura — o mesmo
+// problema que já tinha tirado o chat e os formulários de lá. Fora dele,
+// cada coisa tem a sua moldura, como os painéis que abrem por baixo.
+//
+// A faixa de cima, colorida pelo tom, faz o papel do cabeçalho roxo do
+// cartão de solicitação: identifica o assunto de relance, e o corpo branco
+// fica para o detalhe.
 //
 // É <details>/<summary> do navegador, sem estado em React: abre e fecha
 // sozinho, funciona pelo teclado e é lido como botão por leitor de tela.
 //
 // `abertoPorPadrao` serve ao que ainda está em aberto — uma contestação
 // pendente a pessoa precisa ver sem procurar; uma já julgada, não.
-export function DetalheRecolhivel({
+export function CartaoRecolhivel({
   resumo, tom = 'neutro', abertoPorPadrao = false, children,
 }) {
   const TONS = {
-    neutro: 'border-slate-200 bg-slate-50',
-    atencao: 'border-atencao-200 bg-atencao-50',
-    perigo: 'border-perigo-200 bg-perigo-50',
+    neutro: { borda: 'border-slate-200', faixa: 'bg-slate-50' },
+    atencao: { borda: 'border-atencao-200', faixa: 'bg-atencao-50' },
+    perigo: { borda: 'border-perigo-200', faixa: 'bg-perigo-50' },
   };
+  const { borda, faixa } = TONS[tom] ?? TONS.neutro;
 
   return (
     <details open={abertoPorPadrao || undefined}
-      className={`group mt-4 rounded-xl border ${TONS[tom] ?? TONS.neutro}`}>
-      <summary className="flex cursor-pointer list-none items-center gap-2 p-3 text-sm font-medium text-slate-800">
+      className={`group mt-4 overflow-hidden rounded-2xl border bg-white shadow-sm ${borda}`}>
+      <summary className={`flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-sm font-medium text-slate-800 sm:px-5 ${faixa}`}>
         <ChevronRight aria-hidden="true"
           className="h-4 w-4 shrink-0 text-slate-500 transition-transform group-open:rotate-90" />
         <span className="min-w-0 flex-1">{resumo}</span>
       </summary>
 
-      <div className="space-y-2 px-3 pb-3 pl-9 text-sm">{children}</div>
+      <div className={`space-y-2 border-t p-4 text-sm sm:p-5 ${borda}`}>{children}</div>
     </details>
   );
 }

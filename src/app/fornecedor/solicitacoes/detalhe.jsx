@@ -9,7 +9,9 @@ import {
 import { CampoSelecao } from '@/componentes/campo';
 import Etiqueta from '@/componentes/etiqueta';
 import DialogoCancelamento from '@/componentes/dialogo-cancelamento';
-import CartaoSolicitacao, { AvisoCartao } from '@/componentes/cartao-solicitacao';
+import CartaoSolicitacao, {
+  AvisoCartao, CartaoRecolhivel,
+} from '@/componentes/cartao-solicitacao';
 import { BarraAcoes, BotaoAcao, LinkAcao } from '@/componentes/acoes-solicitacao';
 import {
   formatarPreco,
@@ -217,6 +219,37 @@ export default function DetalheSolicitacaoRecebida({
     </>
   );
 
+  // UC 042 — a contestação do cliente, num cartão PRÓPRIO abaixo do resumo,
+  // como na tela do cliente. Dentro dele, a descrição e o quadro de fotos
+  // esticavam a coluna da foto do serviço junto. Só aparece pendente: é
+  // quando o fornecedor ainda tem o que fazer (as fotos, RF069-B); julgada,
+  // o desfecho está na linha do tempo e nos avisos.
+  const contestacao = solicitacao.status_contestacao === 'pendente' ? (
+    <CartaoRecolhivel tom="atencao" abertoPorPadrao
+      resumo={
+        <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <span>
+            O cliente contestou a conclusão:{' '}
+            {ROTULO_MOTIVO_CONTESTACAO[solicitacao.motivo_contestacao_cliente]}
+          </span>
+          <Etiqueta tom="atencao" formato="caixa" contorno>Em análise</Etiqueta>
+        </span>
+      }>
+      <p className="whitespace-pre-line text-slate-700">
+        {solicitacao.descricao_contestacao_cliente}
+      </p>
+      <p className="text-xs text-slate-500">
+        Enviada em {formatarDataHora(solicitacao.data_contestacao_cliente)}.
+        A administração vai analisar e decidir.
+      </p>
+
+      {/* RF069-B / UC 046 — até aqui o fornecedor só lia a acusação.
+          As fotos são o jeito de ele mostrar o que entregou, e o
+          espaço fica logo abaixo dela, onde ele já está olhando. */}
+      <FotosContestacao idSolicitacao={solicitacao.id} papel="fornecedor" />
+    </CartaoRecolhivel>
+  ) : null;
+
   const cartao = (
     <CartaoSolicitacao como="div"
         titulo={solicitacao.servico}
@@ -229,7 +262,7 @@ export default function DetalheSolicitacaoRecebida({
               {ROTULO_STATUS_SOLICITACAO[solicitacao.status]}
             </Etiqueta>
             {solicitacao.status_contestacao === 'pendente' && (
-              <Etiqueta tom="atencao" formato="ponto">em contestação</Etiqueta>
+              <Etiqueta tom="atencao" formato="ponto">Em contestação</Etiqueta>
             )}
           </>
         }
@@ -295,7 +328,10 @@ export default function DetalheSolicitacaoRecebida({
         )}
 
         {/* UC 020 — aguardando o cliente */}
-        {aguardandoCliente && (
+        {/* RN069 — com a contestação pendente, a confirmação automática
+            fica suspensa: prometer as 72h aqui contradizia o cartão da
+            contestação logo abaixo. A lista já fazia essa exceção. */}
+        {aguardandoCliente && solicitacao.status_contestacao !== 'pendente' && (
           <AvisoCartao tom="festa">
             Conclusão registrada em{' '}
             {formatarDataHora(solicitacao.data_registro_conclusao_fornecedor)}.
@@ -309,30 +345,6 @@ export default function DetalheSolicitacaoRecebida({
             Serviço concluído e confirmado em{' '}
             {formatarDataHora(solicitacao.data_confirmacao_conclusao_cliente)}.
           </AvisoCartao>
-        )}
-
-        {/* UC 042 — o fornecedor é informado da contestação. */}
-        {solicitacao.status_contestacao === 'pendente' && (
-          <div className="mt-4 space-y-1 rounded-lg border border-atencao-200 bg-atencao-50 p-3 text-sm">
-            <p className="font-medium text-slate-800">
-              O cliente contestou a conclusão:{' '}
-              {ROTULO_MOTIVO_CONTESTACAO[solicitacao.motivo_contestacao_cliente]}
-            </p>
-            <p className="whitespace-pre-line text-slate-700">
-              {solicitacao.descricao_contestacao_cliente}
-            </p>
-            <p className="text-xs text-slate-500">
-              Enviada em {formatarDataHora(solicitacao.data_contestacao_cliente)}.
-              A administração vai analisar e decidir.
-            </p>
-
-            {/* RF069-B / UC 046 — até aqui o fornecedor só lia a acusação.
-                As fotos são o jeito de ele mostrar o que entregou, e o
-                espaço fica logo abaixo dela, onde ele já está olhando. */}
-            <div className="pt-2">
-              <FotosContestacao idSolicitacao={solicitacao.id} papel="fornecedor" />
-            </div>
-          </div>
         )}
 
         {/* UC 022 — cancelamento registrado */}
@@ -474,6 +486,8 @@ export default function DetalheSolicitacaoRecebida({
       {erroGeral && <p className="mb-4 text-sm text-perigo-600">{erroGeral}</p>}
 
       {cartao}
+
+      {contestacao}
 
       {/* O painel aberto — conversa, cancelamento, recusa, denúncia,
           contestação, avaliação — é um cartão à parte, abaixo do resumo.

@@ -33,3 +33,20 @@ export const TOM_RESULTADO_CONTESTACAO = {
 // cobrem o que uma contestação costuma precisar mostrar: o que foi
 // montado, o que faltou, o que veio diferente.
 export const LIMITE_FOTOS_CONTESTACAO = 5;
+
+// Conferência feita no navegador, ANTES do envio, para quem escolhe as fotos
+// no próprio formulário da contestação: uma foto recusada ali não chega a
+// ser enviada, e a pessoa troca na hora em vez de descobrir depois. Quem
+// manda é o servidor (lib/imagens-servidor.js), que confere os primeiros
+// bytes do arquivo e não o tipo declarado — estes valores precisam bater
+// com os de lá.
+export const TIPOS_FOTO_CONTESTACAO = ['image/jpeg', 'image/png', 'image/webp'];
+export const TAMANHO_MAXIMO_FOTO_CONTESTACAO = 5 * 1024 * 1024;
+
+// RN069 / LGPD — o aviso que vem antes de qualquer foto ser enviada, no
+// formulário e no quadro de fotos. Um texto só, para os dois lugares nunca
+// prometerem coisas diferentes.
+export const AVISO_FOTOS_CONTESTACAO =
+  'Só a administração vê estas fotos, e elas são apagadas quando a contestação '
+  + 'for decidida. Prefira enquadrar o serviço e evite fotos em que crianças '
+  + 'apareçam em destaque.';

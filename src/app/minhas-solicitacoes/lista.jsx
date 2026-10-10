@@ -61,7 +61,7 @@ export default function ListaMinhasSolicitacoes({ solicitacoes }) {
                       {ROTULO_STATUS_SOLICITACAO[solicitacao.status]}
                     </Etiqueta>
                     {contestacaoPendente && (
-                      <Etiqueta tom="atencao" formato="ponto">em contestação</Etiqueta>
+                      <Etiqueta tom="atencao" formato="ponto">Em contestação</Etiqueta>
                     )}
                   </>
                 }

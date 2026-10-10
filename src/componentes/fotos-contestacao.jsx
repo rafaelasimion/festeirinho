@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ImagePlus, Trash2, Loader2, Headset } from 'lucide-react';
+import { AVISO_FOTOS_CONTESTACAO } from '@/lib/contestacao';
 
 // RF069-B / UC 046 — as fotos que uma parte anexa à contestação pendente.
 //
@@ -135,9 +136,7 @@ export default function FotosContestacao({ idSolicitacao, papel }) {
           serviço é o jeito mais simples de guardar menos do que não é
           necessário à análise. */}
       <p className="rounded-md bg-slate-50 px-2.5 py-2 text-xs text-slate-600">
-        Só a administração vê estas fotos, e elas são apagadas quando a contestação
-        for decidida. Prefira enquadrar o serviço e evite fotos em que crianças
-        apareçam em destaque.
+        {AVISO_FOTOS_CONTESTACAO}
       </p>
 
       {erro && <p className="text-sm text-perigo-600">{erro}</p>}
