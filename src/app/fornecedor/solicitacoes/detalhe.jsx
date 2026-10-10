@@ -26,6 +26,7 @@ import {
 import { ROTULO_MOTIVO_CONTESTACAO } from '@/lib/contestacao';
 import Chat from '@/componentes/chat';
 import DialogoDenuncia from '@/componentes/dialogo-denuncia';
+import FotosContestacao from '@/componentes/fotos-contestacao';
 import { ROTULO_RESULTADO_DENUNCIA } from '@/lib/denuncia';
 import { formatarDataHora } from '@/lib/datas';
 import LinhaDoTempo from '@/componentes/linha-do-tempo';
@@ -324,6 +325,13 @@ export default function DetalheSolicitacaoRecebida({
               Enviada em {formatarDataHora(solicitacao.data_contestacao_cliente)}.
               A administração vai analisar e decidir.
             </p>
+
+            {/* RF069-B / UC 046 — até aqui o fornecedor só lia a acusação.
+                As fotos são o jeito de ele mostrar o que entregou, e o
+                espaço fica logo abaixo dela, onde ele já está olhando. */}
+            <div className="pt-2">
+              <FotosContestacao idSolicitacao={solicitacao.id} papel="fornecedor" />
+            </div>
           </div>
         )}
 

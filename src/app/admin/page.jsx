@@ -115,6 +115,28 @@ export default async function Admin() {
     });
   }
 
+  // RF069-B / RN069 — as fotos que as partes anexaram. Mesma salvaguarda da
+  // conversa: só as de contestação PENDENTE. Na prática a cláusula é
+  // redundante, porque a decisão apaga as fotos; ela fica para que um
+  // defeito na remoção nunca vire uma foto exposta depois da decisão.
+  const [fotosContestadas] = await pool.query(
+    `SELECT fc.id, fc.id_solicitacao, fc.enviado_por, fc.imagem_url, fc.data_envio
+       FROM foto_contestacao fc
+       JOIN solicitacao so ON so.id = fc.id_solicitacao
+      WHERE so.status_contestacao = 'pendente'
+      ORDER BY fc.id`
+  );
+
+  const fotosPorContestacao = {};
+  for (const foto of fotosContestadas) {
+    (fotosPorContestacao[foto.id_solicitacao] ??= []).push({
+      id: foto.id,
+      enviadoPor: foto.enviado_por,
+      imagemUrl: foto.imagem_url,
+      dataEnvio: paraSerializar(foto.data_envio),
+    });
+  }
+
   // UC 038 — dados de recebimento pendentes, dos dois fluxos. Cada linha
   // traz também o documento e o nome da conta na plataforma, para o painel
   // comparar com o titular informado (RN061).
@@ -287,6 +309,7 @@ export default async function Admin() {
         valor_bruto: c.valor_bruto === null ? null : Number(c.valor_bruto),
         // Vazio para as já analisadas: a consulta acima só traz as pendentes.
         conversa: conversaPorSolicitacao[c.id] ?? [],
+        fotos: fotosPorContestacao[c.id] ?? [],
       }))}
       denuncias={denuncias.map((d) => ({
         ...d,

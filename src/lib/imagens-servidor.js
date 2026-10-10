@@ -14,6 +14,13 @@ import path from 'path';
 
 export const PASTA_UPLOADS = path.join(process.cwd(), 'uploads');
 
+// RN069 / RF069-B — as fotos de contestação ficam numa SUBPASTA, e é isso
+// que as tira do alcance da rota pública /api/imagens: ela só aceita um nome
+// no padrão abaixo, sem barra, e só procura direto em /uploads. Um arquivo
+// em /uploads/contestacoes não tem nome que chegue até ele por ali. Quem
+// entrega essas fotos é a rota protegida /api/fotos-contestacao.
+export const PASTA_CONTESTACOES = path.join(PASTA_UPLOADS, 'contestacoes');
+
 // Limite técnico, para um envio não esgotar o disco. Não é regra de negócio
 // documentada; se for mantido, o lugar dele é o documento de RNF.
 export const TAMANHO_MAXIMO = 5 * 1024 * 1024;
@@ -38,7 +45,25 @@ export const TIPOS_MIME = { jpg: 'image/jpeg', png: 'image/png', webp: 'image/we
 // arquivo nunca é usado — ele poderia conter "../" e escrever fora da pasta.
 export const PADRAO_NOME_ARQUIVO = /^[0-9a-f-]{36}\.(jpg|png|webp)$/;
 
-export async function salvarImagem(arquivo) {
+// Endereço das fotos de contestação: a rota protegida que as entrega.
+export const PREFIXO_URL_CONTESTACAO = '/api/fotos-contestacao';
+
+// O caminho de um arquivo no disco. A escolha entre as duas pastas é um
+// ternário com dois path.join de base FIXA, e não um path.join(pasta, ...)
+// com a pasta vinda de fora: o build do Next.js (Turbopack) só consegue
+// limitar o que empacota quando enxerga a pasta-base. Com a pasta como
+// variável, ele avisa "dynamic filesystem access" e passa a rastrear o
+// projeto inteiro como se o servidor pudesse ler qualquer arquivo.
+function caminhoDoArquivo(nomeArquivo, contestacao) {
+  return contestacao
+    ? path.join(PASTA_CONTESTACOES, nomeArquivo)
+    : path.join(PASTA_UPLOADS, nomeArquivo);
+}
+
+// `contestacao: true` é para as fotos da contestação (RF069-B), que moram
+// na subpasta e são entregues pela rota protegida. Sem a opção, é a foto de
+// sempre: /uploads, servida pela rota pública.
+export async function salvarImagem(arquivo, { contestacao = false } = {}) {
   if (!arquivo || typeof arquivo.arrayBuffer !== 'function') {
     return { erro: 'Selecione uma imagem.' };
   }
@@ -56,17 +81,18 @@ export async function salvarImagem(arquivo) {
   }
 
   const nomeArquivo = `${randomUUID()}.${formato}`;
-  await mkdir(PASTA_UPLOADS, { recursive: true });
-  await writeFile(path.join(PASTA_UPLOADS, nomeArquivo), bytes);
+  await mkdir(contestacao ? PASTA_CONTESTACOES : PASTA_UPLOADS, { recursive: true });
+  await writeFile(caminhoDoArquivo(nomeArquivo, contestacao), bytes);
 
-  return { nomeArquivo, url: `/api/imagens/${nomeArquivo}` };
+  const prefixo = contestacao ? PREFIXO_URL_CONTESTACAO : '/api/imagens';
+  return { nomeArquivo, url: `${prefixo}/${nomeArquivo}` };
 }
 
-export async function removerImagem(url) {
+export async function removerImagem(url, { contestacao = false } = {}) {
   const nomeArquivo = String(url ?? '').split('/').pop();
   if (!PADRAO_NOME_ARQUIVO.test(nomeArquivo)) return;
   try {
-    await unlink(path.join(PASTA_UPLOADS, nomeArquivo));
+    await unlink(caminhoDoArquivo(nomeArquivo, contestacao));
   } catch {
     // Arquivo já ausente: não há o que remover.
   }

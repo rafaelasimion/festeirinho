@@ -13,6 +13,7 @@ import FormularioAvaliacao from '@/componentes/formulario-avaliacao';
 import DadosReembolso from '@/componentes/dados-reembolso';
 import Chat from '@/componentes/chat';
 import DialogoDenuncia from '@/componentes/dialogo-denuncia';
+import FotosContestacao from '@/componentes/fotos-contestacao';
 import CartaoSolicitacao, {
   AvisoCartao, DetalheRecolhivel,
 } from '@/componentes/cartao-solicitacao';
@@ -237,6 +238,13 @@ export default function DetalheSolicitacao({
             </p>
           </div>
 
+          {/* RF069-B — as fotos entram depois do registro, porque só existe
+              contestação a que anexar depois que ela é gravada. Avisar
+              aqui evita que a pessoa procure o campo no formulário. */}
+          <p className="text-xs text-slate-600">
+            Depois de enviar, você poderá anexar fotos do que aconteceu.
+          </p>
+
           <div className="flex flex-wrap gap-2">
             <button type="button"
               disabled={processando || motivoContestacao === ''
@@ -396,10 +404,14 @@ export default function DetalheSolicitacao({
             </p>
 
             {solicitacao.status_contestacao === 'pendente' ? (
-              <p className="text-slate-700">
-                Aguardando análise da administração. Enquanto isso, a solicitação não
-                é confirmada automaticamente.
-              </p>
+              <>
+                <p className="text-slate-700">
+                  Aguardando análise da administração. Enquanto isso, a solicitação não
+                  é confirmada automaticamente.
+                </p>
+                {/* RF069-B / UC 046 — as provas do cliente. */}
+                <FotosContestacao idSolicitacao={solicitacao.id} papel="cliente" />
+              </>
             ) : (
               <div className="space-y-1 border-t border-atencao-200 pt-2">
                 <p className="font-medium text-slate-800">Justificativa da decisão</p>

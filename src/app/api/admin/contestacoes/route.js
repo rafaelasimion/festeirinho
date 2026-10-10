@@ -3,8 +3,17 @@ import { pool } from '@/lib/db';
 import { obterAdministradorLogado } from '@/lib/sessao-admin';
 import { registrarCancelamento } from '@/lib/cancelamento-servidor';
 import { notificar, partesDaSolicitacao } from '@/lib/notificacao-servidor';
+import {
+  apagarFotosDaContestacao,
+  removerArquivosContestacao,
+} from '@/lib/fotos-contestacao-servidor';
 
 // UC 043 / RF070 — análise da contestação de conclusão pelo administrador.
+//
+// RN069 — as fotos anexadas pelas partes (RF069-B) são apagadas na MESMA
+// transação que grava a decisão, nos dois desfechos. Elas só existiam para
+// esta análise; decidida a contestação, a finalidade acabou (LGPD, art. 6º,
+// III). Os arquivos saem do disco depois do commit.
 
 const RESULTADOS = ['procedente', 'improcedente'];
 
@@ -61,28 +70,47 @@ export async function PATCH(request) {
     // O estado "analisada" exige resultado, justificativa e data de análise
     // preenchidos — os três na mesma instrução.
     if (resultado === 'improcedente') {
-      // UC 043, etapa 5 — a data da análise VIRA a data de confirmação da
-      // conclusão. É esse marco que inicia a carência do repasse (RN056) e
-      // habilita a avaliação (RN006).
-      const [retorno] = await pool.execute(
-        `UPDATE solicitacao
-            SET status_contestacao = 'analisada',
-                resultado_contestacao = 'improcedente',
-                justificativa_contestacao = ?,
-                data_analise_contestacao = NOW(),
-                data_confirmacao_conclusao_cliente = NOW(),
-                status = 'concluido'
-          WHERE id = ? AND status_contestacao = 'pendente'`,
-        [justificativa, idSolicitacao]
-      );
+      // Uma instrução virou duas — a decisão e a remoção das fotos —, então
+      // agora há transação: as duas vivem ou morrem juntas (RNF007).
+      const conexao = await pool.getConnection();
+      let fotosApagadas = [];
+      try {
+        await conexao.beginTransaction();
 
-      // Outra aba do painel decidiu primeiro: nada a avisar.
-      if (retorno.affectedRows === 0) {
-        return NextResponse.json(
-          { erro: 'Esta contestação não está pendente de análise.' },
-          { status: 409 }
+        // UC 043, etapa 5 — a data da análise VIRA a data de confirmação da
+        // conclusão. É esse marco que inicia a carência do repasse (RN056) e
+        // habilita a avaliação (RN006).
+        const [retorno] = await conexao.execute(
+          `UPDATE solicitacao
+              SET status_contestacao = 'analisada',
+                  resultado_contestacao = 'improcedente',
+                  justificativa_contestacao = ?,
+                  data_analise_contestacao = NOW(),
+                  data_confirmacao_conclusao_cliente = NOW(),
+                  status = 'concluido'
+            WHERE id = ? AND status_contestacao = 'pendente'`,
+          [justificativa, idSolicitacao]
         );
+
+        // Outra aba do painel decidiu primeiro: nada a avisar.
+        if (retorno.affectedRows === 0) {
+          await conexao.rollback();
+          return NextResponse.json(
+            { erro: 'Esta contestação não está pendente de análise.' },
+            { status: 409 }
+          );
+        }
+
+        fotosApagadas = await apagarFotosDaContestacao(conexao, idSolicitacao);
+        await conexao.commit();
+      } catch (erroDecisao) {
+        await conexao.rollback();
+        throw erroDecisao;
+      } finally {
+        conexao.release();
       }
+
+      await removerArquivosContestacao(fotosApagadas);
 
       // UC 043 — as duas partes recebem a decisão e a justificativa.
       const partes = await partesDaSolicitacao(idSolicitacao);
@@ -116,6 +144,12 @@ export async function PATCH(request) {
     // segunda falhasse, a solicitação ficava cancelada com a contestação
     // "pendente" para sempre — reaparecendo no painel sem poder ser
     // decidida, porque já havia cancelamento registrado.
+    //
+    // As fotos saem dentro da mesma transação (RN069). Os endereços ficam
+    // guardados aqui e os arquivos só são apagados se o cancelamento
+    // terminar bem: com rollback, as linhas voltam e os arquivos têm de
+    // continuar lá.
+    let fotosApagadas = [];
     const cancelamento = await registrarCancelamento({
       idSolicitacao,
       solicitadoPor: 'sistema',
@@ -134,12 +168,15 @@ export async function PATCH(request) {
         if (retorno.affectedRows === 0) {
           throw new Error('contestação já analisada');
         }
+        fotosApagadas = await apagarFotosDaContestacao(conexao, idSolicitacao);
       },
     });
 
     if (cancelamento.erro) {
       return NextResponse.json({ erro: cancelamento.erro }, { status: cancelamento.status });
     }
+
+    await removerArquivosContestacao(fotosApagadas);
 
     // O cancelamento já avisou as duas partes do desfecho financeiro; aqui
     // vai a decisão em si, que é outra informação.

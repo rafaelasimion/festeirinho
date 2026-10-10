@@ -511,6 +511,10 @@ function ItemContestacao({ contestacao, processando, aoAnalisar }) {
           admin/page.jsx). */}
       {pendente && <ConversaDaContestacao mensagens={contestacao.conversa ?? []} />}
 
+      {/* RF069-B — as fotos das duas partes, lado a lado. Também só nas
+          pendentes: a decisão apaga as fotos (RN069). */}
+      {pendente && <FotosDaContestacao fotos={contestacao.fotos ?? []} />}
+
       {!pendente && (
         <Bloco rotulo="Justificativa da decisão">
           {contestacao.justificativa_contestacao}
@@ -578,6 +582,62 @@ function ConversaDaContestacao({ mensagens }) {
         ))}
       </div>
     </details>
+  );
+}
+
+// RF069-B / RN069 — as fotos que cliente e fornecedor anexaram.
+//
+// Separadas por quem enviou, porque a pergunta da análise é sempre "quem
+// mostrou o quê": o cliente diz que faltou, o fornecedor diz que entregou.
+// Misturadas numa fila só, a administração teria de adivinhar de que lado
+// veio cada imagem.
+//
+// Cada miniatura abre em tamanho real numa nova aba, como as fotos de
+// serviço. A rota é a protegida (/api/fotos-contestacao): a aba nova leva o
+// cookie da sessão administrativa, e mais ninguém a abre.
+function FotosDaContestacao({ fotos }) {
+  const grupos = [
+    { papel: 'cliente', rotulo: 'Fotos do cliente' },
+    { papel: 'fornecedor', rotulo: 'Fotos do fornecedor' },
+  ];
+
+  if (fotos.length === 0) {
+    return (
+      <Bloco rotulo="Fotos">
+        <span className="text-slate-500">
+          Nenhuma das partes anexou fotos a esta contestação.
+        </span>
+      </Bloco>
+    );
+  }
+
+  return (
+    <div className="grid gap-4 sm:grid-cols-2">
+      {grupos.map(({ papel, rotulo }) => {
+        const doGrupo = fotos.filter((foto) => foto.enviadoPor === papel);
+        return (
+          <Bloco key={papel} rotulo={`${rotulo} (${doGrupo.length})`}>
+            {doGrupo.length === 0 ? (
+              <span className="text-slate-500">Nenhuma foto enviada.</span>
+            ) : (
+              <ul className="flex flex-wrap gap-2">
+                {doGrupo.map((foto) => (
+                  <li key={foto.id}>
+                    <a href={foto.imagemUrl} target="_blank" rel="noreferrer"
+                      className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-festa-600/40">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={foto.imagemUrl}
+                        alt={`Foto enviada pelo ${papel} em ${formatarDataHora(foto.dataEnvio)} — abrir em tamanho real`}
+                        className="h-20 w-24 rounded-lg border border-slate-200 bg-white object-cover" />
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Bloco>
+        );
+      })}
+    </div>
   );
 }
 

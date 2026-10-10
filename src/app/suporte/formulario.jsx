@@ -156,8 +156,20 @@ export default function FormularioSuporte({
         </p>
       )}
 
-      {canais.email && (
+      {/* RN063 — o atendimento é externo, e quem guarda o anexo é o canal,
+          não o Festeirinho. O link do WhatsApp e o do e-mail só levam
+          texto: nenhum dos dois consegue carregar um arquivo junto. Sem
+          este aviso, quem tem a foto de um problema não sabe onde ela
+          entra. */}
+      {!semCanal && (
         <p className="mt-6 text-xs text-slate-500">
+          Fotos, vídeos e documentos você anexa direto na conversa do WhatsApp ou
+          no e-mail, depois que o canal abrir.
+        </p>
+      )}
+
+      {canais.email && (
+        <p className="mt-2 text-xs text-slate-500">
           O botão de e-mail abre o seu programa de e-mail com a mensagem pronta.
           Se preferir, escreva direto para {canais.email}.
         </p>

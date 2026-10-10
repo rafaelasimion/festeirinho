@@ -161,6 +161,10 @@ export async function PATCH(request, { params }) {
 
       // RN069 — a solicitação permanece em "confirmado", a confirmação
       // automática fica suspensa e o repasse não se torna elegível.
+      //
+      // RF069-B — o aviso diz ao fornecedor que ele também pode mostrar o
+      // seu lado. Sem isso, a única forma de ele descobrir o campo de
+      // fotos seria abrir a solicitação por acaso.
       const partes = await partesDaSolicitacao(idSolicitacao);
       if (partes) {
         await notificar({
@@ -168,7 +172,8 @@ export async function PATCH(request, { params }) {
           tipo: 'solicitacao',
           titulo: 'Conclusão contestada pelo cliente',
           mensagem: `${partes.nome_cliente} contestou a conclusão de ${partes.servico}. `
-            + 'A administração vai analisar.',
+            + 'A administração vai analisar. Se tiver fotos do serviço prestado, '
+            + 'anexe-as na página da solicitação.',
           idSolicitacao,
         });
       }
