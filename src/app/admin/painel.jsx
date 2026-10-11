@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import Etiqueta from '@/componentes/etiqueta';
 import CartaoAdmin, {
-  Fatos, Fato, Bloco, AcoesAdmin, PeDecidido,
+  Fatos, Fato, Bloco, AcoesAdmin, PeDecidido, FIO_BLOCO,
 } from '@/componentes/cartao-admin';
 import { BotaoAcao } from '@/componentes/acoes-solicitacao';
 import { CampoTexto } from '@/componentes/campo';
@@ -501,8 +501,11 @@ function ItemContestacao({ contestacao, processando, aoAnalisar }) {
         </Fato>
       </Fatos>
 
+      {/* Os dois lados, um embaixo do outro e com quem disse no rótulo: o
+          motivo sozinho ("Serviço prestado parcialmente") não dizia de quem
+          era o texto. */}
       <Bloco tom="atencao"
-        rotulo={ROTULO_MOTIVO_CONTESTACAO[contestacao.motivo_contestacao_cliente]}>
+        rotulo={`Cliente · ${ROTULO_MOTIVO_CONTESTACAO[contestacao.motivo_contestacao_cliente]}`}>
         {contestacao.descricao_contestacao_cliente}
       </Bloco>
 
@@ -510,33 +513,34 @@ function ItemContestacao({ contestacao, processando, aoAnalisar }) {
           responder (RN069), então a ausência também é informação: quem vai
           decidir precisa saber se ainda pode esperar por ela. */}
       {contestacao.data_contestacao_fornecedor ? (
-        <Bloco rotulo="Versão do fornecedor">
+        <Bloco rotulo="Fornecedor · versão">
           {contestacao.descricao_contestacao_fornecedor}
           <span className="mt-1 block text-xs text-slate-500">
             Enviada em {formatarDataHora(contestacao.data_contestacao_fornecedor)}.
           </span>
         </Bloco>
       ) : (
-        <Bloco rotulo="Versão do fornecedor">
+        <Bloco rotulo="Fornecedor · versão">
           <span className="text-slate-500">
             {pendente
-              ? 'O fornecedor ainda não apresentou a sua versão. Não há prazo para isso: a decisão pode ser tomada sem ela.'
-              : 'O fornecedor não apresentou versão antes da decisão.'}
+              ? 'Ainda não apresentada. Não há prazo: a decisão pode ser tomada sem ela.'
+              : 'Não apresentada antes da decisão.'}
           </span>
         </Bloco>
       )}
+
+      {/* RF069-B — as fotos das duas partes, logo depois do que cada uma
+          escreveu. Só nas pendentes: a decisão apaga as fotos (RN069). */}
+      {pendente && <FotosDaContestacao fotos={contestacao.fotos ?? []} />}
 
       {/* UC 043 — a prova que existe. Só nas pendentes: depois de julgada,
           a conversa sai do alcance da administração (ver a consulta em
           admin/page.jsx). */}
       {pendente && <ConversaDaContestacao mensagens={contestacao.conversa ?? []} />}
 
-      {/* RF069-B — as fotos das duas partes, lado a lado. Também só nas
-          pendentes: a decisão apaga as fotos (RN069). */}
-      {pendente && <FotosDaContestacao fotos={contestacao.fotos ?? []} />}
-
       {!pendente && (
-        <Bloco rotulo="Justificativa da decisão">
+        <Bloco rotulo="Justificativa da decisão"
+          tom={TOM_RESULTADO_CONTESTACAO[contestacao.resultado_contestacao]}>
           {contestacao.justificativa_contestacao}
           <span className="mt-1 block text-xs text-slate-500">
             Analisada em {formatarDataHora(contestacao.data_analise_contestacao)}.
@@ -569,25 +573,27 @@ function ConversaDaContestacao({ mensagens }) {
     );
   }
 
+  // O mesmo fio à esquerda dos outros blocos, e não uma caixa: a conversa
+  // é mais um texto do cartão, que só começa fechado. As mensagens ficam
+  // num fundo cinza leve, sem borda, e o lado do cliente se distingue pelo
+  // tom — como no chat.
   return (
-    <details className="group rounded-xl border border-slate-200 bg-slate-50">
-      <summary className="flex cursor-pointer list-none items-center gap-2 p-3">
+    <details className={`group border-l-2 pl-3.5 ${FIO_BLOCO.neutro}`}>
+      <summary className="flex cursor-pointer list-none items-center gap-1.5">
         <ChevronRight className="h-4 w-4 shrink-0 text-slate-500 transition-transform group-open:rotate-90"
           aria-hidden="true" />
         <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
           Conversa
         </span>
         <span className="text-sm text-slate-600">
-          {mensagens.length === 1 ? '1 mensagem' : `${mensagens.length} mensagens`}
+          · {mensagens.length === 1 ? '1 mensagem' : `${mensagens.length} mensagens`}
         </span>
       </summary>
 
-      <div className="space-y-2 border-t border-slate-200 p-3">
+      <ul className="mt-2 space-y-1.5">
         {mensagens.map((m) => (
-          <div key={m.id}
-            className={`rounded-lg border p-2.5 text-sm ${m.doCliente
-              ? 'border-festa-200 bg-white'
-              : 'border-slate-200 bg-white'}`}>
+          <li key={m.id}
+            className={`rounded-lg px-3 py-2 text-sm ${m.doCliente ? 'bg-festa-50' : 'bg-slate-50'}`}>
             <p className="flex flex-wrap items-baseline justify-between gap-2">
               <span className="font-medium text-slate-800">
                 {m.autor}
@@ -597,10 +603,10 @@ function ConversaDaContestacao({ mensagens }) {
               </span>
               <span className="text-xs text-slate-500">{formatarDataHora(m.dataHora)}</span>
             </p>
-            <p className="mt-1 whitespace-pre-line text-slate-700">{m.conteudo}</p>
-          </div>
+            <p className="mt-0.5 whitespace-pre-line text-slate-700">{m.conteudo}</p>
+          </li>
         ))}
-      </div>
+      </ul>
     </details>
   );
 }
@@ -624,9 +630,7 @@ function FotosDaContestacao({ fotos }) {
   if (fotos.length === 0) {
     return (
       <Bloco rotulo="Fotos">
-        <span className="text-slate-500">
-          Nenhuma das partes anexou fotos a esta contestação.
-        </span>
+        <span className="text-slate-500">Nenhuma das partes anexou fotos.</span>
       </Bloco>
     );
   }
@@ -638,7 +642,7 @@ function FotosDaContestacao({ fotos }) {
         return (
           <Bloco key={papel} rotulo={`${rotulo} (${doGrupo.length})`}>
             {doGrupo.length === 0 ? (
-              <span className="text-slate-500">Nenhuma foto enviada.</span>
+              <span className="text-slate-500">Nenhuma.</span>
             ) : (
               <ul className="flex flex-wrap gap-2">
                 {doGrupo.map((foto) => (

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { CheckCircle2, AlertTriangle, Check, X } from 'lucide-react';
 import Etiqueta from '@/componentes/etiqueta';
-import CartaoAdmin, { AcoesAdmin, ListaVazia } from '@/componentes/cartao-admin';
+import CartaoAdmin, { AcoesAdmin, ListaVazia, FIO_BLOCO } from '@/componentes/cartao-admin';
 import { BotaoAcao } from '@/componentes/acoes-solicitacao';
 import { CampoTexto } from '@/componentes/campo';
 import { formatarPreco } from '@/lib/solicitacao';
@@ -175,10 +175,11 @@ function ItemValidacao({ dados, processando, aoDecidir }) {
       rodape={rodape}
     >
       {/* RN061 — a conferência é lado a lado de propósito: o painel já
-          comparou os documentos e a cor do segundo painel dá a resposta
-          antes de a pessoa ler os números. */}
-      <dl className="grid gap-3 text-sm sm:grid-cols-2">
-        <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5">
+          comparou os documentos, e a cor do fio e o ícone do segundo bloco
+          dão a resposta antes de a pessoa ler os números. Fio, e não caixa,
+          como nos outros blocos do painel. */}
+      <dl className="grid gap-4 text-sm sm:grid-cols-2">
+        <div className={`border-l-2 pl-3.5 ${FIO_BLOCO.neutro}`}>
           <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
             Destino informado
           </dt>
@@ -189,8 +190,8 @@ function ItemValidacao({ dados, processando, aoDecidir }) {
           </dd>
         </div>
 
-        <div className={`rounded-xl border p-3.5 ${
-          documentoConfere ? 'border-sucesso-200 bg-sucesso-50' : 'border-perigo-200 bg-perigo-50'}`}>
+        <div className={`border-l-2 pl-3.5 ${
+          documentoConfere ? FIO_BLOCO.sucesso : FIO_BLOCO.perigo}`}>
           <dt className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
             {documentoConfere
               ? <CheckCircle2 className="h-4 w-4 text-sucesso-600" aria-hidden="true" />

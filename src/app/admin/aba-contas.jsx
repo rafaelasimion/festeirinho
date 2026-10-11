@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { User, Store, ShieldAlert, Ban, Undo2, Gavel, Check } from 'lucide-react';
 import Etiqueta from '@/componentes/etiqueta';
 import CartaoAdmin, {
-  Fatos, Fato, Bloco, AcoesAdmin, NotaAba, ListaVazia,
+  Fatos, Fato, Bloco, AcoesAdmin, NotaAba, ListaVazia, FIO_BLOCO,
 } from '@/componentes/cartao-admin';
 import { BotaoAcao } from '@/componentes/acoes-solicitacao';
 import { CampoTexto } from '@/componentes/campo';
@@ -269,7 +269,8 @@ function ItemConta({ conta, processando, aoExecutar }) {
       rodape={rodape}
     >
       {(conta.alerta_contestacoes > 0 || conta.alerta_cancelamentos > 0) && (
-        <div className="rounded-xl border border-atencao-200 bg-atencao-50 p-3.5">
+        // O fio laranja dos blocos, e não uma caixa laranja dentro do cartão.
+        <div className={`border-l-2 pl-3.5 ${FIO_BLOCO.atencao}`}>
           <Fatos>
             <Fato rotulo={ehFornecedor
               ? 'Contestações procedentes'
@@ -299,7 +300,7 @@ function ItemConta({ conta, processando, aoExecutar }) {
           rotulo={`Solicitação de revisão · ${formatarDataHora(conta.data_solicitacao_revisao)}`}>
           {conta.motivo_solicitacao_revisao}
           {conta.status_solicitacao_revisao === 'analisada' && (
-            <span className="mt-2 block border-t border-slate-200 pt-2">
+            <span className="mt-3 block">
               <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                 Resposta · {formatarDataHora(conta.data_analise_revisao)}
               </span>
