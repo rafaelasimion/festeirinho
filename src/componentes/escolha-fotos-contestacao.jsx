@@ -1,8 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
-import { ImagePlus, X, Headset } from 'lucide-react';
+import { ImagePlus, X } from 'lucide-react';
 import {
   LIMITE_FOTOS_CONTESTACAO,
   TIPOS_FOTO_CONTESTACAO,
@@ -17,6 +16,12 @@ import {
 // o texto, num envio só (RN069). Por isso a lista é de quem chama: é ele que
 // as manda. Aqui fica a conferência e a miniatura.
 //
+// O botão de anexar é a última casa da própria fileira de miniaturas: a
+// foto escolhida aparece no lugar onde se clicou, e não há um botão solto
+// com um contador ao lado dizendo a mesma coisa que a fileira já mostra.
+// Formato e tamanho não são explicados de antemão — quem escolhe um arquivo
+// fora deles fica sabendo na hora, pelo nome do arquivo.
+//
 // Cada foto escolhida guarda o arquivo e um endereço temporário para a
 // miniatura (URL.createObjectURL), que segura o arquivo na memória do
 // navegador até ser liberado. Tirar uma foto da lista libera a dela; ao
@@ -26,11 +31,10 @@ export function descartarFotos(fotos) {
 }
 
 export default function EscolhaFotosContestacao({
-  id, idSolicitacao, fotos, aoAlterar, processando, orientacao,
+  id, fotos, aoAlterar, processando, aviso: avisoPrevio = AVISO_FOTOS_CONTESTACAO,
 }) {
   const [aviso, setAviso] = useState('');
   const cheio = fotos.length >= LIMITE_FOTOS_CONTESTACAO;
-  const travado = processando || cheio;
 
   // As fotos são conferidas ao serem escolhidas: formato e tamanho errados
   // nem entram na lista, e o limite corta o excedente. Assim o que está na
@@ -79,64 +83,54 @@ export default function EscolhaFotosContestacao({
 
   return (
     <div>
-      <p className="mb-1.5 text-sm font-medium text-slate-700">
-        Fotos <span className="font-normal text-slate-500">(opcional)</span>
-      </p>
-      <p className="text-xs text-slate-600">
-        {orientacao} Até {LIMITE_FOTOS_CONTESTACAO} imagens JPG, PNG ou WEBP, de até 5 MB cada.
+      <p className="text-sm font-medium text-slate-700">
+        Fotos{' '}
+        <span className="font-normal text-slate-500">
+          (opcional, até {LIMITE_FOTOS_CONTESTACAO})
+        </span>
       </p>
       {/* RN069 / LGPD — o aviso vem antes da escolha, como o do chat: quem
           anexa precisa saber quem vai ver e por quanto tempo. E a foto de
           festa infantil quase sempre pega criança; o pedido de enquadrar o
           serviço é o jeito mais simples de guardar menos do que não é
           necessário à análise. */}
-      <p className="mt-2 rounded-md bg-white px-2.5 py-2 text-xs text-slate-600">
-        {AVISO_FOTOS_CONTESTACAO}
-      </p>
+      <p className="mt-0.5 text-xs text-slate-500">{avisoPrevio}</p>
 
-      {fotos.length > 0 && (
-        <ul className="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-5">
-          {fotos.map((foto) => (
-            <li key={foto.chave}
-              className="relative overflow-hidden rounded-lg border border-slate-200 bg-white">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={foto.miniatura} alt={foto.arquivo.name}
-                className="aspect-square w-full object-cover" />
-              <button type="button" onClick={() => tirar(foto.chave)}
-                disabled={processando} aria-label={`Tirar ${foto.arquivo.name}`}
-                className="absolute right-1 top-1 rounded-md bg-white/90 p-1 text-slate-600 shadow-sm transition-colors hover:bg-perigo-50 hover:text-perigo-700 disabled:opacity-50">
-                <X className="h-3.5 w-3.5" aria-hidden="true" />
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
+      <ul className="mt-2 flex flex-wrap gap-2">
+        {fotos.map((foto) => (
+          <li key={foto.chave}
+            className="relative h-20 w-20 overflow-hidden rounded-lg border border-slate-200 bg-white">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={foto.miniatura} alt={foto.arquivo.name}
+              className="h-full w-full object-cover" />
+            <button type="button" onClick={() => tirar(foto.chave)}
+              disabled={processando} aria-label={`Tirar ${foto.arquivo.name}`}
+              className="absolute right-1 top-1 rounded-md bg-white/90 p-0.5 text-slate-600 shadow-sm transition-colors hover:bg-perigo-50 hover:text-perigo-700 disabled:opacity-50">
+              <X className="h-3.5 w-3.5" aria-hidden="true" />
+            </button>
+          </li>
+        ))}
 
-      <input type="file" id={id} multiple
-        accept={TIPOS_FOTO_CONTESTACAO.join(',')}
-        onChange={escolher}
-        disabled={travado}
-        className="sr-only" />
-      <label htmlFor={id}
-        aria-disabled={travado}
-        className={`mt-2 inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-atencao-600 bg-white px-3 py-1.5 text-sm font-medium text-atencao-700 transition-colors hover:bg-atencao-50 ${
-          travado ? 'pointer-events-none opacity-50' : ''}`}>
-        <ImagePlus className="h-4 w-4" aria-hidden="true" />
-        Anexar fotos
-        <span className="font-normal text-atencao-600">
-          ({fotos.length} de {LIMITE_FOTOS_CONTESTACAO})
-        </span>
-      </label>
+        {/* Cheio, a casa de anexar some: a fileira completa já diz que não
+            cabe mais nenhuma. */}
+        {!cheio && (
+          <li>
+            <input type="file" id={id} multiple
+              accept={TIPOS_FOTO_CONTESTACAO.join(',')}
+              onChange={escolher}
+              disabled={processando}
+              className="peer sr-only" />
+            <label htmlFor={id}
+              aria-disabled={processando}
+              className={`flex h-20 w-20 cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-slate-300 bg-white text-xs text-slate-500 transition-colors hover:border-atencao-600 hover:text-atencao-700 peer-focus-visible:ring-2 peer-focus-visible:ring-festa-600/40 ${
+                processando ? 'pointer-events-none opacity-50' : ''}`}>
+              <ImagePlus className="h-5 w-5" aria-hidden="true" />
+              Adicionar
+            </label>
+          </li>
+        )}
+      </ul>
       {aviso && <p className="mt-1.5 text-xs text-perigo-600">{aviso}</p>}
-
-      {/* RN063 — o que não é imagem vai pelo suporte, que é externo e aceita
-          vídeo e documento por conta própria. O número da solicitação segue
-          junto na mensagem, para o atendente abrir o caso certo. */}
-      <Link href={`/suporte?assunto=contratacao&origem=solicitacao&solicitacao=${idSolicitacao}`}
-        className="mt-2 flex w-fit items-center gap-1.5 text-xs font-medium text-festa-700 hover:underline">
-        <Headset className="h-3.5 w-3.5" aria-hidden="true" />
-        Vídeo ou documento? Envie pelo suporte
-      </Link>
     </div>
   );
 }

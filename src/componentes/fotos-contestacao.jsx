@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Loader2, Headset } from 'lucide-react';
 
 // RF069-B — as fotos que a própria parte enviou com o seu relato, para ela
 // rever o que mandou. Só leitura: o envio é único (RN069), então aqui não
@@ -12,6 +11,10 @@ import { Loader2, Headset } from 'lucide-react';
 // Mesmo componente nas duas pontas: o cliente vê as fotos da contestação,
 // o fornecedor as da sua versão. Cada um vê só as suas — quem vê as duas
 // pilhas é a administração, que julga (RF070).
+//
+// É só a fileira de miniaturas, logo abaixo do texto que elas acompanham.
+// Sem título nem aviso: quem vê já sabe o que são, porque as escolheu, e o
+// aviso de quem vê e por quanto tempo foi lido antes do envio.
 
 export default function FotosContestacao({ idSolicitacao }) {
   const [dados, setDados] = useState(null);
@@ -31,58 +34,42 @@ export default function FotosContestacao({ idSolicitacao }) {
     return () => { atual = false; };
   }, [endereco]);
 
-  if (dados === null) {
-    return erro ? (
-      <p className="text-sm text-perigo-600">{erro}</p>
-    ) : (
-      <p className="flex items-center gap-2 text-slate-500">
-        <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-        Carregando fotos...
-      </p>
-    );
-  }
+  if (erro) return <p className="text-xs text-perigo-600">{erro}</p>;
 
-  // Decidida a contestação, as fotos já foram apagadas: não há o que
-  // mostrar.
-  if (!dados.pendente) return null;
+  // Carregando, sem fotos ou já decidida (as fotos foram apagadas junto com
+  // a decisão): nada a mostrar. Uma fileira que aparece um instante depois
+  // não precisa de "carregando" — o texto acima dela já está na tela.
+  if (dados === null || !dados.pendente || dados.fotos.length === 0) return null;
 
   return (
-    <div className="space-y-2">
-      <p className="font-medium text-slate-800">
-        Suas fotos{' '}
-        <span className="font-normal text-slate-500">({dados.fotos.length})</span>
-      </p>
+    <ul className="flex flex-wrap gap-2" aria-label="Fotos enviadas">
+      {dados.fotos.map((foto) => (
+        <li key={foto.id} className="h-16 w-16 overflow-hidden rounded-lg border border-slate-200">
+          <a href={foto.imagem_url} target="_blank" rel="noreferrer"
+            className="block h-full w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-festa-600/40">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={foto.imagem_url} alt="Foto enviada — abrir em tamanho real"
+              className="h-full w-full object-cover" />
+          </a>
+        </li>
+      ))}
+    </ul>
+  );
+}
 
-      {dados.fotos.length === 0 ? (
-        <p className="text-slate-500">Você não anexou fotos.</p>
-      ) : (
-        <ul className="grid grid-cols-3 gap-2 sm:grid-cols-5">
-          {dados.fotos.map((foto) => (
-            <li key={foto.id} className="overflow-hidden rounded-lg border border-slate-200">
-              <a href={foto.imagem_url} target="_blank" rel="noreferrer"
-                className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-festa-600/40">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={foto.imagem_url} alt="Foto enviada — abrir em tamanho real"
-                  className="aspect-square w-full object-cover" />
-              </a>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      <p className="text-xs text-slate-500">
-        Só a administração vê estas fotos, e elas são apagadas quando a contestação
-        for decidida.
-      </p>
-
-      {/* RN063 — o que não é imagem vai pelo suporte, que é externo e aceita
-          vídeo e documento por conta própria. O número da solicitação segue
-          junto na mensagem, para o atendente abrir o caso certo. */}
+// RN063 — o que não é imagem vai pelo suporte, que é externo e aceita vídeo
+// e documento por conta própria. O número da solicitação segue junto na
+// mensagem, para o atendente abrir o caso certo. Uma linha só, no pé do
+// cartão da contestação, nos dois lados e antes e depois do envio — depois
+// dele, é o único caminho para uma prova que ficou de fora.
+export function LinkProvaPeloSuporte({ idSolicitacao }) {
+  return (
+    <p className="text-xs text-slate-500">
+      Vídeo ou documento?{' '}
       <Link href={`/suporte?assunto=contratacao&origem=solicitacao&solicitacao=${idSolicitacao}`}
-        className="inline-flex items-center gap-1.5 text-xs font-medium text-festa-700 hover:underline">
-        <Headset className="h-3.5 w-3.5" aria-hidden="true" />
-        Vídeo ou documento? Envie pelo suporte
+        className="font-medium text-festa-700 hover:underline">
+        Envie pelo suporte
       </Link>
-    </div>
+    </p>
   );
 }

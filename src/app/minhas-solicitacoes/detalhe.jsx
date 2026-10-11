@@ -13,7 +13,7 @@ import FormularioAvaliacao from '@/componentes/formulario-avaliacao';
 import DadosReembolso from '@/componentes/dados-reembolso';
 import Chat from '@/componentes/chat';
 import DialogoDenuncia from '@/componentes/dialogo-denuncia';
-import FotosContestacao from '@/componentes/fotos-contestacao';
+import FotosContestacao, { LinkProvaPeloSuporte } from '@/componentes/fotos-contestacao';
 import EscolhaFotosContestacao, {
   descartarFotos,
 } from '@/componentes/escolha-fotos-contestacao';
@@ -265,35 +265,45 @@ export default function DetalheSolicitacao({
         </>
       )}
 
-      {/* UC 042 — formulário de contestação */}
+      {/* UC 042 — formulário de contestação. Direto no cartão do painel,
+          sem uma caixa colorida dentro dele: o título já diz o assunto, e
+          os motivos são uma lista de escolha, não três cartões. */}
       {painel === 'contestar' && (
-        <div className="space-y-4 rounded-lg border border-atencao-200 bg-atencao-50 p-4">
-          <p className="text-sm text-slate-700">
-            A contestação suspende a confirmação automática e é analisada pela
-            administração da plataforma, que decide sobre o reembolso.
-          </p>
+        <div className="space-y-5">
+          <div>
+            <h2 className="flex items-center gap-2 font-semibold text-slate-900">
+              <AlertTriangle className="h-4 w-4 text-atencao-600" aria-hidden="true" />
+              Contestar conclusão
+            </h2>
+            <p className="mt-1 text-sm text-slate-600">
+              A administração analisa e decide sobre o reembolso. Até lá, a conclusão
+              não é confirmada automaticamente.
+            </p>
+          </div>
 
-          <fieldset className="space-y-2">
-            <legend className="mb-1 text-sm font-medium text-slate-700">
+          <fieldset>
+            <legend className="mb-1.5 text-sm font-medium text-slate-700">
               O que aconteceu?
             </legend>
-            {MOTIVOS_CONTESTACAO.map(({ valor, rotulo, detalhe }) => (
-              <label key={valor}
-                className={`flex cursor-pointer gap-3 rounded-lg border p-3 transition-colors ${motivoContestacao === valor
-                  ? 'border-atencao-600 bg-white'
-                  : 'border-slate-200 bg-white hover:border-slate-300'}`}>
-                <input type="radio" name="motivo-contestacao"
-                  value={valor} checked={motivoContestacao === valor}
-                  onChange={(e) => setMotivoContestacao(e.target.value)}
-                  className="mt-0.5" />
-                <span>
-                  <span className="block text-sm font-medium text-slate-800">
-                    {rotulo}
+            <div className="space-y-1">
+              {MOTIVOS_CONTESTACAO.map(({ valor, rotulo, detalhe }) => (
+                <label key={valor}
+                  className={`flex cursor-pointer gap-3 rounded-lg px-3 py-2 transition-colors ${motivoContestacao === valor
+                    ? 'bg-atencao-50'
+                    : 'hover:bg-slate-50'}`}>
+                  <input type="radio" name="motivo-contestacao"
+                    value={valor} checked={motivoContestacao === valor}
+                    onChange={(e) => setMotivoContestacao(e.target.value)}
+                    className="mt-1 accent-atencao-600" />
+                  <span>
+                    <span className="block text-sm font-medium text-slate-800">
+                      {rotulo}
+                    </span>
+                    <span className="block text-xs text-slate-500">{detalhe}</span>
                   </span>
-                  <span className="block text-xs text-slate-500">{detalhe}</span>
-                </span>
-              </label>
-            ))}
+                </label>
+              ))}
+            </div>
           </fieldset>
 
           <div>
@@ -305,41 +315,48 @@ export default function DetalheSolicitacao({
               maxLength={MAXIMO_RELATO_CONTESTACAO}
               value={descricaoContestacao}
               onChange={(e) => setDescricaoContestacao(e.target.value)}
-              placeholder="Conte o que foi combinado e o que de fato aconteceu. A administração usará este texto para decidir."
+              placeholder="O que foi combinado e o que de fato aconteceu."
               className="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 text-slate-900 placeholder:text-slate-400 focus:border-festa-600 focus:outline-none focus:ring-2 focus:ring-festa-600/30" />
-            <p className="mt-1 text-xs text-slate-500">
-              {descricaoContestacao.trim().length}/{MINIMO_RELATO_CONTESTACAO} caracteres mínimos.
-            </p>
+            {/* O contador só fala enquanto falta texto; cumprido o mínimo,
+                ele não tem mais o que dizer. */}
+            {descricaoContestacao.trim().length < MINIMO_RELATO_CONTESTACAO && (
+              <p className="mt-1 text-xs text-slate-500">
+                Mínimo de {MINIMO_RELATO_CONTESTACAO} caracteres
+                ({descricaoContestacao.trim().length} até agora).
+              </p>
+            )}
           </div>
 
           {/* RF069-B / UC 042, passo 5 — as fotos escolhidas junto com o
               motivo e a descrição. Seguem no mesmo clique de "Enviar
               contestação"; até lá ficam só no navegador. */}
           <EscolhaFotosContestacao id="fotos-contestacao-cliente"
-            idSolicitacao={solicitacao.id} fotos={fotosContestacao} aoAlterar={setFotosContestacao}
-            processando={processando}
-            orientacao="Mostre o que foi entregue e o que faltou ou veio diferente do contratado." />
-
-          {/* RN069 — dito antes do botão: depois, não há como voltar atrás. */}
-          <p className="text-xs text-slate-600">{AVISO_ENVIO_UNICO_CONTESTACAO}</p>
+            fotos={fotosContestacao} aoAlterar={setFotosContestacao}
+            processando={processando} />
 
           {erroContestacao && <p className="text-sm text-perigo-600">{erroContestacao}</p>}
 
-          <div className="flex flex-wrap gap-2">
-            <button type="button"
-              disabled={processando || motivoContestacao === ''
-                || descricaoContestacao.trim().length < MINIMO_RELATO_CONTESTACAO}
-              onClick={() => enviarContestacao()}
-              className="rounded-lg bg-atencao-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-atencao-700 disabled:opacity-50">
-              {processando
-                ? (fotosContestacao.length > 0 ? 'Enviando contestação e fotos...' : 'Enviando...')
-                : 'Enviar contestação'}
-            </button>
-            <button type="button" onClick={() => voltarDaContestacao()}
-              disabled={processando}
-              className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50">
-              Voltar
-            </button>
+          <div className="space-y-2">
+            {/* RN069 — o envio único dito ao lado do botão: depois, não há
+                como voltar atrás. */}
+            <div className="flex flex-wrap items-center gap-2">
+              <button type="button"
+                disabled={processando || motivoContestacao === ''
+                  || descricaoContestacao.trim().length < MINIMO_RELATO_CONTESTACAO}
+                onClick={() => enviarContestacao()}
+                className="rounded-lg bg-atencao-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-atencao-700 disabled:opacity-50">
+                {processando
+                  ? (fotosContestacao.length > 0 ? 'Enviando contestação e fotos...' : 'Enviando...')
+                  : 'Enviar contestação'}
+              </button>
+              <button type="button" onClick={() => voltarDaContestacao()}
+                disabled={processando}
+                className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50">
+                Voltar
+              </button>
+              <span className="text-xs text-slate-500">{AVISO_ENVIO_UNICO_CONTESTACAO}</span>
+            </div>
+            <LinkProvaPeloSuporte idSolicitacao={solicitacao.id} />
           </div>
         </div>
       )}
@@ -407,22 +424,21 @@ export default function DetalheSolicitacao({
       <p className="whitespace-pre-line text-slate-700">
         {solicitacao.descricao_contestacao_cliente}
       </p>
+      {/* RF069-B — as fotos que vieram com a contestação, logo abaixo do
+          texto que elas acompanham, só para rever: o envio é único (RN069).
+          Decidida a contestação, elas já foram apagadas e o componente não
+          mostra nada. */}
+      {contestacaoPendente && <FotosContestacao idSolicitacao={solicitacao.id} />}
       <p className="text-xs text-slate-500">
         Enviada em {formatarDataHora(solicitacao.data_contestacao_cliente)}.
+        {contestacaoPendente
+          && ' Até a decisão, a conclusão não é confirmada automaticamente.'}
       </p>
 
       {contestacaoPendente ? (
-        <>
-          <p className="text-slate-700">
-            Aguardando análise da administração. Enquanto isso, a solicitação não
-            é confirmada automaticamente.
-          </p>
-          {/* RF069-B — as fotos que vieram com a contestação, só para
-              rever: o envio é único (RN069). */}
-          <FotosContestacao idSolicitacao={solicitacao.id} />
-        </>
+        <LinkProvaPeloSuporte idSolicitacao={solicitacao.id} />
       ) : (
-        <div className="space-y-1 border-t border-atencao-200 pt-2">
+        <div className="space-y-1 border-t border-slate-200 pt-3">
           <p className="font-medium text-slate-800">Justificativa da decisão</p>
           <p className="whitespace-pre-line text-slate-700">
             {solicitacao.justificativa_contestacao}

@@ -49,16 +49,20 @@ export const LIMITE_FOTOS_CONTESTACAO = 5;
 export const TIPOS_FOTO_CONTESTACAO = ['image/jpeg', 'image/png', 'image/webp'];
 export const TAMANHO_MAXIMO_FOTO_CONTESTACAO = 5 * 1024 * 1024;
 
-// RN069 / LGPD — o aviso que vem antes de qualquer foto ser enviada, nos
-// dois formulários: a contestação do cliente e a versão do fornecedor. Um
-// texto só, para os dois lugares nunca prometerem coisas diferentes.
+// RN069 / LGPD — o aviso que vem antes de qualquer foto ser enviada: quem
+// vê, por quanto tempo, e o pedido de enquadrar o serviço. Fica aqui, e não
+// escrito em cada tela, para os formulários nunca prometerem coisas
+// diferentes.
 export const AVISO_FOTOS_CONTESTACAO =
-  'Só a administração vê estas fotos, e elas são apagadas quando a contestação '
-  + 'for decidida. Prefira enquadrar o serviço e evite fotos em que crianças '
-  + 'apareçam em destaque.';
+  'Só a administração vê as fotos, e elas são apagadas após a decisão. '
+  + 'Evite crianças em destaque.';
 
-// RN069 — o envio é único, para as duas partes: dito antes do botão, e não
-// descoberto depois, quando já não há o que fazer.
+// O mesmo aviso sem o "quem vê", para o formulário do fornecedor: lá o
+// título da seção já diz que só a administração vê tudo o que ele enviar.
+export const AVISO_GUARDA_FOTOS_CONTESTACAO =
+  'As fotos são apagadas após a decisão. Evite crianças em destaque.';
+
+// RN069 — o envio é único, para as duas partes: dito ao lado do botão, e
+// não descoberto depois, quando já não há o que fazer.
 export const AVISO_ENVIO_UNICO_CONTESTACAO =
-  'O envio é único: depois de enviado, o texto e as fotos não podem ser '
-  + 'alterados, nem é possível incluir ou remover fotos.';
+  'Envio único: depois não dá para alterar o texto nem as fotos.';

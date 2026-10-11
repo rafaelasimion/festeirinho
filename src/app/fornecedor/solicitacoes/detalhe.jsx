@@ -30,10 +30,11 @@ import {
   MINIMO_RELATO_CONTESTACAO,
   MAXIMO_RELATO_CONTESTACAO,
   AVISO_ENVIO_UNICO_CONTESTACAO,
+  AVISO_GUARDA_FOTOS_CONTESTACAO,
 } from '@/lib/contestacao';
 import Chat from '@/componentes/chat';
 import DialogoDenuncia from '@/componentes/dialogo-denuncia';
-import FotosContestacao from '@/componentes/fotos-contestacao';
+import FotosContestacao, { LinkProvaPeloSuporte } from '@/componentes/fotos-contestacao';
 import EscolhaFotosContestacao, {
   descartarFotos,
 } from '@/componentes/escolha-fotos-contestacao';
@@ -306,77 +307,81 @@ export default function DetalheSolicitacaoRecebida({
       </p>
       <p className="text-xs text-slate-500">
         Enviada em {formatarDataHora(solicitacao.data_contestacao_cliente)}.
-        A administração vai analisar e decidir.
       </p>
 
-      {versaoEnviada ? (
-        // Enviada, a versão vira só leitura (RN069): é ela, e não um
-        // rascunho, que a administração está lendo.
-        <div className="space-y-3 border-t border-atencao-200 pt-3">
-          <div className="space-y-1">
-            <p className="font-medium text-slate-800">Sua versão</p>
-            <p className="whitespace-pre-line text-slate-700">
-              {solicitacao.descricao_contestacao_fornecedor}
-            </p>
-            <p className="text-xs text-slate-500">
-              Enviada em {formatarDataHora(solicitacao.data_contestacao_fornecedor)}.
-              Só a administração vê a sua versão.
-            </p>
-          </div>
-          <FotosContestacao idSolicitacao={solicitacao.id} />
-        </div>
-      ) : (
-        // RF069-B / UC 046 — até aqui o fornecedor só lia a acusação e podia
-        // mandar fotos soltas. Agora ele conta o seu lado, com as fotos
-        // junto, logo abaixo do que o cliente escreveu, onde ele já está
-        // olhando.
-        <div className="mt-2 space-y-4 rounded-lg border border-atencao-200 bg-atencao-50 p-4">
-          <div>
-            <p className="font-medium text-slate-800">Sua versão</p>
-            <p className="mt-0.5 text-xs text-slate-600">
-              Conte o que foi combinado e o que foi entregue. Só a administração vê o
-              seu texto e as suas fotos — o cliente não. Não há prazo para enviar, mas a
-              administração pode decidir a qualquer momento.
-            </p>
-          </div>
+      {/* Uma divisória, e não uma caixa dentro do cartão: o que o cliente
+          escreveu fica em cima, a resposta do fornecedor embaixo. */}
+      <div className="space-y-3 border-t border-slate-200 pt-4">
+        {versaoEnviada ? (
+          // Enviada, a versão vira só leitura (RN069): é ela, e não um
+          // rascunho, que a administração está lendo.
+          <>
+            <div className="space-y-1">
+              <p className="font-medium text-slate-800">Sua versão</p>
+              <p className="whitespace-pre-line text-slate-700">
+                {solicitacao.descricao_contestacao_fornecedor}
+              </p>
+              <p className="text-xs text-slate-500">
+                Enviada em {formatarDataHora(solicitacao.data_contestacao_fornecedor)}.
+                Só a administração vê.
+              </p>
+            </div>
+            <FotosContestacao idSolicitacao={solicitacao.id} />
+          </>
+        ) : (
+          // RF069-B / UC 046 — o fornecedor conta o seu lado, com as fotos
+          // junto, logo abaixo do que o cliente escreveu.
+          <>
+            <div>
+              <label htmlFor="versao-fornecedor" className="block font-medium text-slate-800">
+                Sua versão
+              </label>
+              <p className="text-xs text-slate-500">
+                Só a administração vê o que você enviar. Não há prazo, mas a decisão pode
+                sair a qualquer momento.
+              </p>
+            </div>
 
-          <div>
-            <label htmlFor="versao-fornecedor"
-              className="mb-1.5 block text-sm font-medium text-slate-700">
-              Descreva a sua versão
-            </label>
-            <textarea id="versao-fornecedor" rows={4}
-              maxLength={MAXIMO_RELATO_CONTESTACAO}
-              value={versao}
-              onChange={(e) => setVersao(e.target.value)}
-              placeholder="Horário de chegada, o que foi montado e entregue, o que foi combinado pelo chat."
-              className="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 text-slate-900 placeholder:text-slate-400 focus:border-festa-600 focus:outline-none focus:ring-2 focus:ring-festa-600/30" />
-            <p className="mt-1 text-xs text-slate-500">
-              {versao.trim().length}/{MINIMO_RELATO_CONTESTACAO} caracteres mínimos.
-            </p>
-          </div>
+            <div>
+              <textarea id="versao-fornecedor" rows={4}
+                maxLength={MAXIMO_RELATO_CONTESTACAO}
+                value={versao}
+                onChange={(e) => setVersao(e.target.value)}
+                placeholder="Horário de chegada, o que foi montado e entregue, o que foi combinado pelo chat."
+                className="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 text-slate-900 placeholder:text-slate-400 focus:border-festa-600 focus:outline-none focus:ring-2 focus:ring-festa-600/30" />
+              {/* O contador só fala enquanto falta texto; cumprido o mínimo,
+                  ele não tem mais o que dizer. */}
+              {versao.trim().length < MINIMO_RELATO_CONTESTACAO && (
+                <p className="mt-1 text-xs text-slate-500">
+                  Mínimo de {MINIMO_RELATO_CONTESTACAO} caracteres ({versao.trim().length} até agora).
+                </p>
+              )}
+            </div>
 
-          <EscolhaFotosContestacao id="fotos-versao-fornecedor"
-            idSolicitacao={solicitacao.id}
-            fotos={fotosVersao} aoAlterar={setFotosVersao}
-            processando={processando}
-            orientacao="Mostre o serviço prestado: a montagem, a estrutura, a decoração no local." />
+            <EscolhaFotosContestacao id="fotos-versao-fornecedor"
+              fotos={fotosVersao} aoAlterar={setFotosVersao}
+              processando={processando} aviso={AVISO_GUARDA_FOTOS_CONTESTACAO} />
 
-          {/* RN069 — dito antes do botão: depois, não há como voltar atrás. */}
-          <p className="text-xs text-slate-600">{AVISO_ENVIO_UNICO_CONTESTACAO}</p>
+            {erroVersao && <p className="text-sm text-perigo-600">{erroVersao}</p>}
 
-          {erroVersao && <p className="text-sm text-perigo-600">{erroVersao}</p>}
+            {/* RN069 — o envio único dito ao lado do botão: depois, não há
+                como voltar atrás. */}
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+              <button type="button"
+                disabled={processando || versao.trim().length < MINIMO_RELATO_CONTESTACAO}
+                onClick={() => enviarVersao()}
+                className="rounded-lg bg-atencao-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-atencao-700 disabled:opacity-50">
+                {processando
+                  ? (fotosVersao.length > 0 ? 'Enviando versão e fotos...' : 'Enviando...')
+                  : 'Enviar minha versão'}
+              </button>
+              <span className="text-xs text-slate-500">{AVISO_ENVIO_UNICO_CONTESTACAO}</span>
+            </div>
+          </>
+        )}
 
-          <button type="button"
-            disabled={processando || versao.trim().length < MINIMO_RELATO_CONTESTACAO}
-            onClick={() => enviarVersao()}
-            className="rounded-lg bg-atencao-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-atencao-700 disabled:opacity-50">
-            {processando
-              ? (fotosVersao.length > 0 ? 'Enviando versão e fotos...' : 'Enviando...')
-              : 'Enviar minha versão'}
-          </button>
-        </div>
-      )}
+        <LinkProvaPeloSuporte idSolicitacao={solicitacao.id} />
+      </div>
     </CartaoRecolhivel>
   ) : null;
 
