@@ -16,10 +16,10 @@ import AvisoPainel from '@/componentes/aviso-painel';
 // das solicitações de revisão.
 
 const ROTULO_STATUS = {
-  ativo: 'ativa',
-  suspenso: 'suspensa',
-  inativo: 'inativa',
-  excluido: 'excluída',
+  ativo: 'Ativa',
+  suspenso: 'Suspensa',
+  inativo: 'Inativa',
+  excluido: 'Excluída',
 };
 
 const TOM_STATUS = {
@@ -262,7 +262,7 @@ function ItemConta({ conta, processando, aoExecutar }) {
             {ROTULO_STATUS[conta.status]}
           </Etiqueta>
           {revisaoPendente && (
-            <Etiqueta tom="atencao" formato="ponto">revisão pendente</Etiqueta>
+            <Etiqueta tom="atencao" formato="ponto">Revisão pendente</Etiqueta>
           )}
         </div>
       }

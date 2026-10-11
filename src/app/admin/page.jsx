@@ -63,6 +63,8 @@ export default async function Admin() {
             so.data_contestacao_cliente, so.status_contestacao,
             so.resultado_contestacao, so.justificativa_contestacao,
             so.data_analise_contestacao,
+            -- RF069-B / UC 046 — a versão do fornecedor, quando enviada.
+            so.descricao_contestacao_fornecedor, so.data_contestacao_fornecedor,
             so.data_hora_evento, so.duracao, so.numero_convidados,
             so.valor_final, so.data_registro_conclusao_fornecedor,
             s.nome AS servico,
@@ -301,6 +303,7 @@ export default async function Admin() {
       contestacoes={contestacoes.map((c) => ({
         ...c,
         data_contestacao_cliente: iso(c.data_contestacao_cliente),
+        data_contestacao_fornecedor: iso(c.data_contestacao_fornecedor),
         data_analise_contestacao: iso(c.data_analise_contestacao),
         data_hora_evento: iso(c.data_hora_evento),
         data_registro_conclusao_fornecedor: iso(c.data_registro_conclusao_fornecedor),

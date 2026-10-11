@@ -36,7 +36,7 @@ export default function CartaoAdmin({
 
           {/* Do sm para cima a etiqueta divide a linha com o título e não
               encolhe: é a primeira coisa que se procura ao varrer a lista.
-              No celular ela desce, senão "pendente de análise" come metade
+              No celular ela desce, senão "Pendente de análise" come metade
               da largura e um título de duas palavras quebra em duas linhas. */}
           {etiqueta && <div className="hidden shrink-0 sm:block">{etiqueta}</div>}
         </div>

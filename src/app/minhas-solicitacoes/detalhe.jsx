@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   ArrowLeft, CreditCard, MessageCircle, XCircle, CheckCircle2,
-  AlertTriangle, Flag, Download, Headset, ImagePlus, X,
+  AlertTriangle, Flag, Download, Headset,
 } from 'lucide-react';
 import Etiqueta from '@/componentes/etiqueta';
 import DialogoCancelamento from '@/componentes/dialogo-cancelamento';
@@ -14,6 +14,9 @@ import DadosReembolso from '@/componentes/dados-reembolso';
 import Chat from '@/componentes/chat';
 import DialogoDenuncia from '@/componentes/dialogo-denuncia';
 import FotosContestacao from '@/componentes/fotos-contestacao';
+import EscolhaFotosContestacao, {
+  descartarFotos,
+} from '@/componentes/escolha-fotos-contestacao';
 import CartaoSolicitacao, {
   AvisoCartao, CartaoRecolhivel,
 } from '@/componentes/cartao-solicitacao';
@@ -37,10 +40,9 @@ import {
   ROTULO_MOTIVO_CONTESTACAO,
   ROTULO_RESULTADO_CONTESTACAO,
   TOM_RESULTADO_CONTESTACAO,
-  LIMITE_FOTOS_CONTESTACAO,
-  TIPOS_FOTO_CONTESTACAO,
-  TAMANHO_MAXIMO_FOTO_CONTESTACAO,
-  AVISO_FOTOS_CONTESTACAO,
+  MINIMO_RELATO_CONTESTACAO,
+  MAXIMO_RELATO_CONTESTACAO,
+  AVISO_ENVIO_UNICO_CONTESTACAO,
 } from '@/lib/contestacao';
 import { formatarDataHora } from '@/lib/datas';
 import LinhaDoTempo from '@/componentes/linha-do-tempo';
@@ -66,145 +68,76 @@ export default function DetalheSolicitacao({
   const [painel, setPainel] = useState(null);
   const [motivoContestacao, setMotivoContestacao] = useState('');
   const [descricaoContestacao, setDescricaoContestacao] = useState('');
-  // RF069-B — fotos escolhidas no formulário, ainda só no navegador. Cada
-  // uma guarda o arquivo e um endereço temporário para a miniatura.
+  // RF069-B — fotos escolhidas no formulário, ainda só no navegador. Vão
+  // junto com o texto, no mesmo envio (RN069).
   const [fotosContestacao, setFotosContestacao] = useState([]);
-  const [avisoFotos, setAvisoFotos] = useState('');
   const [processando, setProcessando] = useState(false);
   const [mensagem, setMensagem] = useState('');
   const [erro, setErro] = useState('');
+  // O erro do envio da contestação aparece dentro do formulário, junto do
+  // botão: é ali que a pessoa está olhando, e é ali que ela troca a foto
+  // recusada. No topo da página, no celular, ele ficava fora da tela.
+  const [erroContestacao, setErroContestacao] = useState('');
 
   function fecharPainel() {
     setPainel(null);
   }
 
-  // O endereço da miniatura (URL.createObjectURL) segura o arquivo na
-  // memória do navegador até ser liberado. Toda saída do formulário passa
-  // por aqui: remover uma foto, voltar ou enviar.
-  function descartarFotos(fotos) {
-    fotos.forEach((foto) => URL.revokeObjectURL(foto.miniatura));
-  }
-
+  // Toda saída do formulário passa por aqui ou pelo envio: as miniaturas
+  // seguram os arquivos na memória do navegador até serem liberadas.
   function voltarDaContestacao() {
     descartarFotos(fotosContestacao);
     setFotosContestacao([]);
-    setAvisoFotos('');
+    setErroContestacao('');
     fecharPainel();
   }
 
-  // As fotos são conferidas ao serem escolhidas: formato e tamanho errados
-  // nem entram na lista, e o limite corta o excedente. Assim nada do que
-  // está na lista é recusado depois do envio pelo mesmo motivo.
-  function escolherFotos(evento) {
-    const arquivos = Array.from(evento.target.files ?? []);
-    evento.target.value = ''; // permite escolher o mesmo arquivo de novo
-    const recusadas = [];
-    const aceitas = arquivos.filter((arquivo) => {
-      if (!TIPOS_FOTO_CONTESTACAO.includes(arquivo.type)) {
-        recusadas.push(`${arquivo.name} não é JPG, PNG ou WEBP`);
-        return false;
-      }
-      if (arquivo.size > TAMANHO_MAXIMO_FOTO_CONTESTACAO) {
-        recusadas.push(`${arquivo.name} passa de 5 MB`);
-        return false;
-      }
-      return true;
-    });
-
-    const vagas = LIMITE_FOTOS_CONTESTACAO - fotosContestacao.length;
-    const entram = aceitas.slice(0, Math.max(vagas, 0));
-    if (aceitas.length > entram.length) {
-      recusadas.push(`o limite é de ${LIMITE_FOTOS_CONTESTACAO} fotos`);
-    }
-
-    const agora = Date.now();
-    setFotosContestacao([
-      ...fotosContestacao,
-      ...entram.map((arquivo, posicao) => ({
-        chave: `${agora}-${posicao}`,
-        arquivo,
-        miniatura: URL.createObjectURL(arquivo),
-      })),
-    ]);
-    setAvisoFotos(recusadas.length > 0 ? `Ficaram de fora: ${recusadas.join('; ')}.` : '');
-  }
-
-  function removerFotoEscolhida(chave) {
-    const removida = fotosContestacao.find((foto) => foto.chave === chave);
-    if (removida) descartarFotos([removida]);
-    setFotosContestacao(fotosContestacao.filter((foto) => foto.chave !== chave));
-  }
-
-  // UC 042 + UC 046 — a contestação e as fotos num envio só, do ponto de
-  // vista de quem usa. Por baixo são dois passos, e na ordem certa: primeiro
-  // a contestação, porque é ela que dá às fotos onde morar (a rota de fotos
-  // só aceita contestação pendente); depois cada foto, pela mesma rota que
-  // o quadro de fotos usa.
-  //
-  // Uma foto que falhe não desfaz a contestação: ela já está registrada e
-  // suspendeu a confirmação automática, que é o que importa no prazo. A
-  // pessoa fica sabendo quantas faltaram e as anexa de novo no quadro da
-  // contestação, que aparece logo em seguida.
+  // UC 042 — a contestação e as fotos num envio só, e numa transação só no
+  // servidor (RN069): ou tudo é registrado, ou nada. Se uma foto for
+  // recusada, a contestação NÃO fica registrada pela metade — o formulário
+  // continua preenchido, e a pessoa troca a foto e envia de novo. Antes eram
+  // duas etapas, e uma foto que falhasse ficava para ser anexada depois, num
+  // quadro que aceitava mudanças até a decisão.
   async function enviarContestacao() {
+    setErroContestacao('');
     setErro('');
     setMensagem('');
     setProcessando(true);
 
+    // FormData, não JSON: o navegador monta o corpo multipart e define o
+    // Content-Type sozinho.
+    const formulario = new FormData();
+    formulario.append('motivo', motivoContestacao);
+    formulario.append('descricao', descricaoContestacao);
+    fotosContestacao.forEach((foto) => formulario.append('fotos', foto.arquivo));
+
     try {
-      const resposta = await fetch(`/api/solicitacoes/${solicitacao.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          acao: 'contestar',
-          motivoContestacao,
-          descricao: descricaoContestacao,
-        }),
+      const resposta = await fetch(`/api/solicitacoes/${solicitacao.id}/contestacao`, {
+        method: 'POST',
+        body: formulario,
       });
 
       let dados;
       try {
         dados = await resposta.json();
       } catch {
-        setErro(`O servidor respondeu ${resposta.status} sem conteúdo válido.`);
+        setErroContestacao(`O servidor respondeu ${resposta.status} sem conteúdo válido.`);
         return;
       }
       if (!resposta.ok) {
-        setErro(dados.erro ?? 'Não foi possível registrar a contestação.');
+        setErroContestacao(dados.erro ?? 'Não foi possível registrar a contestação.');
         return;
-      }
-
-      const falhas = [];
-      for (const foto of fotosContestacao) {
-        const formulario = new FormData();
-        formulario.append('foto', foto.arquivo);
-        try {
-          const envio = await fetch(`/api/solicitacoes/${solicitacao.id}/fotos-contestacao`, {
-            method: 'POST',
-            body: formulario,
-          });
-          if (!envio.ok) {
-            const corpo = await envio.json().catch(() => ({}));
-            falhas.push(`${foto.arquivo.name}: ${corpo.erro ?? 'não foi possível enviar'}`);
-          }
-        } catch {
-          falhas.push(`${foto.arquivo.name}: falha de conexão`);
-        }
       }
 
       descartarFotos(fotosContestacao);
       setFotosContestacao([]);
-      setAvisoFotos('');
       setMotivoContestacao('');
       setDescricaoContestacao('');
       fecharPainel();
       setMensagem('Contestação registrada. A administração vai analisar.');
-      if (falhas.length > 0) {
-        setErro(`${falhas.length === 1 ? 'Uma foto não foi enviada' : `${falhas.length} fotos não foram enviadas`}`
-          + ` (${falhas.join('; ')}). Anexe de novo no quadro da contestação.`);
-      }
       router.refresh();
     } catch {
-      setErro('Falha de conexão. Tente novamente.');
+      setErroContestacao('Falha de conexão. Tente novamente.');
     } finally {
       setProcessando(false);
     }
@@ -369,73 +302,33 @@ export default function DetalheSolicitacao({
               Descreva o ocorrido
             </label>
             <textarea id="descricao-contestacao" rows={4}
+              maxLength={MAXIMO_RELATO_CONTESTACAO}
               value={descricaoContestacao}
               onChange={(e) => setDescricaoContestacao(e.target.value)}
               placeholder="Conte o que foi combinado e o que de fato aconteceu. A administração usará este texto para decidir."
               className="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 text-slate-900 placeholder:text-slate-400 focus:border-festa-600 focus:outline-none focus:ring-2 focus:ring-festa-600/30" />
             <p className="mt-1 text-xs text-slate-500">
-              {descricaoContestacao.trim().length}/20 caracteres mínimos.
+              {descricaoContestacao.trim().length}/{MINIMO_RELATO_CONTESTACAO} caracteres mínimos.
             </p>
           </div>
 
           {/* RF069-B / UC 042, passo 5 — as fotos escolhidas junto com o
               motivo e a descrição. Seguem no mesmo clique de "Enviar
               contestação"; até lá ficam só no navegador. */}
-          <div>
-            <p className="mb-1.5 text-sm font-medium text-slate-700">
-              Fotos <span className="font-normal text-slate-500">(opcional)</span>
-            </p>
-            <p className="text-xs text-slate-600">
-              Mostre o que foi entregue e o que faltou ou veio diferente do contratado.
-              Até {LIMITE_FOTOS_CONTESTACAO} imagens JPG, PNG ou WEBP, de até 5 MB cada.
-            </p>
-            {/* O aviso vem antes da escolha, como o do chat: quem anexa
-                precisa saber quem vai ver e por quanto tempo (RN069). */}
-            <p className="mt-2 rounded-md bg-white px-2.5 py-2 text-xs text-slate-600">
-              {AVISO_FOTOS_CONTESTACAO}
-            </p>
+          <EscolhaFotosContestacao id="fotos-contestacao-cliente"
+            idSolicitacao={solicitacao.id} fotos={fotosContestacao} aoAlterar={setFotosContestacao}
+            processando={processando}
+            orientacao="Mostre o que foi entregue e o que faltou ou veio diferente do contratado." />
 
-            {fotosContestacao.length > 0 && (
-              <ul className="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-5">
-                {fotosContestacao.map((foto) => (
-                  <li key={foto.chave}
-                    className="relative overflow-hidden rounded-lg border border-slate-200 bg-white">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={foto.miniatura} alt={foto.arquivo.name}
-                      className="aspect-square w-full object-cover" />
-                    <button type="button" onClick={() => removerFotoEscolhida(foto.chave)}
-                      disabled={processando} aria-label={`Tirar ${foto.arquivo.name}`}
-                      className="absolute right-1 top-1 rounded-md bg-white/90 p-1 text-slate-600 shadow-sm transition-colors hover:bg-perigo-50 hover:text-perigo-700 disabled:opacity-50">
-                      <X className="h-3.5 w-3.5" aria-hidden="true" />
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
+          {/* RN069 — dito antes do botão: depois, não há como voltar atrás. */}
+          <p className="text-xs text-slate-600">{AVISO_ENVIO_UNICO_CONTESTACAO}</p>
 
-            <input type="file" id="fotos-contestacao-novas" multiple
-              accept={TIPOS_FOTO_CONTESTACAO.join(',')}
-              onChange={escolherFotos}
-              disabled={processando || fotosContestacao.length >= LIMITE_FOTOS_CONTESTACAO}
-              className="sr-only" />
-            <label htmlFor="fotos-contestacao-novas"
-              aria-disabled={processando || fotosContestacao.length >= LIMITE_FOTOS_CONTESTACAO}
-              className={`mt-2 inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-atencao-600 bg-white px-3 py-1.5 text-sm font-medium text-atencao-700 transition-colors hover:bg-atencao-50 ${
-                processando || fotosContestacao.length >= LIMITE_FOTOS_CONTESTACAO
-                  ? 'pointer-events-none opacity-50' : ''}`}>
-              <ImagePlus className="h-4 w-4" aria-hidden="true" />
-              Anexar fotos
-              <span className="font-normal text-atencao-600">
-                ({fotosContestacao.length} de {LIMITE_FOTOS_CONTESTACAO})
-              </span>
-            </label>
-            {avisoFotos && <p className="mt-1.5 text-xs text-perigo-600">{avisoFotos}</p>}
-          </div>
+          {erroContestacao && <p className="text-sm text-perigo-600">{erroContestacao}</p>}
 
           <div className="flex flex-wrap gap-2">
             <button type="button"
               disabled={processando || motivoContestacao === ''
-                || descricaoContestacao.trim().length < 20}
+                || descricaoContestacao.trim().length < MINIMO_RELATO_CONTESTACAO}
               onClick={() => enviarContestacao()}
               className="rounded-lg bg-atencao-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-atencao-700 disabled:opacity-50">
               {processando
@@ -489,10 +382,10 @@ export default function DetalheSolicitacao({
   );
 
   // UC 042/043 — a contestação registrada, num cartão PRÓPRIO, abaixo do
-  // resumo. Dentro dele, a descrição e o quadro de fotos esticavam a coluna
-  // da foto do serviço junto. Aberta enquanto pendente, porque ainda pede
-  // ação (as fotos); fechada depois de julgada, porque a faixa de cima já
-  // diz o desfecho.
+  // resumo. Dentro dele, a descrição e as fotos esticavam a coluna da foto
+  // do serviço junto. Aberta enquanto pendente, porque é o assunto em aberto
+  // da solicitação; fechada depois de julgada, porque a faixa de cima já diz
+  // o desfecho.
   const contestacao = solicitacao.status_contestacao ? (
     <CartaoRecolhivel tom="atencao" abertoPorPadrao={contestacaoPendente}
       resumo={
@@ -524,9 +417,9 @@ export default function DetalheSolicitacao({
             Aguardando análise da administração. Enquanto isso, a solicitação não
             é confirmada automaticamente.
           </p>
-          {/* RF069-B / UC 046 — as provas do cliente: as que vieram com o
-              envio e as que ele ainda quiser incluir ou tirar. */}
-          <FotosContestacao idSolicitacao={solicitacao.id} papel="cliente" />
+          {/* RF069-B — as fotos que vieram com a contestação, só para
+              rever: o envio é único (RN069). */}
+          <FotosContestacao idSolicitacao={solicitacao.id} />
         </>
       ) : (
         <div className="space-y-1 border-t border-atencao-200 pt-2">

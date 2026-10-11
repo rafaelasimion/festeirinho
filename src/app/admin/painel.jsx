@@ -470,7 +470,7 @@ function ItemContestacao({ contestacao, processando, aoAnalisar }) {
       titulo={contestacao.servico}
       subtitulo={`${contestacao.cliente} contestou · fornecedor ${contestacao.fornecedor}`}
       etiqueta={pendente
-        ? <Etiqueta tom="atencao" formato="ponto">pendente de análise</Etiqueta>
+        ? <Etiqueta tom="atencao" formato="ponto">Pendente de análise</Etiqueta>
         : (
           <Etiqueta tom={TOM_RESULTADO_CONTESTACAO[contestacao.resultado_contestacao]}
             formato="ponto">
@@ -506,6 +506,26 @@ function ItemContestacao({ contestacao, processando, aoAnalisar }) {
         {contestacao.descricao_contestacao_cliente}
       </Bloco>
 
+      {/* RF069-B / UC 046 — o outro lado. O fornecedor não tem prazo para
+          responder (RN069), então a ausência também é informação: quem vai
+          decidir precisa saber se ainda pode esperar por ela. */}
+      {contestacao.data_contestacao_fornecedor ? (
+        <Bloco rotulo="Versão do fornecedor">
+          {contestacao.descricao_contestacao_fornecedor}
+          <span className="mt-1 block text-xs text-slate-500">
+            Enviada em {formatarDataHora(contestacao.data_contestacao_fornecedor)}.
+          </span>
+        </Bloco>
+      ) : (
+        <Bloco rotulo="Versão do fornecedor">
+          <span className="text-slate-500">
+            {pendente
+              ? 'O fornecedor ainda não apresentou a sua versão. Não há prazo para isso: a decisão pode ser tomada sem ela.'
+              : 'O fornecedor não apresentou versão antes da decisão.'}
+          </span>
+        </Bloco>
+      )}
+
       {/* UC 043 — a prova que existe. Só nas pendentes: depois de julgada,
           a conversa sai do alcance da administração (ver a consulta em
           admin/page.jsx). */}
@@ -530,10 +550,10 @@ function ItemContestacao({ contestacao, processando, aoAnalisar }) {
 // UC 043 / RN069 — a conversa da solicitação contestada.
 //
 // Até aqui o admin julgava com a palavra de um lado só: motivo padronizado,
-// descrição do cliente e os dados da solicitação. O fornecedor não é ouvido
-// em lugar nenhum do sistema, e isso continua sendo verdade — mas o chat é
-// onde a execução foi combinada (UC 016), e é a prova que já existe no
-// banco sem que ninguém precise anexar nada.
+// descrição do cliente e os dados da solicitação. Agora o fornecedor tem a
+// sua versão (UC 046), mas o chat continua sendo onde a execução foi
+// combinada (UC 016), e é a prova que já existe no banco sem que ninguém
+// precise anexar nada.
 //
 // Somente leitura, de propósito: a administração julga a conversa, não
 // participa dela. E recolhida por padrão, porque é conteúdo de comunicação

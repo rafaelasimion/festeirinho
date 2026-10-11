@@ -3,10 +3,11 @@ import { pool } from '@/lib/db';
 import { lerSessao } from '@/lib/sessao';
 import { obterClienteLogado, obterFornecedorLogado } from '@/lib/autorizacao';
 import { salvarImagem, removerImagem } from '@/lib/imagens-servidor';
+import { LIMITE_FOTOS_CONTESTACAO } from '@/lib/contestacao';
 
 // RF069-B / RN069 — fotos anexadas à contestação da conclusão.
 //
-// Três coisas tornam estas fotos diferentes das fotos de serviço, e é por
+// Quatro coisas tornam estas fotos diferentes das fotos de serviço, e é por
 // elas que este módulo existe em vez de reaproveitar a rota de fotos:
 //
 //   1. Elas não são públicas. Ficam em /uploads/contestacoes e só saem pela
@@ -17,14 +18,53 @@ import { salvarImagem, removerImagem } from '@/lib/imagens-servidor';
 //      dado acaba com a decisão (LGPD, art. 6º, III, e art. 14).
 //   3. As duas partes enviam, e cada uma só vê as suas. Quem vê as duas
 //      pilhas é a administração.
-
-export function salvarFotoContestacao(arquivo) {
-  return salvarImagem(arquivo, { contestacao: true });
-}
+//   4. Cada parte envia uma vez só, junto com o seu relato — o cliente na
+//      contestação, o fornecedor na sua versão. Depois disso a prova não
+//      muda: a administração analisa o que foi enviado, e não um quadro que
+//      pode ganhar ou perder fotos no meio da análise.
 
 export async function removerArquivosContestacao(urls) {
   for (const url of urls) {
     await removerImagem(url, { contestacao: true });
+  }
+}
+
+// Grava no disco as fotos de um envio — todas ou nenhuma. Se uma falhar
+// (formato, tamanho, arquivo vazio), as que já tinham sido gravadas saem do
+// disco e a resposta diz qual foi recusada e por quê: o envio é único, então
+// não faz sentido registrar a contestação com parte das fotos.
+//
+// Só o disco: as linhas no banco entram depois, na transação de quem chamou,
+// que também é quem remove os arquivos se a transação falhar.
+export async function salvarFotosDoEnvio(arquivos) {
+  if (arquivos.length > LIMITE_FOTOS_CONTESTACAO) {
+    return { erro: `Envie no máximo ${LIMITE_FOTOS_CONTESTACAO} fotos.` };
+  }
+
+  const urls = [];
+  for (const arquivo of arquivos) {
+    const salvo = await salvarImagem(arquivo, { contestacao: true });
+    if (salvo.erro) {
+      await removerArquivosContestacao(urls);
+      // O nome vem do navegador e só volta para a própria pessoa, como
+      // texto: serve para ela saber qual foto trocar.
+      const nome = typeof arquivo?.name === 'string' && arquivo.name ? `${arquivo.name}: ` : '';
+      return { erro: `${nome}${salvo.erro}` };
+    }
+    urls.push(salvo.url);
+  }
+  return { urls };
+}
+
+// Registra as linhas das fotos já gravadas no disco. Roda DENTRO da
+// transação que registra o relato da parte.
+export async function inserirFotosDoEnvio(conexao, idSolicitacao, papel, urls) {
+  for (const url of urls) {
+    await conexao.execute(
+      `INSERT INTO foto_contestacao (id_solicitacao, enviado_por, imagem_url)
+       VALUES (?, ?, ?)`,
+      [idSolicitacao, papel, url]
+    );
   }
 }
 
@@ -50,7 +90,7 @@ export async function apagarFotosDaContestacao(conexao, idSolicitacao) {
 // Quem está pedindo e qual é o papel dele NESTA solicitação.
 //
 // Cada papel passa pela própria guarda, que confere o status no banco:
-// conta suspensa não envia nem remove foto. Quem não é parte recebe "não
+// conta suspensa não envia foto nem relato. Quem não é parte recebe "não
 // encontrada", como no chat (RN019) — confirmar que a solicitação de outra
 // pessoa existe já seria informação a mais.
 export async function parteDaContestacao(params) {

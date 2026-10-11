@@ -25,10 +25,18 @@ import {
   ROTULO_ORIGEM_CANCELAMENTO,
   impedimentoParaCancelar,
 } from '@/lib/cancelamento';
-import { ROTULO_MOTIVO_CONTESTACAO } from '@/lib/contestacao';
+import {
+  ROTULO_MOTIVO_CONTESTACAO,
+  MINIMO_RELATO_CONTESTACAO,
+  MAXIMO_RELATO_CONTESTACAO,
+  AVISO_ENVIO_UNICO_CONTESTACAO,
+} from '@/lib/contestacao';
 import Chat from '@/componentes/chat';
 import DialogoDenuncia from '@/componentes/dialogo-denuncia';
 import FotosContestacao from '@/componentes/fotos-contestacao';
+import EscolhaFotosContestacao, {
+  descartarFotos,
+} from '@/componentes/escolha-fotos-contestacao';
 import { ROTULO_RESULTADO_DENUNCIA } from '@/lib/denuncia';
 import { formatarDataHora } from '@/lib/datas';
 import LinhaDoTempo from '@/componentes/linha-do-tempo';
@@ -55,6 +63,11 @@ export default function DetalheSolicitacaoRecebida({
   const [processando, setProcessando] = useState(false);
   const [erroGeral, setErroGeral] = useState('');
   const [mensagem, setMensagem] = useState('');
+  // RF069-B / UC 046 — a versão do fornecedor sobre a contestação: o texto
+  // e as fotos, ainda só no navegador até o envio.
+  const [versao, setVersao] = useState('');
+  const [fotosVersao, setFotosVersao] = useState([]);
+  const [erroVersao, setErroVersao] = useState('');
 
   function fecharPainel() {
     setPainel(null);
@@ -91,6 +104,58 @@ export default function DetalheSolicitacaoRecebida({
       router.refresh();
     } catch {
       setErroGeral('Falha de conexão. Tente novamente.');
+    } finally {
+      setProcessando(false);
+    }
+  }
+
+  // UC 046 — texto e fotos num envio só, e numa transação só no servidor
+  // (RN069). Se uma foto for recusada, nada é registrado e o formulário
+  // continua preenchido para a troca.
+  async function enviarVersao() {
+    setErroVersao('');
+    setErroGeral('');
+    setMensagem('');
+    setProcessando(true);
+
+    const formulario = new FormData();
+    formulario.append('descricao', versao);
+    fotosVersao.forEach((foto) => formulario.append('fotos', foto.arquivo));
+
+    try {
+      const resposta = await fetch(`/api/solicitacoes/${solicitacao.id}/contestacao`, {
+        method: 'POST',
+        body: formulario,
+      });
+
+      let dados;
+      try {
+        dados = await resposta.json();
+      } catch {
+        setErroVersao(`O servidor respondeu ${resposta.status} sem conteúdo válido.`);
+        return;
+      }
+      if (!resposta.ok) {
+        // 409 é estado que mudou com a tela aberta — a administração
+        // decidiu, ou a versão já tinha sido enviada em outra aba. O aviso
+        // sobe para o topo, porque o cartão onde estava o formulário pode
+        // sumir na recarga.
+        if (resposta.status === 409) {
+          setErroGeral(dados.erro ?? 'A contestação mudou de situação.');
+          router.refresh();
+        } else {
+          setErroVersao(dados.erro ?? 'Não foi possível enviar a sua versão.');
+        }
+        return;
+      }
+
+      descartarFotos(fotosVersao);
+      setFotosVersao([]);
+      setVersao('');
+      setMensagem('Sua versão foi enviada. A administração vai considerá-la na análise.');
+      router.refresh();
+    } catch {
+      setErroVersao('Falha de conexão. Tente novamente.');
     } finally {
       setProcessando(false);
     }
@@ -220,10 +285,11 @@ export default function DetalheSolicitacaoRecebida({
   );
 
   // UC 042 — a contestação do cliente, num cartão PRÓPRIO abaixo do resumo,
-  // como na tela do cliente. Dentro dele, a descrição e o quadro de fotos
-  // esticavam a coluna da foto do serviço junto. Só aparece pendente: é
-  // quando o fornecedor ainda tem o que fazer (as fotos, RF069-B); julgada,
-  // o desfecho está na linha do tempo e nos avisos.
+  // como na tela do cliente. Dentro dele, a descrição e as fotos esticavam a
+  // coluna da foto do serviço junto. Só aparece pendente: é quando o
+  // fornecedor ainda tem o que fazer (a sua versão, UC 046); julgada, o
+  // desfecho está na linha do tempo e nos avisos.
+  const versaoEnviada = Boolean(solicitacao.data_contestacao_fornecedor);
   const contestacao = solicitacao.status_contestacao === 'pendente' ? (
     <CartaoRecolhivel tom="atencao" abertoPorPadrao
       resumo={
@@ -243,10 +309,74 @@ export default function DetalheSolicitacaoRecebida({
         A administração vai analisar e decidir.
       </p>
 
-      {/* RF069-B / UC 046 — até aqui o fornecedor só lia a acusação.
-          As fotos são o jeito de ele mostrar o que entregou, e o
-          espaço fica logo abaixo dela, onde ele já está olhando. */}
-      <FotosContestacao idSolicitacao={solicitacao.id} papel="fornecedor" />
+      {versaoEnviada ? (
+        // Enviada, a versão vira só leitura (RN069): é ela, e não um
+        // rascunho, que a administração está lendo.
+        <div className="space-y-3 border-t border-atencao-200 pt-3">
+          <div className="space-y-1">
+            <p className="font-medium text-slate-800">Sua versão</p>
+            <p className="whitespace-pre-line text-slate-700">
+              {solicitacao.descricao_contestacao_fornecedor}
+            </p>
+            <p className="text-xs text-slate-500">
+              Enviada em {formatarDataHora(solicitacao.data_contestacao_fornecedor)}.
+              Só a administração vê a sua versão.
+            </p>
+          </div>
+          <FotosContestacao idSolicitacao={solicitacao.id} />
+        </div>
+      ) : (
+        // RF069-B / UC 046 — até aqui o fornecedor só lia a acusação e podia
+        // mandar fotos soltas. Agora ele conta o seu lado, com as fotos
+        // junto, logo abaixo do que o cliente escreveu, onde ele já está
+        // olhando.
+        <div className="mt-2 space-y-4 rounded-lg border border-atencao-200 bg-atencao-50 p-4">
+          <div>
+            <p className="font-medium text-slate-800">Sua versão</p>
+            <p className="mt-0.5 text-xs text-slate-600">
+              Conte o que foi combinado e o que foi entregue. Só a administração vê o
+              seu texto e as suas fotos — o cliente não. Não há prazo para enviar, mas a
+              administração pode decidir a qualquer momento.
+            </p>
+          </div>
+
+          <div>
+            <label htmlFor="versao-fornecedor"
+              className="mb-1.5 block text-sm font-medium text-slate-700">
+              Descreva a sua versão
+            </label>
+            <textarea id="versao-fornecedor" rows={4}
+              maxLength={MAXIMO_RELATO_CONTESTACAO}
+              value={versao}
+              onChange={(e) => setVersao(e.target.value)}
+              placeholder="Horário de chegada, o que foi montado e entregue, o que foi combinado pelo chat."
+              className="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 text-slate-900 placeholder:text-slate-400 focus:border-festa-600 focus:outline-none focus:ring-2 focus:ring-festa-600/30" />
+            <p className="mt-1 text-xs text-slate-500">
+              {versao.trim().length}/{MINIMO_RELATO_CONTESTACAO} caracteres mínimos.
+            </p>
+          </div>
+
+          <EscolhaFotosContestacao id="fotos-versao-fornecedor"
+            idSolicitacao={solicitacao.id}
+            fotos={fotosVersao} aoAlterar={setFotosVersao}
+            processando={processando}
+            orientacao="Mostre o serviço prestado: a montagem, a estrutura, a decoração no local." />
+
+          {/* RN069 — dito antes do botão: depois, não há como voltar atrás. */}
+          <p className="text-xs text-slate-600">{AVISO_ENVIO_UNICO_CONTESTACAO}</p>
+
+          {erroVersao && <p className="text-sm text-perigo-600">{erroVersao}</p>}
+
+          <button type="button"
+            disabled={processando || versao.trim().length < MINIMO_RELATO_CONTESTACAO}
+            onClick={() => enviarVersao()}
+            className="rounded-lg bg-atencao-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-atencao-700 disabled:opacity-50">
+            {processando
+              ? (fotosVersao.length > 0 ? 'Enviando versão e fotos...' : 'Enviando...')
+              : 'Enviar minha versão'}
+          </button>
+        </div>
+      )}
     </CartaoRecolhivel>
   ) : null;
 

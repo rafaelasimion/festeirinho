@@ -171,7 +171,7 @@ function ItemValidacao({ dados, processando, aoDecidir }) {
           </span>
         </>
       }
-      etiqueta={<Etiqueta tom="atencao" formato="ponto">aguardando validação</Etiqueta>}
+      etiqueta={<Etiqueta tom="atencao" formato="ponto">Aguardando validação</Etiqueta>}
       rodape={rodape}
     >
       {/* RN061 — a conferência é lado a lado de propósito: o painel já
@@ -255,7 +255,7 @@ function ItemProcessamento({ item, processando, aoConcluir }) {
           )}
         </>
       }
-      etiqueta={<Etiqueta tom="atencao" formato="ponto">processando</Etiqueta>}
+      etiqueta={<Etiqueta tom="atencao" formato="ponto">Processando</Etiqueta>}
       rodape={rodape}
     >
       <p className="text-sm text-slate-600">

@@ -208,7 +208,7 @@ function ItemDenuncia({ denuncia, processando, aoAnalisar }) {
         </>
       }
       etiqueta={pendente
-        ? <Etiqueta tom="atencao" formato="ponto">pendente de análise</Etiqueta>
+        ? <Etiqueta tom="atencao" formato="ponto">Pendente de análise</Etiqueta>
         : (
           <Etiqueta tom={TOM_RESULTADO_DENUNCIA[denuncia.resultado_analise]} formato="ponto">
             {ROTULO_RESULTADO_DENUNCIA[denuncia.resultado_analise]}
@@ -233,7 +233,7 @@ function ItemDenuncia({ denuncia, processando, aoAnalisar }) {
               ))}
             </span>
             {denuncia.origem_ocultacao === 'moderacao' && (
-              <Etiqueta tom="perigo" formato="caixa" contorno>já removido</Etiqueta>
+              <Etiqueta tom="perigo" formato="caixa" contorno>Já removido</Etiqueta>
             )}
           </span>
           <span className="mt-2 block">{denuncia.comentario}</span>

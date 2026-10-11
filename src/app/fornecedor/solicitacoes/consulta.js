@@ -50,6 +50,9 @@ export async function buscarSolicitacoes(idUsuario, idFornecedor, { id = null } 
             so.motivo_contestacao_cliente, so.descricao_contestacao_cliente,
             so.data_contestacao_cliente, so.status_contestacao,
             so.resultado_contestacao, so.justificativa_contestacao,
+            -- RF069-B / UC 046 — a versão do fornecedor. Lida só deste lado
+            -- e no painel administrativo: o cliente não a vê (RN069).
+            so.descricao_contestacao_fornecedor, so.data_contestacao_fornecedor,
             -- RF023 — marcos da linha do tempo. data_analise_contestacao
             -- não estava sendo lida deste lado.
             so.data_analise_contestacao, so.data_resposta_fornecedor,
@@ -127,6 +130,7 @@ function serializar(linhas) {
     data_confirmacao_conclusao_cliente: iso(linha.data_confirmacao_conclusao_cliente),
     termino_previsto: iso(linha.termino_previsto),
     data_contestacao_cliente: iso(linha.data_contestacao_cliente),
+    data_contestacao_fornecedor: iso(linha.data_contestacao_fornecedor),
     data_avaliacao: iso(linha.data_avaliacao),
     data_analise_contestacao: iso(linha.data_analise_contestacao),
     data_resposta_fornecedor: iso(linha.data_resposta_fornecedor),

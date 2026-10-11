@@ -24,6 +24,12 @@ export const TOM_RESULTADO_CONTESTACAO = {
   improcedente: 'perigo',
 };
 
+// UC 042 / UC 046 — o tamanho do relato de cada parte: a descrição do
+// cliente na contestação e a versão do fornecedor. Os mesmos números nas
+// duas pontas e no servidor, que é quem decide.
+export const MINIMO_RELATO_CONTESTACAO = 20;
+export const MAXIMO_RELATO_CONTESTACAO = 1000;
+
 // RF069-B / RN069 — quantas imagens cada parte pode anexar à contestação.
 //
 // Limite fixo, e não parâmetro da RN014: ele não regula o negócio, regula
@@ -43,10 +49,16 @@ export const LIMITE_FOTOS_CONTESTACAO = 5;
 export const TIPOS_FOTO_CONTESTACAO = ['image/jpeg', 'image/png', 'image/webp'];
 export const TAMANHO_MAXIMO_FOTO_CONTESTACAO = 5 * 1024 * 1024;
 
-// RN069 / LGPD — o aviso que vem antes de qualquer foto ser enviada, no
-// formulário e no quadro de fotos. Um texto só, para os dois lugares nunca
-// prometerem coisas diferentes.
+// RN069 / LGPD — o aviso que vem antes de qualquer foto ser enviada, nos
+// dois formulários: a contestação do cliente e a versão do fornecedor. Um
+// texto só, para os dois lugares nunca prometerem coisas diferentes.
 export const AVISO_FOTOS_CONTESTACAO =
   'Só a administração vê estas fotos, e elas são apagadas quando a contestação '
   + 'for decidida. Prefira enquadrar o serviço e evite fotos em que crianças '
   + 'apareçam em destaque.';
+
+// RN069 — o envio é único, para as duas partes: dito antes do botão, e não
+// descoberto depois, quando já não há o que fazer.
+export const AVISO_ENVIO_UNICO_CONTESTACAO =
+  'O envio é único: depois de enviado, o texto e as fotos não podem ser '
+  + 'alterados, nem é possível incluir ou remover fotos.';

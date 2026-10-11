@@ -120,9 +120,9 @@ export const TOM_STATUS_SOLICITACAO = {
 };
 
 export const ROTULO_VERIFICACAO = {
-  pendente: 'em análise',
-  aprovado: 'aprovado',
-  rejeitado: 'não aprovado',
+  pendente: 'Em análise',
+  aprovado: 'Aprovado',
+  rejeitado: 'Não aprovado',
 };
 
 export const TOM_VERIFICACAO = {
@@ -246,8 +246,12 @@ export function chamadaFornecedor(solicitacao) {
   if (aberta) {
     return { rotulo: 'Analisar', tom: 'principal' };
   }
+  // RF069-B / UC 046 — enquanto a versão não foi enviada, é isso que a
+  // contestação pede do fornecedor; depois, só resta acompanhar.
   if (contestacaoPendente) {
-    return { rotulo: 'Acompanhar contestação', tom: 'atencao' };
+    return solicitacao.data_contestacao_fornecedor
+      ? { rotulo: 'Acompanhar contestação', tom: 'atencao' }
+      : { rotulo: 'Apresentar sua versão', tom: 'atencao' };
   }
   if (podeRegistrarConclusao) {
     return { rotulo: 'Registrar conclusão', tom: 'principal' };
@@ -305,6 +309,11 @@ export function marcosDaSolicitacao(solicitacao) {
 
   pôr(solicitacao.data_contestacao_cliente, 'Conclusão contestada pelo cliente',
     null, 'atencao');
+
+  // RF069-B — só chega preenchida do lado do fornecedor: a consulta do
+  // cliente não lê a versão, que é só para a administração (RN069).
+  pôr(solicitacao.data_contestacao_fornecedor, 'Versão do fornecedor enviada',
+    'Visível só à administração.', 'atencao');
 
   pôr(solicitacao.data_analise_contestacao, 'Contestação analisada',
     solicitacao.resultado_contestacao === 'procedente' ? 'Procedente.'

@@ -179,7 +179,7 @@ export default function PerfilFornecedor() {
             {ROTULO_VERIFICACAO[status.verificacao]}
           </Etiqueta>
           {status.fornecedor === 'pausado' && (
-            <Etiqueta tom="neutro" contorno>perfil pausado</Etiqueta>
+            <Etiqueta tom="neutro" contorno>Perfil pausado</Etiqueta>
           )}
         </div>
       </div>

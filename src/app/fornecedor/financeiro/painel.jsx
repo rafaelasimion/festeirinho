@@ -140,11 +140,11 @@ export default function PainelFinanceiro({
                   {m.status_repasse === 'liberado' ? (
                     <Etiqueta tom="sucesso">
                       <CheckCircle2 className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
-                      liberado
+                      Liberado
                     </Etiqueta>
                   ) : (
                     <Etiqueta tom="atencao">
-                      {m.origem === 'conclusao' && !m.marco ? 'a realizar' : 'em carência'}
+                      {m.origem === 'conclusao' && !m.marco ? 'A realizar' : 'Em carência'}
                     </Etiqueta>
                   )}
                 </div>
