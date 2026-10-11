@@ -14,6 +14,8 @@ import DadosReembolso from '@/componentes/dados-reembolso';
 import Chat from '@/componentes/chat';
 import DialogoDenuncia from '@/componentes/dialogo-denuncia';
 import FotosContestacao, { LinkProvaPeloSuporte } from '@/componentes/fotos-contestacao';
+import TituloPainel from '@/componentes/titulo-painel';
+import OpcoesRadio from '@/componentes/opcoes-radio';
 import EscolhaFotosContestacao, {
   descartarFotos,
 } from '@/componentes/escolha-fotos-contestacao';
@@ -219,11 +221,9 @@ export default function DetalheSolicitacao({
   } : null;
 
   // Tudo que é alto vai por fora da linha da foto (prop "painel"):
-  // dentro dela, um chat de 500px — ou o formulário de avaliação,
-  // com as estrelas, o comentário e a escolha de visibilidade —
-  // esticava a faixa lateral junto, e a foto virava uma tira.
-  const avaliar = solicitacao.status === 'concluido';
-  const conteudoPainel = (painel === null && !avaliar) ? null : (
+  // dentro dela, um chat de 500px esticava a faixa lateral junto, e a
+  // foto virava uma tira.
+  const conteudoPainel = painel === null ? null : (
     <div className="space-y-4">
 
       {painel === 'conversar' && (
@@ -266,45 +266,17 @@ export default function DetalheSolicitacao({
       )}
 
       {/* UC 042 — formulário de contestação. Direto no cartão do painel,
-          sem uma caixa colorida dentro dele: o título já diz o assunto, e
-          os motivos são uma lista de escolha, não três cartões. */}
+          sem uma caixa colorida dentro dele: o título diz o assunto. */}
       {painel === 'contestar' && (
         <div className="space-y-5">
-          <div>
-            <h2 className="flex items-center gap-2 font-semibold text-slate-900">
-              <AlertTriangle className="h-4 w-4 text-atencao-600" aria-hidden="true" />
-              Contestar conclusão
-            </h2>
-            <p className="mt-1 text-sm text-slate-600">
-              A administração analisa e decide sobre o reembolso. Até lá, a conclusão
-              não é confirmada automaticamente.
-            </p>
-          </div>
+          <TituloPainel icone={AlertTriangle} tom="atencao" titulo="Contestar conclusão">
+            A administração analisa e decide sobre o reembolso. Até lá, a conclusão
+            não é confirmada automaticamente.
+          </TituloPainel>
 
-          <fieldset>
-            <legend className="mb-1.5 text-sm font-medium text-slate-700">
-              O que aconteceu?
-            </legend>
-            <div className="space-y-1">
-              {MOTIVOS_CONTESTACAO.map(({ valor, rotulo, detalhe }) => (
-                <label key={valor}
-                  className={`flex cursor-pointer gap-3 rounded-lg px-3 py-2 transition-colors ${motivoContestacao === valor
-                    ? 'bg-atencao-50'
-                    : 'hover:bg-slate-50'}`}>
-                  <input type="radio" name="motivo-contestacao"
-                    value={valor} checked={motivoContestacao === valor}
-                    onChange={(e) => setMotivoContestacao(e.target.value)}
-                    className="mt-1 accent-atencao-600" />
-                  <span>
-                    <span className="block text-sm font-medium text-slate-800">
-                      {rotulo}
-                    </span>
-                    <span className="block text-xs text-slate-500">{detalhe}</span>
-                  </span>
-                </label>
-              ))}
-            </div>
-          </fieldset>
+          <OpcoesRadio nome="motivo-contestacao" legenda="O que aconteceu?" tom="atencao"
+            opcoes={MOTIVOS_CONTESTACAO} valor={motivoContestacao}
+            aoEscolher={setMotivoContestacao} desabilitado={processando} />
 
           <div>
             <label htmlFor="descricao-contestacao"
@@ -360,7 +332,16 @@ export default function DetalheSolicitacao({
           </div>
         </div>
       )}
-    {solicitacao.status === 'concluido' && (
+    </div>
+  );
+
+  // UC 021 — a avaliação, num cartão PRÓPRIO. Antes ela ia no fim do cartão
+  // do painel, depois de uma divisória que a separava do que estivesse
+  // aberto acima; quando não havia nada aberto, sobrava a linha sozinha no
+  // topo do cartão. Num cartão só dela, cada coisa tem a sua moldura, como
+  // a contestação.
+  const avaliacao = solicitacao.status === 'concluido' ? (
+    <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
       <FormularioAvaliacao
         avaliacao={solicitacao.id_avaliacao ? {
           id: solicitacao.id_avaliacao,
@@ -394,9 +375,8 @@ export default function DetalheSolicitacao({
             setProcessando(false);
           }
         }} />
-    )}
     </div>
-  );
+  ) : null;
 
   // UC 042/043 — a contestação registrada, num cartão PRÓPRIO, abaixo do
   // resumo. Dentro dele, a descrição e as fotos esticavam a coluna da foto
@@ -681,6 +661,8 @@ export default function DetalheSolicitacao({
           {conteudoPainel}
         </div>
       )}
+
+      {avaliacao}
 
       {/* RF023 — o histórico embaixo do resumo: primeiro o que a
           solicitação é, depois como ela chegou até aqui. */}

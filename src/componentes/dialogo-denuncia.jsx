@@ -3,11 +3,18 @@
 import { useState } from 'react';
 import { Flag } from 'lucide-react';
 import { motivosDoTipo } from '@/lib/denuncia';
+import TituloPainel from '@/componentes/titulo-painel';
+import OpcoesRadio from '@/componentes/opcoes-radio';
 
 // RF067 / RN052 — formulário de denúncia, comum aos dois tipos.
 //
 // O tipo não é enviado ao servidor: ele decide pelo papel de quem está
 // logado. A propriedade aqui serve só para mostrar os motivos certos.
+//
+// O formulário fica direto no cartão do painel, sem caixa colorida em volta:
+// quem diz o assunto é o TituloPainel.
+
+const MINIMO_DESCRICAO = 20;
 
 export default function DialogoDenuncia({ tipo, alvo, aoConcluir, aoVoltar }) {
   const [motivoPadrao, setMotivoPadrao] = useState('');
@@ -48,40 +55,17 @@ export default function DialogoDenuncia({ tipo, alvo, aoConcluir, aoVoltar }) {
   }
 
   return (
-    <div className="space-y-4 rounded-lg border border-perigo-200 bg-perigo-50 p-4">
-      <div className="flex items-start gap-3">
-        <Flag className="mt-0.5 h-5 w-5 shrink-0 text-perigo-600" aria-hidden="true" />
-        <div>
-          <p className="font-medium text-slate-900">
-            {tipo === 'avaliacao' ? 'Denunciar este comentário' : 'Denunciar este fornecedor'}
-          </p>
-          <p className="mt-0.5 text-sm text-slate-600">
-            {tipo === 'avaliacao'
-              ? 'A administração analisa o conteúdo. Críticas negativas ao serviço não são removidas — só conteúdo inadequado.'
-              : 'A administração analisa a denúncia. Ela não gera reembolso nem altera o andamento da contratação.'}
-          </p>
-        </div>
-      </div>
+    <div className="space-y-5">
+      <TituloPainel icone={Flag} tom="perigo"
+        titulo={tipo === 'avaliacao' ? 'Denunciar este comentário' : 'Denunciar este fornecedor'}>
+        {tipo === 'avaliacao'
+          ? 'A administração analisa o conteúdo. Críticas negativas ao serviço não são removidas — só conteúdo inadequado.'
+          : 'A administração analisa a denúncia. Ela não gera reembolso nem altera o andamento da contratação.'}
+      </TituloPainel>
 
-      <fieldset className="space-y-2">
-        <legend className="mb-1 text-sm font-medium text-slate-700">Motivo</legend>
-        {motivos.map(({ valor, rotulo, detalhe }) => (
-          <label key={valor}
-            className={`flex cursor-pointer gap-3 rounded-lg border p-3 transition-colors ${
-              motivoPadrao === valor
-                ? 'border-perigo-600 bg-white'
-                : 'border-slate-200 bg-white hover:border-slate-300'}`}>
-            <input type="radio" name="motivo-denuncia" value={valor}
-              checked={motivoPadrao === valor}
-              onChange={(e) => setMotivoPadrao(e.target.value)}
-              className="mt-0.5" />
-            <span>
-              <span className="block text-sm font-medium text-slate-800">{rotulo}</span>
-              <span className="block text-xs text-slate-500">{detalhe}</span>
-            </span>
-          </label>
-        ))}
-      </fieldset>
+      <OpcoesRadio nome="motivo-denuncia" legenda="Motivo" tom="perigo"
+        opcoes={motivos} valor={motivoPadrao} aoEscolher={setMotivoPadrao}
+        desabilitado={enviando} />
 
       <div>
         <label htmlFor="descricao-denuncia"
@@ -92,16 +76,19 @@ export default function DialogoDenuncia({ tipo, alvo, aoConcluir, aoVoltar }) {
           onChange={(e) => setDescricao(e.target.value)}
           placeholder="Conte os detalhes. A administração usará este texto para decidir."
           className="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 text-slate-900 placeholder:text-slate-400 focus:border-festa-600 focus:outline-none focus:ring-2 focus:ring-festa-600/30" />
-        <p className="mt-1 text-xs text-slate-500">
-          {descricao.trim().length}/20 caracteres mínimos.
-        </p>
+        {/* O contador só fala enquanto falta texto. */}
+        {descricao.trim().length < MINIMO_DESCRICAO && (
+          <p className="mt-1 text-xs text-slate-500">
+            Mínimo de {MINIMO_DESCRICAO} caracteres ({descricao.trim().length} até agora).
+          </p>
+        )}
       </div>
 
-      {erro && <p className="text-sm text-red-600">{erro}</p>}
+      {erro && <p className="text-sm text-perigo-600">{erro}</p>}
 
       <div className="flex flex-wrap gap-2">
         <button type="button" onClick={enviar}
-          disabled={enviando || motivoPadrao === '' || descricao.trim().length < 20}
+          disabled={enviando || motivoPadrao === '' || descricao.trim().length < MINIMO_DESCRICAO}
           className="rounded-lg bg-perigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-perigo-700 disabled:opacity-50">
           {enviando ? 'Enviando...' : 'Enviar denúncia'}
         </button>

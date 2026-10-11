@@ -33,6 +33,7 @@ import {
   AVISO_GUARDA_FOTOS_CONTESTACAO,
 } from '@/lib/contestacao';
 import Chat from '@/componentes/chat';
+import TituloPainel from '@/componentes/titulo-painel';
 import DialogoDenuncia from '@/componentes/dialogo-denuncia';
 import FotosContestacao, { LinkProvaPeloSuporte } from '@/componentes/fotos-contestacao';
 import EscolhaFotosContestacao, {
@@ -220,7 +221,10 @@ export default function DetalheSolicitacaoRecebida({
 
       {/* UC 015 — recusar exige motivo. */}
       {painel === 'recusar' && (
-        <div className="space-y-3">
+        <div className="space-y-5">
+          {/* Com título, como os outros formulários do painel: sozinho, o
+              campo de motivo não dizia de que assunto era. */}
+          <TituloPainel icone={XCircle} tom="perigo" titulo="Recusar solicitação" />
           {/* As opções saem do mesmo mapa que desenha o motivo
               depois de recusada, logo abaixo nesta tela. Escritas
               à mão, as duas listas já tinham divergido: aqui dizia

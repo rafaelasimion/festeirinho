@@ -3,11 +3,18 @@
 import { useState } from 'react';
 import { Star } from 'lucide-react';
 import SeletorNota from '@/componentes/seletor-nota';
+import TituloPainel from '@/componentes/titulo-painel';
+import OpcoesRadio from '@/componentes/opcoes-radio';
 import { VISIBILIDADES, ROTULO_NOTA } from '@/lib/avaliacao';
 
 // UC 021 — formulário de avaliação, exibido na solicitação concluída.
 // Depois de enviada, mostra o que foi registrado: uma avaliação por
 // solicitação, sem edição (RN006).
+//
+// Fica num cartão próprio, abaixo do resumo, e cada estado abre com o seu
+// título. Antes ela vivia no fim do cartão do painel e começava com uma
+// divisória, para se separar do que estivesse aberto acima dela — sozinha
+// no cartão, sobrava uma linha sem nada em cima.
 
 export default function FormularioAvaliacao({
   avaliacao, processando, aoEnviar,
@@ -20,7 +27,8 @@ export default function FormularioAvaliacao({
   // Já avaliada: mostra o registro, sem botões.
   if (avaliacao?.id) {
     return (
-      <div className="mt-4 border-t border-slate-200 pt-4">
+      <div className="space-y-2">
+        <TituloPainel icone={Star} titulo="Sua avaliação" />
         <div className="flex flex-wrap items-center gap-2">
           <span className="flex" aria-hidden="true">
             {[1, 2, 3, 4, 5].map((posicao) => (
@@ -37,11 +45,11 @@ export default function FormularioAvaliacao({
           </span>
         </div>
         {avaliacao.comentario && (
-          <p className="mt-2 whitespace-pre-line text-sm text-slate-700">
+          <p className="whitespace-pre-line text-sm text-slate-700">
             {avaliacao.comentario}
           </p>
         )}
-        <p className="mt-1 text-xs text-slate-500">
+        <p className="text-xs text-slate-500">
           Você avaliou este serviço. Cada solicitação admite uma avaliação.
         </p>
       </div>
@@ -50,10 +58,10 @@ export default function FormularioAvaliacao({
 
   if (!aberto) {
     return (
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 pt-4">
-        <p className="text-sm text-slate-600">
-          Como foi o serviço? Sua avaliação ajuda outros clientes a escolher.
-        </p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <TituloPainel icone={Star} titulo="Como foi o serviço?">
+          Sua avaliação ajuda outros clientes a escolher.
+        </TituloPainel>
         <button type="button" onClick={() => setAberto(true)}
           className="shrink-0 rounded-lg bg-festa-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-festa-700">
           Avaliar serviço
@@ -63,7 +71,9 @@ export default function FormularioAvaliacao({
   }
 
   return (
-    <div className="mt-4 space-y-4 border-t border-slate-200 pt-4">
+    <div className="space-y-5">
+      <TituloPainel icone={Star} titulo="Avaliar serviço" />
+
       <div>
         <span className="mb-1.5 block text-sm font-medium text-slate-700">
           Sua nota
@@ -82,31 +92,13 @@ export default function FormularioAvaliacao({
           className="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 text-slate-900 placeholder:text-slate-400 focus:border-festa-600 focus:outline-none focus:ring-2 focus:ring-festa-600/30" />
       </div>
 
-      <fieldset className="space-y-2">
-        <legend className="mb-1 text-sm font-medium text-slate-700">
-          Visibilidade do comentário
-        </legend>
-        {VISIBILIDADES.map(({ valor, rotulo, detalhe }) => (
-          <label key={valor}
-            className={`flex cursor-pointer gap-3 rounded-lg border p-3 transition-colors ${
-              visibilidade === valor
-                ? 'border-festa-600 bg-festa-50'
-                : 'border-slate-200 bg-white hover:border-slate-300'}`}>
-            <input type="radio" name="visibilidade-avaliacao" value={valor}
-              checked={visibilidade === valor}
-              onChange={(e) => setVisibilidade(e.target.value)}
-              className="mt-0.5" />
-            <span>
-              <span className="block text-sm font-medium text-slate-800">{rotulo}</span>
-              <span className="block text-xs text-slate-500">{detalhe}</span>
-            </span>
-          </label>
-        ))}
-        <p className="text-xs text-slate-500">
-          A nota é sempre contabilizada na média do serviço, qualquer que seja
-          a visibilidade escolhida.
+      <OpcoesRadio nome="visibilidade-avaliacao" legenda="Visibilidade do comentário"
+        opcoes={VISIBILIDADES} valor={visibilidade} aoEscolher={setVisibilidade}
+        desabilitado={processando}>
+        <p className="mt-2 text-xs text-slate-500">
+          A nota sempre conta na média do serviço, qualquer que seja a visibilidade.
         </p>
-      </fieldset>
+      </OpcoesRadio>
 
       <div className="flex flex-wrap gap-2">
         <button type="button" disabled={processando || nota === 0}
@@ -115,7 +107,7 @@ export default function FormularioAvaliacao({
           {processando ? 'Enviando...' : 'Enviar avaliação'}
         </button>
         <button type="button" onClick={() => setAberto(false)} disabled={processando}
-          className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50">
+          className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50">
           Voltar
         </button>
       </div>
