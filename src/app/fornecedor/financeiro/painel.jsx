@@ -2,6 +2,7 @@ import { Wallet, Clock, CheckCircle2 } from 'lucide-react';
 import Etiqueta from '@/componentes/etiqueta';
 import { formatarPreco } from '@/lib/solicitacao';
 import Saques from './saques';
+import RelatorioMensal from './relatorio';
 import { formatarData } from '@/lib/datas';
 
 // Componente de servidor: só apresenta. A parte interativa — pedir saque e
@@ -9,7 +10,7 @@ import { formatarData } from '@/lib/datas';
 
 export default function PainelFinanceiro({
   saldoDisponivel, diasCarencia, valorMinimoSaque, percentualComissao,
-  titular, movimentacoes, saques,
+  titular, mesesRelatorio, mesInicialRelatorio, movimentacoes, saques,
 }) {
   const emCarencia = movimentacoes.filter((m) => m.status_repasse === 'pendente');
   const totalEmCarencia = emCarencia.reduce((soma, m) => soma + m.valor, 0);
@@ -91,6 +92,10 @@ export default function PainelFinanceiro({
         valorMinimoSaque={valorMinimoSaque}
         titular={titular}
         saques={saques} />
+
+      {/* UC 033, passo 3 — do painel, o fornecedor pode exportar o
+          relatório mensal (UC 032), como pode pedir o saque. */}
+      <RelatorioMensal meses={mesesRelatorio} mesInicial={mesInicialRelatorio} />
 
       <h2 className="mb-4 mt-10 text-lg font-medium text-slate-900">Movimentações</h2>
 

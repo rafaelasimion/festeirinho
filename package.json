@@ -10,10 +10,11 @@
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
+    "exceljs": "^4.4.0",
     "jose": "^6.2.12",
     "lucide-react": "^1.44.0",
     "mysql2": "^3.24.3",
-    "next": "16.3.4",
+    "next": "16.3.8",
     "pdfkit": "^0.20.2",
     "react": "19.2.8",
     "react-dom": "19.2.8"
@@ -21,7 +22,7 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "eslint": "^9",
-    "eslint-config-next": "16.3.4",
+    "eslint-config-next": "16.3.8",
     "tailwindcss": "^4"
   }
 }

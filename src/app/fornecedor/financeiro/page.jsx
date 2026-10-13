@@ -6,6 +6,7 @@ import { confirmarConclusoesVencidas } from '@/lib/conclusao-servidor';
 import { liberarRepassesVencidos } from '@/lib/repasse-servidor';
 import PainelFinanceiro from './painel';
 import { paraSerializar } from '@/lib/datas';
+import { mesesDisponiveis } from '@/lib/relatorio-financeiro';
 
 export const metadata = {
   title: 'Financeiro — Festeirinho',
@@ -17,7 +18,7 @@ export default async function Financeiro() {
   if (sessao.tipoUsuario !== 'fornecedor') redirect('/minha-conta');
 
   const [fornecedores] = await pool.execute(
-    `SELECT f.id, f.tipo_pessoa, f.cpf, f.cnpj, f.razao_social, u.nome
+    `SELECT f.id, f.tipo_pessoa, f.cpf, f.cnpj, f.razao_social, u.nome, u.data_cadastro
        FROM fornecedor f
        JOIN usuario u ON u.id = f.id_usuario
       WHERE f.id_usuario = ? LIMIT 1`,
@@ -115,6 +116,12 @@ export default async function Financeiro() {
     ? { nome: fornecedor.nome, documento: fornecedor.cpf ?? '' }
     : { nome: fornecedor.razao_social ?? fornecedor.nome, documento: fornecedor.cnpj ?? '' };
 
+  // RF056 / UC 032 — meses que o relatório oferece: do cadastro até o atual.
+  // A seleção começa no último mês fechado, que é o que se leva ao contador;
+  // na conta criada este mês, só existe o atual.
+  const mesesRelatorio = mesesDisponiveis(fornecedor.data_cadastro);
+  const mesInicialRelatorio = mesesRelatorio[1] ?? mesesRelatorio[0];
+
   return (
     <PainelFinanceiro
       saldoDisponivel={saldoDisponivel}
@@ -122,6 +129,8 @@ export default async function Financeiro() {
       valorMinimoSaque={Number(configuracoes.valor_minimo_saque)}
       percentualComissao={Number(configuracoes.percentual_comissao)}
       titular={titular}
+      mesesRelatorio={mesesRelatorio}
+      mesInicialRelatorio={mesInicialRelatorio}
       movimentacoes={movimentacoes.map((m) => ({
         ...m,
         valor: Number(m.valor),
