@@ -29,6 +29,13 @@ export const ROTULO_ORIGEM = {
   multa: 'Multa por cancelamento',
 };
 
+// Versão curta, para a coluna estreita do PDF. A nota "Como ler" do
+// relatório explica cada uma.
+export const ROTULO_ORIGEM_CURTO = {
+  conclusao: 'Serviço',
+  multa: 'Multa',
+};
+
 function doisDigitos(numero) {
   return String(numero).padStart(2, '0');
 }
@@ -74,6 +81,18 @@ export function lerMes(texto) {
     rotulo: rotuloMes(chave),
     titulo: rotuloMesTitulo(chave),
   };
+}
+
+// A dica do campo de mês: qual período entra no arquivo. No mês fechado,
+// as datas exatas — "de 01/09 a 30/09" responde de vez se o dia 30 entra.
+export function descreverPeriodo(chave, emAndamento) {
+  if (emAndamento) return 'Mês em andamento: repasses liberados até hoje.';
+  const [ano, mes] = String(chave).split('-').map(Number);
+  // Dia 0 do mês seguinte é o último dia deste. É conta de calendário, sem
+  // hora envolvida, então o fuso do navegador não interfere.
+  const ultimoDia = new Date(ano, mes, 0).getDate();
+  const mm = doisDigitos(mes);
+  return `Repasses liberados de 01/${mm} a ${ultimoDia}/${mm}.`;
 }
 
 // Meses que o formulário oferece: do mês do cadastro até o atual, do mais

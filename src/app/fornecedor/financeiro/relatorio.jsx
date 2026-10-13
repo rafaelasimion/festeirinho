@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import { Download, FileSpreadsheet, FileText } from 'lucide-react';
 import { CampoSelecao } from '@/componentes/campo';
-import { nomeDoArquivo, rotuloMesTitulo } from '@/lib/relatorio-financeiro';
+import { descreverPeriodo, nomeDoArquivo, rotuloMesTitulo } from '@/lib/relatorio-financeiro';
+import SecaoFinanceiro from './secao';
 
 // RF056 / UC 032 — exportação do relatório financeiro mensal, a partir do
 // painel financeiro (passos 2 a 8).
@@ -14,8 +15,8 @@ import { nomeDoArquivo, rotuloMesTitulo } from '@/lib/relatorio-financeiro';
 // Assim o erro aparece aqui, ao lado do botão que a pessoa clicou.
 
 const OPCOES_FORMATO = [
-  { valor: 'pdf', rotulo: 'PDF', detalhe: 'Para guardar ou imprimir', Icone: FileText },
-  { valor: 'xlsx', rotulo: 'Excel', detalhe: 'Para conferir e somar', Icone: FileSpreadsheet },
+  { valor: 'pdf', rotulo: 'PDF', detalhe: 'Para guardar, enviar ou imprimir.', Icone: FileText },
+  { valor: 'xlsx', rotulo: 'Excel', detalhe: 'Planilha para conferir e somar os valores.', Icone: FileSpreadsheet },
 ];
 
 // O nome vem do cabeçalho da resposta; se ele não vier legível, o mesmo
@@ -70,59 +71,59 @@ export default function RelatorioMensal({ meses, mesInicial }) {
     }
   }
 
-  return (
-    <section className="mt-8">
-      <h2 className="text-lg font-medium text-slate-900">Relatório mensal</h2>
-      <p className="mb-4 mt-1 text-sm text-slate-600">
-        Os repasses liberados no mês, com a comissão retida e o valor líquido recebido.
-      </p>
+  const detalheFormato = OPCOES_FORMATO.find((opcao) => opcao.valor === formato).detalhe;
 
-      <form onSubmit={exportar}
-        className="space-y-4 rounded-xl border border-slate-200 bg-white p-5">
-        <div className="grid gap-4 sm:grid-cols-2">
+  return (
+    <SecaoFinanceiro
+      id="secao-relatorio"
+      titulo="Relatório mensal"
+      descricao="Os repasses liberados no mês, com a comissão retida e o valor líquido recebido.">
+      <form onSubmit={exportar} className="rounded-xl border border-slate-200 bg-white p-5">
+        <div className="grid gap-x-4 gap-y-5 sm:grid-cols-2">
+          {/* A dica diz sempre qual período entra no arquivo. Antes ela só
+              aparecia no mês em andamento, e as duas colunas ficavam com
+              alturas diferentes conforme o mês escolhido. */}
           <CampoSelecao
             label="Mês de referência"
             name="relatorio-mes"
             value={mes}
             onChange={(evento) => setMes(evento.target.value)}
-            dica={emAndamento
-              ? 'Mês em andamento: entram os repasses liberados até agora.'
-              : undefined}>
+            dica={descreverPeriodo(mes, emAndamento)}>
             {meses.map((chave) => (
               <option key={chave} value={chave}>{rotuloMesTitulo(chave)}</option>
             ))}
           </CampoSelecao>
 
-          {/* UC 032, passo 3 — formato desejado. Dois cartões lado a lado,
-              no lugar de um select, porque são só duas opções e cada uma
-              diz para que serve. */}
-          <fieldset>
-            <legend className="mb-1.5 text-sm font-medium text-slate-700">Formato</legend>
-            <div className="grid grid-cols-2 gap-2">
-              {OPCOES_FORMATO.map(({ valor, rotulo, detalhe, Icone }) => (
+          {/* UC 032, passo 3 — formato desejado.
+              Um controle só, com as duas opções lado a lado, e não dois
+              cartões: cartão dentro do cartão do formulário era justamente
+              o que tirava a clareza da seção. A borda e a altura são as do
+              select ao lado, para os dois controles formarem uma linha. O
+              para que serve cada formato desce para a dica, como no mês. */}
+          <fieldset className="min-w-0">
+            <legend className="mb-1.5 block text-sm font-medium text-slate-700">Formato</legend>
+            <div className="grid grid-cols-2 gap-1 rounded-xl border border-festa-200 bg-white p-1">
+              {OPCOES_FORMATO.map(({ valor, rotulo, Icone }) => (
                 <label key={valor}
-                  className={`flex cursor-pointer items-start gap-2 rounded-lg border px-3 py-2.5 transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-festa-600/40 ${
+                  className={`flex cursor-pointer items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-festa-600/40 ${
                     formato === valor
-                      ? 'border-festa-600 bg-festa-50'
-                      : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'}`}>
+                      ? 'bg-festa-600 text-white'
+                      : 'text-slate-700 hover:bg-festa-50 hover:text-festa-700'}`}>
                   <input type="radio" name="relatorio-formato" value={valor}
                     id={`relatorio-formato-${valor}`}
                     checked={formato === valor}
                     onChange={() => setFormato(valor)}
                     className="sr-only" />
-                  <Icone className={`mt-0.5 h-4 w-4 shrink-0 ${
-                    formato === valor ? 'text-festa-700' : 'text-slate-500'}`} aria-hidden="true" />
-                  <span className="min-w-0">
-                    <span className="block text-sm font-medium text-slate-800">{rotulo}</span>
-                    <span className="block text-xs text-slate-500">{detalhe}</span>
-                  </span>
+                  <Icone className="h-4 w-4 shrink-0" aria-hidden="true" />
+                  {rotulo}
                 </label>
               ))}
             </div>
+            <p className="mt-1 text-xs text-slate-500">{detalheFormato}</p>
           </fieldset>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
           <p className="text-xs text-slate-500">
             Valores ainda em carência entram no relatório do mês em que forem liberados.
           </p>
@@ -133,8 +134,8 @@ export default function RelatorioMensal({ meses, mesInicial }) {
           </button>
         </div>
 
-        {erro && <p role="alert" className="text-sm text-perigo-700">{erro}</p>}
+        {erro && <p role="alert" className="mt-3 text-sm text-perigo-700">{erro}</p>}
       </form>
-    </section>
+    </SecaoFinanceiro>
   );
 }

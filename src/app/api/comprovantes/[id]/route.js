@@ -205,9 +205,15 @@ function montarPdf(dados) {
     const y = doc.y;
     // Marcador roxo à esquerda do título: separa as seções sem gastar uma
     // linha inteira com régua, que era o que fatiava a página antes.
-    doc.rect(margem, y + 1, 3, 10).fill(ROXO);
+    //
+    // O marcador fica centrado na altura das maiúsculas do título (718/1000
+    // do corpo, a partir do y), com 2 pontos de folga em cima e embaixo;
+    // antes ele descia 3 pontos abaixo do texto. O título começa no mesmo
+    // recuo dos rótulos das linhas (margem + 8), e não 2 pontos depois.
+    const caixaAlta = (718 / 1000) * 9;
+    doc.rect(margem, y - 2, 3, caixaAlta + 4).fill(ROXO);
     doc.font('Helvetica-Bold').fontSize(9).fillColor(ROXO)
-      .text(texto.toUpperCase(), margem + 10, y, { width: largura - 10, characterSpacing: 0.6 });
+      .text(texto.toUpperCase(), margem + 8, y, { width: largura - 8, characterSpacing: 0.6 });
     doc.moveDown(0.5);
   }
 

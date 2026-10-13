@@ -3,6 +3,7 @@ import Etiqueta from '@/componentes/etiqueta';
 import { formatarPreco } from '@/lib/solicitacao';
 import Saques from './saques';
 import RelatorioMensal from './relatorio';
+import SecaoFinanceiro from './secao';
 import { formatarData } from '@/lib/datas';
 
 // Componente de servidor: só apresenta. A parte interativa — pedir saque e
@@ -97,67 +98,70 @@ export default function PainelFinanceiro({
           relatório mensal (UC 032), como pode pedir o saque. */}
       <RelatorioMensal meses={mesesRelatorio} mesInicial={mesInicialRelatorio} />
 
-      <h2 className="mb-4 mt-10 text-lg font-medium text-slate-900">Movimentações</h2>
-
-      {movimentacoes.length === 0 ? (
-        <p className="text-sm text-slate-600">
-          Você ainda não tem valores a receber. Eles aparecem aqui quando um serviço é
-          concluído ou quando um cancelamento gera multa a seu favor.
-        </p>
-      ) : (
-        <ul className="space-y-3">
-          {movimentacoes.map((m) => (
-            <li key={`${m.origem}-${m.id_origem}`}
-              className="flex flex-wrap items-start justify-between gap-4 rounded-xl border border-slate-200 bg-white p-4">
-              <div className="min-w-0">
-                <p className="font-medium text-slate-900">{m.servico}</p>
-                <p className="text-sm text-slate-600">
-                  {m.origem === 'conclusao' ? 'Serviço concluído' : 'Multa de cancelamento'}
-                  {' · solicitação #'}{m.id_solicitacao}
-                </p>
-                {/* RF057 / RN027 — a conta de cada repasse, com o
-                    percentual congelado no pagamento daquela contratação. */}
-                {m.origem === 'conclusao' && (
-                  <p className="mt-1 text-xs text-slate-500">
-                    {formatarPreco(m.valor_bruto)} − comissão de{' '}
-                    {m.percentual_comissao.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}%
-                    {' '}({formatarPreco(m.valor_comissao)})
+      <SecaoFinanceiro
+        id="secao-movimentacoes"
+        titulo="Movimentações"
+        descricao="O que você tem a receber por serviço concluído ou multa de cancelamento, e quando cada valor é liberado.">
+        {movimentacoes.length === 0 ? (
+          <p className="text-sm text-slate-600">
+            Você ainda não tem valores a receber. Eles aparecem aqui quando um serviço é
+            concluído ou quando um cancelamento gera multa a seu favor.
+          </p>
+        ) : (
+          <ul className="space-y-3">
+            {movimentacoes.map((m) => (
+              <li key={`${m.origem}-${m.id_origem}`}
+                className="flex flex-wrap items-start justify-between gap-4 rounded-xl border border-slate-200 bg-white p-4">
+                <div className="min-w-0">
+                  <p className="font-medium text-slate-900">{m.servico}</p>
+                  <p className="text-sm text-slate-600">
+                    {m.origem === 'conclusao' ? 'Serviço concluído' : 'Multa de cancelamento'}
+                    {' · solicitação #'}{m.id_solicitacao}
                   </p>
-                )}
-                <p className="mt-1 text-xs text-slate-500">
-                  {m.status_repasse === 'liberado' ? (
-                    <>Liberado em {formatarData(m.data_repasse)}</>
-                  ) : m.origem === 'conclusao' && !m.marco ? (
-                    // Pago, mas o serviço ainda não foi concluído: não há
-                    // data de confirmação de onde contar a carência (RN056).
-                    <>Aguardando a conclusão do serviço</>
-                  ) : m.origem === 'conclusao' ? (
-                    <>Liberação prevista para {formatarData(m.previsao)}</>
-                  ) : (
-                    <>Liberado junto com a conclusão do cancelamento</>
+                  {/* RF057 / RN027 — a conta de cada repasse, com o
+                      percentual congelado no pagamento daquela contratação. */}
+                  {m.origem === 'conclusao' && (
+                    <p className="mt-1 text-xs text-slate-500">
+                      {formatarPreco(m.valor_bruto)} − comissão de{' '}
+                      {m.percentual_comissao.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}%
+                      {' '}({formatarPreco(m.valor_comissao)})
+                    </p>
                   )}
-                </p>
-              </div>
-
-              <div className="shrink-0 text-right">
-                <p className="font-semibold text-slate-900">{formatarPreco(m.valor)}</p>
-                <div className="mt-1.5">
-                  {m.status_repasse === 'liberado' ? (
-                    <Etiqueta tom="sucesso">
-                      <CheckCircle2 className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
-                      Liberado
-                    </Etiqueta>
-                  ) : (
-                    <Etiqueta tom="atencao">
-                      {m.origem === 'conclusao' && !m.marco ? 'A realizar' : 'Em carência'}
-                    </Etiqueta>
-                  )}
+                  <p className="mt-1 text-xs text-slate-500">
+                    {m.status_repasse === 'liberado' ? (
+                      <>Liberado em {formatarData(m.data_repasse)}</>
+                    ) : m.origem === 'conclusao' && !m.marco ? (
+                      // Pago, mas o serviço ainda não foi concluído: não há
+                      // data de confirmação de onde contar a carência (RN056).
+                      <>Aguardando a conclusão do serviço</>
+                    ) : m.origem === 'conclusao' ? (
+                      <>Liberação prevista para {formatarData(m.previsao)}</>
+                    ) : (
+                      <>Liberado junto com a conclusão do cancelamento</>
+                    )}
+                  </p>
                 </div>
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
+
+                <div className="shrink-0 text-right">
+                  <p className="font-semibold text-slate-900">{formatarPreco(m.valor)}</p>
+                  <div className="mt-1.5">
+                    {m.status_repasse === 'liberado' ? (
+                      <Etiqueta tom="sucesso">
+                        <CheckCircle2 className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
+                        Liberado
+                      </Etiqueta>
+                    ) : (
+                      <Etiqueta tom="atencao">
+                        {m.origem === 'conclusao' && !m.marco ? 'A realizar' : 'Em carência'}
+                      </Etiqueta>
+                    )}
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </SecaoFinanceiro>
     </main>
   );
 }

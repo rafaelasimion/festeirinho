@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { ArrowUpRight } from 'lucide-react';
 import Campo from '@/componentes/campo';
 import Etiqueta from '@/componentes/etiqueta';
+import SecaoFinanceiro from './secao';
 import FormularioRecebimento from '@/componentes/formulario-recebimento';
 import { formatarPreco } from '@/lib/solicitacao';
 import {
@@ -87,18 +88,18 @@ export default function Saques({ saldoDisponivel, valorMinimoSaque, titular, saq
   }
 
   return (
-    <section className="mt-8">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-lg font-medium text-slate-900">Saques</h2>
-        {etapa === null && (
-          <button type="button" disabled={!podeSacar}
-            onClick={() => { setEtapa('valor'); setErroServidor(''); setMensagem(''); }}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-festa-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-festa-700 disabled:cursor-not-allowed disabled:opacity-50">
-            <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
-            Solicitar saque
-          </button>
-        )}
-      </div>
+    <SecaoFinanceiro
+      id="secao-saques"
+      titulo="Saques"
+      descricao="Transferências do saldo disponível para a sua chave Pix ou conta bancária."
+      acao={etapa === null && (
+        <button type="button" disabled={!podeSacar}
+          onClick={() => { setEtapa('valor'); setErroServidor(''); setMensagem(''); }}
+          className="inline-flex items-center gap-1.5 rounded-lg bg-festa-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-festa-700 disabled:cursor-not-allowed disabled:opacity-50">
+          <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
+          Solicitar saque
+        </button>
+      )}>
 
       {mensagem && <p className="mb-4 text-sm text-sucesso-700">{mensagem}</p>}
 
@@ -223,6 +224,6 @@ export default function Saques({ saldoDisponivel, valorMinimoSaque, titular, saq
           })}
         </ul>
       )}
-    </section>
+    </SecaoFinanceiro>
   );
 }
