@@ -8,6 +8,20 @@ import { ImagePlus, Star, Trash2, Loader2 } from 'lucide-react';
 // O componente carrega a própria lista e conversa direto com a rota de
 // fotos, então a tela de serviços só precisa renderizá-lo.
 
+// A busca não mexe em estado: devolve as fotos ou a mensagem de erro, e
+// quem chama decide o que fazer com elas. É o que permite usá-la no efeito
+// de montagem sem mudar o estado no corpo dele (react-hooks/set-state-in-effect),
+// do mesmo jeito que em fotos-contestacao.jsx.
+async function buscarFotos(endereco) {
+  try {
+    const resposta = await fetch(endereco);
+    if (!resposta.ok) return { erro: 'Não foi possível carregar as fotos.' };
+    return { fotos: await resposta.json() };
+  } catch {
+    return { erro: 'Falha de conexão ao carregar as fotos.' };
+  }
+}
+
 export default function GerenciarFotos({ idServico, aoAlterar }) {
   const entrada = useRef(null);
   const [fotos, setFotos] = useState(null);
@@ -17,23 +31,24 @@ export default function GerenciarFotos({ idServico, aoAlterar }) {
 
   const endereco = `/api/fornecedor/servicos/${idServico}/fotos`;
 
+  // Recarga depois de enviar, remover ou trocar a principal.
   async function carregar() {
-    try {
-      const resposta = await fetch(endereco);
-      if (!resposta.ok) {
-        setErro('Não foi possível carregar as fotos.');
-        return;
-      }
-      setFotos(await resposta.json());
-    } catch {
-      setErro('Falha de conexão ao carregar as fotos.');
-    }
+    const resultado = await buscarFotos(endereco);
+    if (resultado.erro) setErro(resultado.erro);
+    else setFotos(resultado.fotos);
   }
 
+  // Primeira carga, e de novo se o serviço mudar. Resposta que chega depois
+  // de trocar de serviço ou de sair da tela é descartada.
   useEffect(() => {
-    carregar();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [idServico]);
+    let atual = true;
+    buscarFotos(endereco).then((resultado) => {
+      if (!atual) return;
+      if (resultado.erro) setErro(resultado.erro);
+      else setFotos(resultado.fotos);
+    });
+    return () => { atual = false; };
+  }, [endereco]);
 
   async function executar(requisicao) {
     setErro('');

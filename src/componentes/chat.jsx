@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Send, Loader2, MessageCircle, X } from 'lucide-react';
 import {
   apenasDia, diaDeHoje, formatarDataPorExtenso, formatarHora,
@@ -30,6 +30,21 @@ function rotuloDoDia(valor) {
   return formatarDataPorExtenso(valor);
 }
 
+// A busca não mexe em estado: devolve a conversa ou a mensagem de erro, e
+// quem chama decide o que fazer com elas. É o que permite usá-la no efeito
+// da consulta periódica sem mudar o estado no corpo dele
+// (react-hooks/set-state-in-effect), do mesmo jeito que em
+// fotos-contestacao.jsx.
+async function buscarConversa(endereco) {
+  try {
+    const resposta = await fetch(endereco);
+    if (!resposta.ok) return { erro: 'Não foi possível carregar a conversa.' };
+    return { dados: await resposta.json() };
+  } catch {
+    return { erro: 'Falha de conexão ao carregar a conversa.' };
+  }
+}
+
 export default function Chat({ idSolicitacao, titulo, aoFechar, aoAlterar }) {
   const [dados, setDados] = useState(null);
   const [texto, setTexto] = useState('');
@@ -40,26 +55,32 @@ export default function Chat({ idSolicitacao, titulo, aoFechar, aoAlterar }) {
 
   const endereco = `/api/solicitacoes/${idSolicitacao}/mensagens`;
 
-  const carregar = useCallback(async () => {
-    try {
-      const resposta = await fetch(endereco);
-      if (!resposta.ok) {
-        setErro('Não foi possível carregar a conversa.');
-        return;
-      }
-      setDados(await resposta.json());
-    } catch {
-      setErro('Falha de conexão ao carregar a conversa.');
-    }
-  }, [endereco]);
+  // Recarga logo depois de enviar, sem esperar a próxima consulta.
+  async function carregar() {
+    const resultado = await buscarConversa(endereco);
+    if (resultado.erro) setErro(resultado.erro);
+    else setDados(resultado.dados);
+  }
 
   useEffect(() => {
-    carregar();
-    const relogio = setInterval(carregar, INTERVALO_MS);
+    // Resposta que chega depois de a conversa sair da tela é descartada.
+    let atual = true;
+    function consultar() {
+      buscarConversa(endereco).then((resultado) => {
+        if (!atual) return;
+        if (resultado.erro) setErro(resultado.erro);
+        else setDados(resultado.dados);
+      });
+    }
+    consultar();
+    const relogio = setInterval(consultar, INTERVALO_MS);
     // Sem esta limpeza, a consulta continuaria rodando depois de a conversa
     // sair da tela — e uma nova começaria a cada vez que ela reabrisse.
-    return () => clearInterval(relogio);
-  }, [carregar]);
+    return () => {
+      atual = false;
+      clearInterval(relogio);
+    };
+  }, [endereco]);
 
   // Rola até o fim quando chega mensagem nova, não a cada consulta: rolar
   // sempre atrapalharia quem estivesse lendo o histórico.

@@ -22,10 +22,10 @@ export default function GaleriaFotos({ fotos, nomeServico }) {
   return (
     <div className="space-y-3">
       <div className="overflow-hidden rounded-2xl bg-festa-100">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
         {/* 4:3 como nos cards: as fotos de festa são quase todas retrato
             ou quadradas, e o 16/9 cortava a decoração em cima e embaixo
             justamente onde ela está. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={fotos[emDestaque].imagem_url} alt={nomeServico}
           className="aspect-[4/3] w-full object-cover" />
       </div>

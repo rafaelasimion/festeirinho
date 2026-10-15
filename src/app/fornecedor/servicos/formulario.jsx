@@ -44,57 +44,71 @@ export default function FormularioServico() {
       setErroGeral('Não foi possível carregar seus serviços.');
       return;
     }
-    setServicos(await resposta.json());
+    const lista = await resposta.json();
+    setServicos(lista);
+    return lista;
   }
 
-  useEffect(() => {
-    async function carregarTudo() {
-      try {
-        const respostaOpcoes = await fetch('/api/opcoes');
-        if (respostaOpcoes.ok) {
-          setOpcoes(await respostaOpcoes.json());
-        } else {
-          setErroGeral('Não foi possível carregar categorias e formas de cobrança.');
-        }
-        await carregarServicos();
-      } catch {
-        setErroGeral('Falha de conexão.');
-      }
-    }
-    carregarTudo();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // `antecedencia` vem por parâmetro, e não do estado `opcoes`, porque esta
+  // função roda no retorno da primeira carga, quando o setOpcoes da mesma
+  // carga ainda não chegou ao estado.
+  function abrirNovo(antecedencia) {
+    setCampos({
+      ...CAMPOS_VAZIOS,
+      diasAntecedencia: String(antecedencia ?? ''),
+    });
+    setErros({});
+    setMensagem('');
+    setEditando('novo');
+  }
 
-  // Abre o formulário assim que os dados chegam. Depende de `servicos`
-  // porque editar precisa do serviço carregado para preencher os campos.
+  function abrirEdicao(servico) {
+    setCampos({
+      nome: servico.nome,
+      descricao: servico.descricao,
+      idCategoria: String(servico.id_categoria),
+      idCobranca: String(servico.id_cobranca),
+      precoBase: String(servico.preco_base),
+      capacidadeMax: servico.capacidade_max === null ? '' : String(servico.capacidade_max),
+      diasAntecedencia: String(servico.dias_antecedencia),
+    });
+    setErros({});
+    setMensagem('');
+    setEditando(servico.id);
+  }
+
+  // Abre o formulário assim que os dados chegam: editar precisa do serviço
+  // carregado para preencher os campos.
+  //
+  // Roda no retorno da primeira carga, e não num efeito que observa
+  // `servicos`. Era um efeito, e a regra react-hooks/set-state-in-effect o
+  // recusava: abrir o formulário é mudar o estado, e mudar o estado no corpo
+  // de um efeito provoca uma renderização em cascata. No retorno do fetch é
+  // onde a regra manda fazer isso.
   //
   // O `?editar=5` da URL é uma intenção que se cumpre UMA vez, e é isso que o
-  // useRef marca. Sem ele, o efeito voltava a disparar depois de salvar: o
-  // salvar() fecha o formulário com setEditando(null) e recarrega a lista,
-  // `servicos` ganha identidade nova, a guarda `editando !== null` já não
-  // vale, e o efeito reabria o formulário chamando abrirEdicao — que limpa a
-  // mensagem. Resultado medido no navegador: a confirmação não aparecia em
-  // nenhum instante, e com ela se perdia o aviso da RN067 de que o serviço
-  // saiu da vitrine até a nova aprovação, que é justamente o que o
-  // fornecedor precisa saber ali.
+  // useRef marca. Quando isto era um efeito sobre `servicos`, ele voltava a
+  // disparar depois de salvar: o salvar() recarrega a lista, o efeito
+  // reabria o formulário chamando abrirEdicao — que limpa a mensagem —, e a
+  // confirmação não aparecia em nenhum instante, levando junto o aviso da
+  // RN067 de que o serviço saiu da vitrine até a nova aprovação. Agora o
+  // salvar() não passa por aqui, mas a marca continua: no modo de
+  // desenvolvimento o React executa o efeito de montagem duas vezes, e a
+  // intenção seria atendida em dobro.
   const intencaoDaUrlAtendida = useRef(false);
 
-  useEffect(() => {
-    if (servicos === null || opcoes === null || editando !== null) return;
-
-    // Marcada só aqui, depois dos nulos: antes disso os dados ainda não
-    // chegaram, e consumir a intenção cedo deixaria o formulário sem abrir.
+  function atenderIntencaoDaUrl(lista, opcoesCarregadas) {
     if (intencaoDaUrlAtendida.current) return;
     intencaoDaUrlAtendida.current = true;
 
     if (parametros.get('novo') !== null) {
-      abrirNovo();
+      abrirNovo(opcoesCarregadas.antecedenciaMinimaDias);
       return;
     }
 
     const idEditar = Number(parametros.get('editar'));
     if (Number.isInteger(idEditar)) {
-      const servico = servicos.find((s) => s.id === idEditar);
+      const servico = lista.find((s) => s.id === idEditar);
       if (servico) {
         abrirEdicao(servico);
         return;
@@ -103,8 +117,30 @@ export default function FormularioServico() {
 
     // Nem cadastro nem edição: não há tela aqui.
     router.replace('/fornecedor/vitrine');
+  }
+
+  useEffect(() => {
+    async function carregarTudo() {
+      try {
+        const respostaOpcoes = await fetch('/api/opcoes');
+        let opcoesCarregadas = null;
+        if (respostaOpcoes.ok) {
+          opcoesCarregadas = await respostaOpcoes.json();
+          setOpcoes(opcoesCarregadas);
+        } else {
+          setErroGeral('Não foi possível carregar categorias e formas de cobrança.');
+        }
+        const lista = await carregarServicos();
+        // Sem as opções ou sem a lista, o formulário não abre, como antes:
+        // a mensagem de erro já está na tela.
+        if (lista && opcoesCarregadas) atenderIntencaoDaUrl(lista, opcoesCarregadas);
+      } catch {
+        setErroGeral('Falha de conexão.');
+      }
+    }
+    carregarTudo();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [servicos, opcoes]);
+  }, []);
 
   const antecedenciaMinima = opcoes?.antecedenciaMinimaDias ?? 1;
 
@@ -153,31 +189,6 @@ export default function FormularioServico() {
     setCampos((anterior) => ({ ...anterior, [name]: value }));
     setErros((anterior) => ({ ...anterior, [name]: undefined }));
     setMensagem('');
-  }
-
-  function abrirNovo() {
-    setCampos({
-      ...CAMPOS_VAZIOS,
-      diasAntecedencia: String(opcoes?.antecedenciaMinimaDias ?? ''),
-    });
-    setErros({});
-    setMensagem('');
-    setEditando('novo');
-  }
-
-  function abrirEdicao(servico) {
-    setCampos({
-      nome: servico.nome,
-      descricao: servico.descricao,
-      idCategoria: String(servico.id_categoria),
-      idCobranca: String(servico.id_cobranca),
-      precoBase: String(servico.preco_base),
-      capacidadeMax: servico.capacidade_max === null ? '' : String(servico.capacidade_max),
-      diasAntecedencia: String(servico.dias_antecedencia),
-    });
-    setErros({});
-    setMensagem('');
-    setEditando(servico.id);
   }
 
   async function salvar() {

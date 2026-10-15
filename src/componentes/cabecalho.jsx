@@ -46,6 +46,7 @@ export default async function Cabecalho() {
             Largura e altura declaradas evitam que o menu "pule" quando a
             imagem termina de carregar. */}
         <Link href="/" className="shrink-0">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/logo-festeirinho.webp" alt="Festeirinho"
             width={640} height={184}
             className="h-7 w-auto sm:h-8" />
