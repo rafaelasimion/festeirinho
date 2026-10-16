@@ -197,13 +197,16 @@ export async function excluirConta(idUsuario, tipoUsuario) {
     );
     fotoAnterior = usuarios[0]?.foto_perfil ?? null;
 
-    // Identificadores diretos do usuário. A senha permanece: ela não
-    // identifica ninguém, é NOT NULL, e o acesso já fica bloqueado pelo
-    // status "excluído" (UC 003, 6b).
+    // Identificadores diretos do usuário e o hash da senha. O hash não
+    // identifica ninguém sozinho, mas é uma credencial: guardado, permitiria
+    // testar senhas fora do sistema e descobrir a que a pessoa usa em outros
+    // serviços. Sem e-mail e sem nome de usuário a conta já não seria
+    // encontrada no login; sem hash, não há o que conferir (RN044-A).
     await conexao.execute(
       `UPDATE usuario
           SET nome = NULL, nome_usuario = NULL, email = NULL, telefone = NULL,
-              foto_perfil = NULL, latitude = NULL, longitude = NULL
+              foto_perfil = NULL, latitude = NULL, longitude = NULL,
+              senha_hash = NULL
         WHERE id = ?`,
       [idUsuario]
     );

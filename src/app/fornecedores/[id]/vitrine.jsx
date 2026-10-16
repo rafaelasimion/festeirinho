@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   MapPin, Target, Star, SquarePen, Plus,
-  Phone, AtSign, Globe, BadgeCheck,
+  Phone, AtSign, Globe, BadgeCheck, ShieldCheck,
 } from 'lucide-react';
 import Etiqueta from '@/componentes/etiqueta';
 import MolduraFoto from '@/componentes/moldura-foto';
@@ -29,9 +29,17 @@ function Estrelas({ nota, tamanho = 'h-4 w-4' }) {
   );
 }
 
+// Situação da conta, na frase do aviso da administração.
+const SITUACAO_FORA_DO_AR = {
+  pausado: 'pausada pelo fornecedor',
+  suspenso: 'suspensa',
+  inativo: 'inativa por falta de acesso',
+  excluido: 'excluída',
+};
+
 export default function Vitrine({
   fornecedor, categorias, servicos: servicosIniciais, avaliacoes, comentarios,
-  ehDono, ehCliente, favorito,
+  ehDono, ehCliente, favorito, visaoAdmin = false,
 }) {
   const router = useRouter();
   const [aba, setAba] = useState('servicos');
@@ -99,6 +107,20 @@ export default function Vitrine({
 
   return (
     <main className="mx-auto w-full max-w-3xl px-4 py-8 sm:px-6">
+      {/* UC 026 / UC 035 — aberta pela administração. Com a conta fora do
+          ar, o aviso diz que os clientes não a veem agora. */}
+      {visaoAdmin && (
+        <p className="mb-4 flex items-start gap-2.5 rounded-xl bg-slate-100 px-4 py-3 text-sm text-slate-700">
+          <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" aria-hidden="true" />
+          <span>
+            <strong className="font-semibold text-slate-900">Visão da administração.</strong>{' '}
+            {fornecedor.statusFornecedor === 'ativo'
+              ? 'A vitrine aparece como os clientes a veem.'
+              : `A conta está ${SITUACAO_FORA_DO_AR[fornecedor.statusFornecedor] ?? fornecedor.statusFornecedor}, e a vitrine está fora do ar para os clientes. Aqui aparece o que eles viam.`}
+          </span>
+        </p>
+      )}
+
       {/* ---------- cabeçalho do fornecedor ---------- */}
       <section className="rounded-2xl border border-slate-200 bg-white p-5">
         <div className="flex items-start gap-4">

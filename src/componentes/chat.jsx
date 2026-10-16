@@ -128,7 +128,7 @@ export default function Chat({ idSolicitacao, titulo, aoFechar, aoAlterar }) {
   }
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-slate-300 bg-white">
+    <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
       <header className="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
         <div className="flex min-w-0 items-center gap-2.5">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-festa-100">
@@ -206,7 +206,7 @@ export default function Chat({ idSolicitacao, titulo, aoFechar, aoAlterar }) {
                     <div className={`max-w-[75%] px-3.5 py-2 shadow-sm ${
                       minha
                         ? 'rounded-2xl rounded-br-md bg-festa-600 text-white'
-                        : 'rounded-2xl rounded-bl-md border border-slate-200 bg-white text-slate-800'}`}>
+                        : 'rounded-2xl rounded-bl-md bg-white text-slate-800'}`}>
                       <p className="whitespace-pre-line text-sm">{mensagem.conteudo}</p>
                       <p className={`mt-1 text-right text-[11px] ${
                         minha ? 'text-white/70' : 'text-slate-400'}`}>
@@ -223,7 +223,7 @@ export default function Chat({ idSolicitacao, titulo, aoFechar, aoAlterar }) {
       </div>
 
       <div className="border-t border-slate-200 p-3">
-        {erro && <p className="mb-2 text-sm text-red-600">{erro}</p>}
+        {erro && <p className="mb-2 text-sm text-perigo-600">{erro}</p>}
 
         {dados?.aberto === false ? (
           <p className="text-center text-sm text-slate-600">

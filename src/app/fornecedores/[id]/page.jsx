@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import { pool } from '@/lib/db';
 import { lerSessao } from '@/lib/sessao';
+import { administradorAtivo } from '@/lib/sessao-admin';
 import Vitrine from './vitrine';
 import { paraSerializar } from '@/lib/datas';
 import { nomeAbreviado } from '@/lib/avaliacao';
@@ -41,6 +42,14 @@ export default async function PaginaVitrine({ params }) {
   if (donos.length === 0) notFound();
   const ehDono = Boolean(sessao) && donos[0].id_usuario === sessao.id;
 
+  // A administração abre a vitrine a partir das abas Denúncias e Contas,
+  // para analisar uma denúncia ou um pedido de revisão (UC 026, UC 035).
+  // Quem pede revisão está suspenso, e a vitrine do suspenso não existe
+  // para o público; para a administração ela abre, mostrando o que os
+  // clientes viam. A sessão administrativa é outra (RF071), e conferida no
+  // banco: administrador desativado não passa.
+  const visaoAdmin = !ehDono && Boolean(await administradorAtivo());
+
   // RN068 — a distância só existe quando os dois lados têm coordenadas.
   // Sem elas, a vitrine mostra apenas a cidade, como a busca faz.
   const selecaoDistancia = ehCliente
@@ -56,7 +65,8 @@ export default async function PaginaVitrine({ params }) {
   const valores = ehCliente ? [sessao.id, idFornecedor] : [idFornecedor];
 
   // RN020 — para o cliente, fornecedor indisponível não tem vitrine. O
-  // dono continua enxergando a própria, para poder arrumar o que falta.
+  // dono continua enxergando a própria, para poder arrumar o que falta, e
+  // a administração também, para analisar.
   const [fornecedores] = await pool.execute(
     `SELECT f.id, f.nome_exibicao, f.descricao, f.status_verificacao,
             f.status_fornecedor, f.raio_atendimento_km,
@@ -73,7 +83,7 @@ export default async function PaginaVitrine({ params }) {
 
   const fornecedor = fornecedores[0];
   if (!fornecedor) notFound();
-  if (!ehDono && fornecedor.status_fornecedor !== 'ativo') notFound();
+  if (!ehDono && !visaoAdmin && fornecedor.status_fornecedor !== 'ativo') notFound();
 
   // RF014 — as categorias do fornecedor não são cadastradas: saem dos
   // serviços que ele mantém ativos e aprovados. Um fornecedor que parou de
@@ -211,6 +221,7 @@ export default async function PaginaVitrine({ params }) {
       }))}
       ehDono={ehDono}
       ehCliente={ehCliente}
+      visaoAdmin={visaoAdmin}
       favorito={favorito}
     />
   );

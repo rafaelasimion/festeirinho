@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { pool } from '@/lib/db';
+import { conferirSenha } from '@/lib/senha';
 import { lerSessao } from '@/lib/sessao';
 import { obterClienteLogado, obterFornecedorLogado } from '@/lib/autorizacao';
 import {
@@ -143,7 +144,7 @@ export async function PATCH(request) {
     // A senha atual é exigida mesmo havendo sessão válida. Isso não está
     // no RF004: é salvaguarda de implementação. Um computador deixado
     // aberto permitiria a um terceiro trocar a senha e tomar a conta.
-    const confere = await bcrypt.compare(senhaAtual, linhas[0].senha_hash);
+    const confere = await conferirSenha(senhaAtual, linhas[0].senha_hash);
     if (!confere) {
       return NextResponse.json(
         { erros: { senhaAtual: 'Senha atual incorreta.' } },

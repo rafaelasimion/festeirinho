@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import bcrypt from 'bcryptjs';
 import { pool } from '@/lib/db';
+import { conferirSenha } from '@/lib/senha';
 import { lerSessao, encerrarSessao } from '@/lib/sessao';
 import { impedimentosParaExcluir, excluirConta } from '@/lib/exclusao-servidor';
 
@@ -32,7 +32,7 @@ export async function POST(request) {
     return NextResponse.json({ erro: 'Conta não encontrada.' }, { status: 404 });
   }
 
-  const confere = await bcrypt.compare(senha, usuarios[0].senha_hash);
+  const confere = await conferirSenha(senha, usuarios[0].senha_hash);
   if (!confere) {
     return NextResponse.json(
       { erros: { senha: 'Senha incorreta.' } },

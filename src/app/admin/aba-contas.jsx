@@ -11,6 +11,7 @@ import { BotaoAcao } from '@/componentes/acoes-solicitacao';
 import { CampoTexto } from '@/componentes/campo';
 import { formatarDataHora } from '@/lib/datas';
 import AvisoPainel from '@/componentes/aviso-painel';
+import LinkVitrine from '@/componentes/link-vitrine';
 
 // UC 027 / UC 035 — contas da plataforma: suspensão, reativação e análise
 // das solicitações de revisão.
@@ -318,6 +319,14 @@ function ItemConta({ conta, processando, aoExecutar }) {
             </span>
           )}
         </Bloco>
+      )}
+
+      {/* UC 035 — para analisar a revisão (ou decidir uma suspensão), a
+          vitrine mostra o perfil, os serviços e as avaliações do
+          fornecedor. Abre mesmo com a conta suspensa: é exatamente o caso
+          de quem pede revisão. A conta excluída não tem mais vitrine. */}
+      {ehFornecedor && !excluida && (
+        <LinkVitrine idFornecedor={conta.id} nome={conta.nome_exibicao} />
       )}
     </CartaoAdmin>
   );

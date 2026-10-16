@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  Flag, Star, EyeOff, Check, X, Gavel, Ban, ExternalLink,
+  Flag, Star, EyeOff, Check, X, Gavel, Ban,
 } from 'lucide-react';
 import Etiqueta from '@/componentes/etiqueta';
 import CartaoAdmin, {
@@ -18,15 +18,9 @@ import {
 } from '@/lib/denuncia';
 import { formatarDataHora } from '@/lib/datas';
 import AvisoPainel from '@/componentes/aviso-painel';
+import LinkVitrine from '@/componentes/link-vitrine';
 
 // RF068 / UC 026 — análise das denúncias.
-
-const ROTULO_STATUS_FORNECEDOR = {
-  pausado: 'pausado',
-  suspenso: 'suspenso',
-  inativo: 'inativo',
-  excluido: 'com a conta excluída',
-};
 
 export default function AbaDenuncias({ denuncias }) {
   const router = useRouter();
@@ -284,21 +278,16 @@ function ItemDenuncia({ denuncia, processando, aoAnalisar }) {
       </Bloco>
 
       {/* A vitrine do denunciado, para analisar perfil, serviços e
-          avaliações antes de decidir. Abre em outra aba para não perder a
-          decisão em andamento. A vitrine só existe para o público com o
-          fornecedor ativo (RN020); fora disso, o cartão diz por quê. */}
+          avaliações antes de decidir. Para a administração ela abre em
+          qualquer status; só a conta excluída não tem mais vitrine, porque
+          os dados foram anonimizados (RN044-A). */}
       {!ehDeAvaliacao && (
-        denuncia.status_fornecedor === 'ativo' ? (
-          <a href={`/fornecedores/${denuncia.id_fornecedor}`} target="_blank" rel="noreferrer"
-            className="inline-flex items-center gap-1.5 text-sm font-medium text-festa-700 hover:underline">
-            <ExternalLink className="h-4 w-4" aria-hidden="true" />
-            Ver a vitrine de {denuncia.fornecedor}
-          </a>
-        ) : (
+        denuncia.status_fornecedor === 'excluido' ? (
           <p className="text-sm text-slate-500">
-            Vitrine indisponível: o fornecedor está{' '}
-            {ROTULO_STATUS_FORNECEDOR[denuncia.status_fornecedor] ?? denuncia.status_fornecedor}.
+            Vitrine indisponível: a conta do fornecedor foi excluída.
           </p>
+        ) : (
+          <LinkVitrine idFornecedor={denuncia.id_fornecedor} nome={denuncia.fornecedor} />
         )
       )}
 

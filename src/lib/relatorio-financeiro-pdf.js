@@ -1,6 +1,8 @@
-import path from 'node:path';
 import PDFDocument from 'pdfkit';
 import { formatarData, formatarDataHora } from '@/lib/datas';
+import {
+  COR, MARGEM, caixaAlta, naBase, fio, cabecalhoDocumento, avisoComFio,
+} from '@/lib/pdf-marca';
 import {
   ROTULO_ORIGEM_CURTO,
   formatarDinheiro,
@@ -11,16 +13,16 @@ import {
 // o importa.
 //
 // RF056 / UC 032 — o relatório em PDF, no mesmo desenho do comprovante de
-// contratação (RF058): faixa roxa com a marca, os valores que respondem à
-// pergunta do documento em destaque e a tabela em listras.
+// contratação (RF058): o logo no alto, os valores que respondem à pergunta
+// do documento em destaque e a tabela separada por fios. É um documento
+// para imprimir e mandar ao contador, então nada é pintado: cor só em
+// texto e em fios finos (lib/pdf-marca.js).
 //
 // A página segue duas regras, e é delas que vem o alinhamento:
 //
-// 1. Duas linhas verticais. Bordas de caixa, listras, fios e a barrinha
-//    dos títulos começam na MARGEM. Todo texto que mora dentro de uma
-//    delas começa na MARGEM + RECUO — o título da seção, a primeira coluna
-//    da tabela, o "Total do mês", as notas e o texto das caixas. Antes cada
-//    peça tinha o seu recuo (5, 10, 14, 18), e o olho via a escada.
+// 1. Uma linha vertical só. Sem caixas nem listras, não há borda para o
+//    texto se afastar: fios, títulos, a primeira coluna da tabela, o
+//    "Total do mês" e as notas começam todos na MARGEM.
 //
 // 2. Texto apoiado na linha de base, e não pelo alto da linha. O pdfkit
 //    posiciona pelo alto, e um corpo menor ao lado de um maior sobe: era o
@@ -33,35 +35,16 @@ import {
 // ia numa segunda linha embaixo do valor e fazia toda linha da tabela ter
 // altura dupla, ganhou coluna própria (TAXA).
 
-const ROXO = '#534AB7';
-const ROXO_CLARO = '#D4D2ED';
-const FUNDO_DESTAQUE = '#F6F6FB';
-const CINZA = '#64748B';
-const ESCURO = '#0F172A';
-const LISTRA = '#F8FAFC';
-const FIO = '#E2E8F0';
-const ATENCAO_FUNDO = '#FCF3F1';
-const ATENCAO_BORDA = '#F3CEC1';
-const ATENCAO_TEXTO = '#8A3A1F';
+const { roxo: ROXO, cinza: CINZA, escuro: ESCURO } = COR;
 
-const MARGEM = 48;
-const RECUO = 12;
-const ALTURA_FAIXA = 124;
 // Abaixo disto fica o rodapé; nenhuma linha da tabela passa daqui.
 const RESERVA_RODAPE = 64;
 
 const CORPO_TABELA = 8.5;
 const ALTURA_LINHA = 20;
 
-// Altura das maiúsculas da Helvetica (718/1000 do corpo), regular e negrito.
-// É o que centraliza a barrinha do título e o texto de uma linha.
-const caixaAlta = (corpo) => (718 / 1000) * corpo;
+// Altura do "x" da Helvetica: centra o ponto das notas na letra minúscula.
 const alturaX = (corpo) => (523 / 1000) * corpo;
-
-// Texto apoiado na linha de base `base`.
-function naBase(doc, texto, x, base, opcoes = {}) {
-  doc.text(String(texto), x, base, { lineBreak: false, ...opcoes, baseline: 'alphabetic' });
-}
 
 export function montarPdfRelatorio(relatorio) {
   const { periodo, fornecedor, total, servicos, multas, repasses } = relatorio;
@@ -85,37 +68,23 @@ export function montarPdfRelatorio(relatorio) {
 
   const largura = doc.page.width - MARGEM * 2;
   const fim = MARGEM + largura;
-  const texto = MARGEM + RECUO;
   const limite = () => doc.page.height - RESERVA_RODAPE;
   let y;
 
-  // ---------------- faixa do cabeçalho ----------------
-  doc.rect(0, 0, doc.page.width, ALTURA_FAIXA).fill(ROXO);
-  try {
-    // PNG porque o pdfkit não lê webp. Sem o arquivo, o relatório sai
-    // assim mesmo, com o nome escrito no lugar do logo.
-    doc.image(
-      path.join(process.cwd(), 'public', 'logo-festeirinho-completo.png'),
-      MARGEM, 20, { width: 124 }
-    );
-  } catch {
-    doc.font('Helvetica-Bold').fontSize(22).fillColor('#FFFFFF');
-    naBase(doc, 'Festeirinho', MARGEM, 68);
-  }
-
-  doc.font('Helvetica-Bold').fontSize(13).fillColor('#FFFFFF');
-  naBase(doc, 'Relatório financeiro mensal', MARGEM, 56, { width: largura, align: 'right' });
-  doc.font('Helvetica').fontSize(9).fillColor(ROXO_CLARO);
-  naBase(doc, `Referência: ${periodo.titulo}`, MARGEM, 73, { width: largura, align: 'right' });
-  naBase(doc, `Emitido em ${formatarDataHora(relatorio.emitidoEm)}`, MARGEM, 86,
-    { width: largura, align: 'right' });
+  // ---------------- cabeçalho ----------------
+  y = cabecalhoDocumento(doc, {
+    titulo: 'Relatório financeiro mensal',
+    linhas: [
+      `Referência: ${periodo.titulo}`,
+      `Emitido em ${formatarDataHora(relatorio.emitidoEm)}`,
+    ],
+  });
 
   // ---------------- quem é o fornecedor ----------------
   //
   // O relatório costuma ir para o contador. O nome de exibição sozinho não
   // identifica ninguém fora da plataforma; o titular e o documento, sim.
-  // Texto solto, sem caixa, por isso na MARGEM.
-  y = ALTURA_FAIXA + 22;
+  y += 26;
   const metade = largura / 2;
   doc.font('Helvetica').fontSize(7.5).fillColor(CINZA);
   naBase(doc, 'FORNECEDOR', MARGEM, y, { characterSpacing: 0.8 });
@@ -142,17 +111,12 @@ export function montarPdfRelatorio(relatorio) {
 
   // ---------------- mês em andamento ----------------
   if (relatorio.parcial) {
-    const altura = 26;
-    doc.roundedRect(MARGEM, y, largura, altura, 6).fillAndStroke(ATENCAO_FUNDO, ATENCAO_BORDA);
-    const base = y + altura / 2 + caixaAlta(9) / 2;
-    const destaque = 'Mês em andamento.';
-    doc.font('Helvetica-Bold').fontSize(9).fillColor(ATENCAO_TEXTO);
-    naBase(doc, destaque, texto, base);
-    const larguraDestaque = doc.widthOfString(destaque);
-    doc.font('Helvetica').fontSize(9);
-    naBase(doc, ' O relatório reúne os repasses liberados até a data de emissão.',
-      texto + larguraDestaque, base);
-    y += altura + 12;
+    y += avisoComFio(doc, {
+      x: MARGEM, y, largura,
+      destaque: 'Mês em andamento',
+      texto: 'O relatório reúne os repasses liberados até a data de emissão.',
+    });
+    y += 16;
   }
 
   // ---------------- destaque dos valores ----------------
@@ -160,9 +124,11 @@ export function montarPdfRelatorio(relatorio) {
   // As três respostas que o documento existe para dar (RN058): quanto foi
   // repassado, quanto ficou de comissão e quanto o fornecedor recebeu.
   // Rótulos, valores e detalhes em três linhas de base comuns às três
-  // colunas; o líquido é maior e roxo, mas apoiado na mesma linha.
+  // colunas; o líquido é maior e roxo, mas apoiado na mesma linha. Dois
+  // fios marcam a faixa, no lugar da caixa pintada.
   const alturaDestaque = 80;
-  doc.roundedRect(MARGEM, y, largura, alturaDestaque, 8).fillAndStroke(FUNDO_DESTAQUE, ROXO_CLARO);
+  fio(doc, y);
+  fio(doc, y + alturaDestaque);
   const terco = largura / 3;
   const baseRotulo = y + 22;
   const baseValor = y + 48;
@@ -191,8 +157,8 @@ export function montarPdfRelatorio(relatorio) {
     },
   ];
   destaques.forEach((item, indice) => {
-    const x = texto + terco * indice;
-    const larguraColuna = terco - RECUO * 2;
+    const x = MARGEM + terco * indice;
+    const larguraColuna = terco - 12;
     doc.font('Helvetica').fontSize(7.5).fillColor(CINZA);
     naBase(doc, item.rotulo, x, baseRotulo, { characterSpacing: 0.8, width: larguraColuna });
     doc.font('Helvetica-Bold').fontSize(item.corpo).fillColor(item.cor);
@@ -204,25 +170,21 @@ export function montarPdfRelatorio(relatorio) {
 
   // ---------------- título de seção ----------------
   //
-  // A barrinha roxa fica centrada na altura das maiúsculas do título, com
-  // folga igual em cima e embaixo — antes ela descia três pontos abaixo da
-  // linha do texto. O texto começa no RECUO, na mesma linha vertical da
-  // primeira coluna da tabela logo abaixo.
+  // Caixa alta em roxo, sem a barrinha pintada ao lado: é o mesmo título
+  // do comprovante.
   function tituloSecao(rotulo) {
-    const corpo = 9;
+    const corpo = 8.5;
     const base = y + caixaAlta(corpo);
-    const folga = 2;
-    doc.rect(MARGEM, base - caixaAlta(corpo) - folga, 3, caixaAlta(corpo) + folga * 2).fill(ROXO);
     doc.font('Helvetica-Bold').fontSize(corpo).fillColor(ROXO);
-    naBase(doc, rotulo.toUpperCase(), texto, base, { characterSpacing: 0.6 });
+    naBase(doc, rotulo.toUpperCase(), MARGEM, base, { characterSpacing: 0.6 });
     y = base + 14;
   }
 
   // ---------------- tabela ----------------
   //
-  // Cada coluna tem uma área de texto: 4 pontos de folga de cada lado, e o
-  // RECUO por fora nas duas pontas, para a primeira e a última coluna
-  // ficarem alinhadas ao resto da página. As colunas de valor foram medidas
+  // Cada coluna tem uma área de texto, com 4 pontos de folga de cada lado
+  // entre colunas; nas duas pontas não há folga, para a primeira e a última
+  // coluna ficarem na MARGEM, alinhadas ao resto da página. As colunas de valor foram medidas
   // para "R$ 999.999,99" caber numa linha; o serviço fica com o que sobra.
   // A data sai sem o ano: o relatório é de um mês só, e o ano está no título.
   const FOLGA = 4;
@@ -241,8 +203,8 @@ export function montarPdfRelatorio(relatorio) {
   {
     let x = MARGEM;
     COLUNAS.forEach((coluna, indice) => {
-      const esquerda = indice === 0 ? RECUO : FOLGA;
-      const direita = indice === COLUNAS.length - 1 ? RECUO : FOLGA;
+      const esquerda = indice === 0 ? 0 : FOLGA;
+      const direita = indice === COLUNAS.length - 1 ? 0 : FOLGA;
       coluna.x = x + esquerda;
       coluna.area = coluna.largura - esquerda - direita;
       x += coluna.largura;
@@ -264,7 +226,7 @@ export function montarPdfRelatorio(relatorio) {
     doc.font('Helvetica-Bold').fontSize(7.5).fillColor(CINZA);
     for (const c of COLUNAS) celula(c.chave, c.titulo, base, { characterSpacing: 0.4 });
     y = base + 6;
-    doc.moveTo(MARGEM, y).lineTo(fim, y).strokeColor(FIO).lineWidth(1).stroke();
+    fio(doc, y);
   }
 
   // Página nova com o cabeçalho da tabela repetido: quem lê a página 2 não
@@ -290,13 +252,14 @@ export function montarPdfRelatorio(relatorio) {
 
   if (repasses.length === 0) {
     // UC 032, fluxo 6a — o relatório sai mesmo sem movimentação, dizendo isso.
-    const altura = 46;
-    doc.roundedRect(MARGEM, y, largura, altura, 6).fillAndStroke(LISTRA, FIO);
+    fio(doc, y);
     doc.font('Helvetica-Bold').fontSize(10).fillColor(ESCURO);
-    naBase(doc, `Nenhum repasse foi liberado em ${periodo.rotulo}.`, texto, y + 19);
+    naBase(doc, `Nenhum repasse foi liberado em ${periodo.rotulo}.`, MARGEM, y + 20);
     doc.font('Helvetica').fontSize(8.5).fillColor(CINZA);
-    naBase(doc, 'Não houve movimentação financeira no período.', texto, y + 33);
-    y += altura + 26;
+    naBase(doc, 'Não houve movimentação financeira no período.', MARGEM, y + 34);
+    y += 46;
+    fio(doc, y);
+    y += 26;
   } else {
     cabecalhoTabela();
 
@@ -310,7 +273,6 @@ export function montarPdfRelatorio(relatorio) {
 
       if (y + altura > limite()) novaPagina();
 
-      if (indice % 2 === 0) doc.rect(MARGEM, y, largura, altura).fill(LISTRA);
       const base = y + baseNaLinha;
 
       doc.font('Helvetica').fontSize(CORPO_TABELA).fillColor(ESCURO);
@@ -329,6 +291,9 @@ export function montarPdfRelatorio(relatorio) {
       celula('liquido', formatarDinheiro(repasse.valorLiquido), base);
 
       y += altura;
+      // Fio entre as linhas, no lugar das listras: impressas, as listras
+      // viravam faixas cinzentas. O último fio fica por conta do fecho.
+      if (indice < repasses.length - 1) fio(doc, y, { cor: '#E2E8F0' });
     });
 
     // Subtotais por origem, nas mesmas colunas de valor da tabela. Só
@@ -345,11 +310,11 @@ export function montarPdfRelatorio(relatorio) {
     if (y + alturaFecho > limite()) novaPagina();
 
     if (subtotais.length > 0) {
-      doc.moveTo(MARGEM, y).lineTo(fim, y).strokeColor(FIO).lineWidth(1).stroke();
+      fio(doc, y);
       for (const [rotulo, soma] of subtotais) {
         const base = y + baseNaLinha;
         doc.font('Helvetica').fontSize(CORPO_TABELA).fillColor(CINZA);
-        naBase(doc, rotulo, texto, base);
+        naBase(doc, rotulo, MARGEM, base);
         celula('bruto', formatarDinheiro(soma.bruto), base);
         celula('comissao', formatarDinheiro(soma.comissao), base);
         celula('liquido', formatarDinheiro(soma.liquido), base);
@@ -357,10 +322,10 @@ export function montarPdfRelatorio(relatorio) {
       }
     }
 
-    doc.moveTo(MARGEM, y).lineTo(fim, y).strokeColor(ROXO).lineWidth(1.2).stroke();
+    fio(doc, y, { cor: ESCURO, espessura: 0.9 });
     const base = y + alturaTotal / 2 + caixaAlta(CORPO_TABELA) / 2 + 1;
     doc.font('Helvetica-Bold').fontSize(CORPO_TABELA).fillColor(ESCURO);
-    naBase(doc, 'Total do mês', texto, base);
+    naBase(doc, 'Total do mês', MARGEM, base);
     celula('bruto', formatarDinheiro(total.bruto), base);
     celula('comissao', formatarDinheiro(total.comissao), base);
     doc.fillColor(ROXO);
@@ -379,7 +344,8 @@ export function montarPdfRelatorio(relatorio) {
     'Saques e saldo disponível não fazem parte deste relatório e podem ser consultados no painel financeiro.',
   ];
   const CORPO_NOTA = 8;
-  const larguraNota = largura - RECUO;
+  const RECUO_NOTA = 9;
+  const larguraNota = largura - RECUO_NOTA;
   doc.font('Helvetica').fontSize(CORPO_NOTA);
   const alturaNotas = notas.reduce(
     (soma, nota) => soma + doc.heightOfString(nota, { width: larguraNota }) + 5, 30
@@ -391,10 +357,10 @@ export function montarPdfRelatorio(relatorio) {
   tituloSecao('Como ler este relatório');
   for (const nota of notas) {
     const base = y + caixaAlta(CORPO_NOTA);
-    // O ponto fica na linha da barrinha do título, à esquerda do recuo.
+    // O ponto fica na MARGEM, alinhado ao título; o texto, logo depois.
     doc.circle(MARGEM + 1.5, base - alturaX(CORPO_NOTA) / 2, 1.3).fill(CINZA);
     doc.font('Helvetica').fontSize(CORPO_NOTA).fillColor(CINZA);
-    doc.text(nota, texto, base, { width: larguraNota, baseline: 'alphabetic' });
+    doc.text(nota, MARGEM + RECUO_NOTA, base, { width: larguraNota, baseline: 'alphabetic' });
     y += doc.heightOfString(nota, { width: larguraNota }) + 5;
   }
 
@@ -403,7 +369,7 @@ export function montarPdfRelatorio(relatorio) {
   for (let i = paginas.start; i < paginas.start + paginas.count; i += 1) {
     doc.switchToPage(i);
     const linha = doc.page.height - MARGEM - 8;
-    doc.moveTo(MARGEM, linha).lineTo(fim, linha).strokeColor(FIO).lineWidth(1).stroke();
+    fio(doc, linha);
     const base = linha + 15;
     doc.font('Helvetica').fontSize(7.5).fillColor(CINZA);
     naBase(doc, `Festeirinho · Relatório financeiro mensal · ${periodo.titulo}`, MARGEM, base);

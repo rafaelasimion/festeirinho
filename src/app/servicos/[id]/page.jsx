@@ -2,10 +2,11 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import {
   Store, MapPin, BadgeCheck, Star, ChevronLeft, User,
-  Users, CalendarClock,
+  Users, CalendarClock, ShieldCheck,
 } from 'lucide-react';
 import { pool } from '@/lib/db';
 import { lerSessao } from '@/lib/sessao';
+import { administradorAtivo } from '@/lib/sessao-admin';
 import { formatarPreco, SUFIXO_PRECO, EXPLICACAO_COBRANCA } from '@/lib/solicitacao';
 import Etiqueta from '@/componentes/etiqueta';
 import GaleriaFotos from '@/componentes/galeria-fotos';
@@ -30,12 +31,17 @@ export default async function DetalheServico({ params }) {
   if (!Number.isInteger(idServico)) notFound();
 
   const sessao = await lerSessao();
-  const podeSolicitar = sessao?.tipoUsuario === 'cliente';
+  const ehCliente = sessao?.tipoUsuario === 'cliente';
+
+  // A administração chega aqui pela vitrine aberta das abas Denúncias e
+  // Contas, inclusive de fornecedor suspenso (UC 035). Para ela, o serviço
+  // que estava no ar continua abrindo; para o público, não (RN020).
+  const visaoAdmin = Boolean(await administradorAtivo());
 
   // RN068 — a distância só existe quando cliente e fornecedor têm
   // coordenadas. As coordenadas em si nunca saem do servidor.
   let localizacao = null;
-  if (podeSolicitar) {
+  if (ehCliente) {
     const [linhas] = await pool.execute(
       'SELECT latitude, longitude FROM usuario WHERE id = ? LIMIT 1',
       [sessao.id]
@@ -47,8 +53,8 @@ export default async function DetalheServico({ params }) {
     ? `ROUND(ST_Distance_Sphere(POINT(u.longitude, u.latitude), POINT(?, ?)) / 1000, 1) AS distancia_km`
     : 'NULL AS distancia_km';
   const valores = localizacao
-    ? [localizacao.longitude, localizacao.latitude, idServico]
-    : [idServico];
+    ? [localizacao.longitude, localizacao.latitude, idServico, visaoAdmin ? 1 : 0]
+    : [idServico, visaoAdmin ? 1 : 0];
 
   // RN020 — serviço inativo ou não aprovado, ou de fornecedor indisponível,
   // não é exibido ao cliente, nem por link direto.
@@ -59,6 +65,7 @@ export default async function DetalheServico({ params }) {
             f.id AS id_fornecedor,
             f.nome_exibicao,
             f.status_verificacao AS verificacao_fornecedor,
+            f.status_fornecedor,
             u.cidade, u.estado, u.foto_perfil,
             ${selecaoDistancia}
        FROM servico s
@@ -69,13 +76,19 @@ export default async function DetalheServico({ params }) {
       WHERE s.id = ?
         AND s.status_servico = 'ativo'
         AND s.status_verificacao = 'aprovado'
-        AND f.status_fornecedor = 'ativo'
+        AND (f.status_fornecedor = 'ativo' OR ?)
       LIMIT 1`,
     valores
   );
 
   if (servicos.length === 0) notFound();
   const servico = servicos[0];
+
+  // Fornecedor fora do ar só chega aqui pela visão da administração: sem
+  // botão de solicitar nem coração, mesmo que o navegador também tenha uma
+  // sessão de cliente aberta.
+  const foraDoAr = servico.status_fornecedor !== 'ativo';
+  const podeSolicitar = ehCliente && !foraDoAr;
 
   // RF015 / RF016 — estado dos dois corações. Só o cliente favorita.
   let favoritos = { servico: false, fornecedor: false };
@@ -142,6 +155,16 @@ export default async function DetalheServico({ params }) {
 
       {/* pb-28 reserva o espaço da barra de ação fixa no rodapé. */}
       <main className="mx-auto max-w-3xl space-y-3 px-4 pb-28 pt-4">
+        {foraDoAr && (
+          <p className="flex items-start gap-2.5 rounded-xl bg-slate-100 px-4 py-3 text-sm text-slate-700">
+            <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" aria-hidden="true" />
+            <span>
+              <strong className="font-semibold text-slate-900">Visão da administração.</strong>{' '}
+              O fornecedor está fora do ar, e este serviço não aparece para os clientes agora.
+            </span>
+          </p>
+        )}
+
         <section className="overflow-hidden rounded-2xl bg-white p-3">
           <GaleriaFotos fotos={fotos} nomeServico={servico.nome} />
         </section>
@@ -326,6 +349,10 @@ export default async function DetalheServico({ params }) {
               className="rounded-lg bg-festa-600 px-6 py-3 font-medium text-white transition-colors hover:bg-festa-700">
               Solicitar serviço
             </Link>
+          ) : foraDoAr ? (
+            <p className="text-right text-sm text-slate-600">
+              Fora do ar para<br />novas solicitações.
+            </p>
           ) : !sessao ? (
             <Link href="/login"
               className="rounded-lg border border-festa-600 px-6 py-3 font-medium text-festa-700 transition-colors hover:bg-festa-50">

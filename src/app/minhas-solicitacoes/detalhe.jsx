@@ -652,12 +652,17 @@ export default function DetalheSolicitacao({
           foto: quem clicava em "Conversar" via o cartão crescer e tinha de
           rolar para descobrir onde a conversa começava. Fora dele, cada
           coisa tem a sua moldura — o resumo é o resumo, o que você abriu
-          é o que você abriu. */}
-      {conteudoPainel && (
+          é o que você abriu.
+          A conversa não ganha esta moldura: ela já é um cartão inteiro,
+          com cabeçalho, mensagens e campo de escrita, e dentro da moldura
+          virava um cartão dentro do outro. */}
+      {conteudoPainel && (painel === 'conversar' ? (
+        <div className="mt-4">{conteudoPainel}</div>
+      ) : (
         <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
           {conteudoPainel}
         </div>
-      )}
+      ))}
 
       {avaliacao}
 

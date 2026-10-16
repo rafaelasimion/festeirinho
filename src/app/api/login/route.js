@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import bcrypt from 'bcryptjs';
 import { pool } from '@/lib/db';
+import { conferirSenha } from '@/lib/senha';
 import { criarSessao } from '@/lib/sessao';
 import {
   chavesDaTentativa,
@@ -73,9 +73,9 @@ export async function POST(request) {
 
     const usuario = usuarios[0];
 
-    // Compara o hash da senha digitada com o hash guardado.
-    // A senha original nunca é recuperada de volta.
-    const senhaConfere = await bcrypt.compare(senha, usuario.senha_hash);
+    // Compara o hash da senha digitada com o hash guardado. A conta
+    // excluída não tem hash (RN044-A) e cai aqui como credencial inválida.
+    const senhaConfere = await conferirSenha(senha, usuario.senha_hash);
     if (!senhaConfere) return recusar();
 
     // Credencial correta: a série de erros desta conta deixa de existir.

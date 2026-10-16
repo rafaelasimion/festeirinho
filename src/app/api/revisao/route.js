@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import bcrypt from 'bcryptjs';
 import { pool } from '@/lib/db';
+import { conferirSenha } from '@/lib/senha';
 import {
   chavesDaTentativa,
   segundosDeBloqueio,
@@ -82,7 +82,7 @@ export async function POST(request) {
     if (usuarios.length === 0) return recusar();
 
     const usuario = usuarios[0];
-    const senhaConfere = await bcrypt.compare(senha, usuario.senha_hash);
+    const senhaConfere = await conferirSenha(senha, usuario.senha_hash);
     if (!senhaConfere) return recusar();
 
     const ehCliente = usuario.tipo_usuario === 'cliente';

@@ -5,6 +5,8 @@ import {
 } from '@/lib/tentativas';
 import { montarMensagem, montarAssuntoEmail } from '@/lib/suporte';
 import { formatarData, formatarDataHora, paraSerializar } from '@/lib/datas';
+import bcrypt from 'bcryptjs';
+import { conferirSenha } from '@/lib/senha';
 
 // RNF020 — limite de tentativas de autenticação.
 // Cada teste usa uma conta e uma origem próprias: o registro de tentativas
@@ -87,5 +89,19 @@ describe('RNF014 · datas', () => {
   it('valor enviado ao navegador sai em ISO, sem fuso, para não andar três horas', () => {
     assert.equal(paraSerializar('2026-09-28 20:53:00'), '2026-09-28T20:53:00');
     assert.equal(paraSerializar(null), null);
+  });
+});
+
+// RNF001 / RN044-A — conferência da senha, e a conta excluída sem hash.
+describe('RN044-A · senha da conta excluída', () => {
+  it('senha certa confere, errada não', async () => {
+    const hash = await bcrypt.hash('festa123', 4);
+    assert.equal(await conferirSenha('festa123', hash), true);
+    assert.equal(await conferirSenha('festa124', hash), false);
+  });
+
+  it('sem hash (conta excluída), nenhuma senha confere e nada quebra', async () => {
+    assert.equal(await conferirSenha('festa123', null), false);
+    assert.equal(await conferirSenha('', undefined), false);
   });
 });
