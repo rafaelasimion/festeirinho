@@ -38,14 +38,16 @@ function plural(quantidade, singular, muitos) {
 
 // UC 027 — a pré-condição é existir um motivo que justifique a suspensão.
 // Parte dos motivos tem registro no sistema: contestação decidida contra a
-// pessoa e cancelamentos que ela causou. Outros vêm de fora (fraude,
+// pessoa, cancelamentos que ela causou e, no fornecedor, denúncia julgada
+// procedente (UC 041, fluxo 4a). Outros vêm de fora (fraude,
 // denúncia por e-mail, ordem judicial) — por isso a lista completa continua
 // acessível, mas não é o que a aba mostra de saída.
 function precisaAtencao(conta) {
   return conta.status === 'suspenso'
     || conta.status_solicitacao_revisao === 'pendente'
     || conta.alerta_contestacoes > 0
-    || conta.alerta_cancelamentos > 0;
+    || conta.alerta_cancelamentos > 0
+    || conta.alerta_denuncias > 0;
 }
 
 export default function AbaContas({ contas }) {
@@ -268,7 +270,8 @@ function ItemConta({ conta, processando, aoExecutar }) {
       }
       rodape={rodape}
     >
-      {(conta.alerta_contestacoes > 0 || conta.alerta_cancelamentos > 0) && (
+      {(conta.alerta_contestacoes > 0 || conta.alerta_cancelamentos > 0
+        || conta.alerta_denuncias > 0) && (
         // O fio laranja dos blocos, e não uma caixa laranja dentro do cartão.
         <div className={`border-l-2 pl-3.5 ${FIO_BLOCO.atencao}`}>
           <Fatos>
@@ -284,6 +287,13 @@ function ItemConta({ conta, processando, aoExecutar }) {
                 {conta.alerta_cancelamentos}
               </span>
             </Fato>
+            {ehFornecedor && (
+              <Fato rotulo="Denúncias procedentes">
+                <span className="text-base font-semibold text-atencao-800">
+                  {conta.alerta_denuncias}
+                </span>
+              </Fato>
+            )}
           </Fatos>
         </div>
       )}

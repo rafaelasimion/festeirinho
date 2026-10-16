@@ -7,12 +7,12 @@ import Campo from '@/componentes/campo';
 import Etiqueta from '@/componentes/etiqueta';
 import SecaoFinanceiro from './secao';
 import FormularioRecebimento from '@/componentes/formulario-recebimento';
+import DestinoRecebimento from '@/componentes/destino-recebimento';
 import { formatarPreco } from '@/lib/solicitacao';
 import {
   ROTULO_STATUS_SAQUE,
   TOM_STATUS_SAQUE,
   ROTULO_STATUS_VALIDACAO,
-  descreverRecebimento,
 } from '@/lib/recebimento';
 import { formatarDataHora } from '@/lib/datas';
 
@@ -164,7 +164,7 @@ export default function Saques({ saldoDisponivel, valorMinimoSaque, titular, saq
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div className="min-w-0">
                     <p className="font-medium text-slate-900">{formatarPreco(s.valor)}</p>
-                    <p className="text-sm text-slate-600">{descreverRecebimento(s)}</p>
+                    <DestinoRecebimento dados={s} className="mt-1" />
                     <p className="mt-1 text-xs text-slate-500">
                       Solicitado em {formatarDataHora(s.data_solicitacao)}
                       {s.data_processamento && ` · concluído em ${formatarDataHora(s.data_processamento)}`}

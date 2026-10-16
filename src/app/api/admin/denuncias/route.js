@@ -10,6 +10,15 @@ import { notificar } from '@/lib/notificacao-servidor';
 // Uma avaliação ruim porém legítima permanece visível: é justamente o que
 // dá valor às avaliações boas. Por isso ocultar é uma decisão separada do
 // resultado da denúncia, e não uma consequência automática dele.
+//
+// UC 041, fluxo 4a — com a denúncia de fornecedor procedente, a
+// administração pode suspender o fornecedor (UC 031) no mesmo envio,
+// registrando a denúncia como motivo. Pelo mesmo raciocínio da ocultação,
+// é uma escolha separada e explícita, nunca uma consequência do resultado
+// (RN052). Antes a suspensão só podia ser feita na aba Contas, onde o
+// fornecedor nem aparecia de saída (CT-120). As duas escritas vão na mesma
+// transação: se a suspensão falhar, a análise também é desfeita, e a tela
+// não fica dizendo "procedente" sem a suspensão que foi pedida.
 
 export async function PATCH(request) {
   const { erro } = await obterAdministradorLogado();
@@ -27,6 +36,8 @@ export async function PATCH(request) {
   const justificativa = String(corpo.justificativa ?? '').trim();
   const ocultarComentario = Boolean(corpo.ocultarComentario);
   const motivoOcultacao = String(corpo.motivoOcultacao ?? '').trim();
+  const suspenderFornecedor = Boolean(corpo.suspenderFornecedor);
+  const motivoSuspensao = String(corpo.motivoSuspensao ?? '').trim();
 
   if (!Number.isInteger(id)) {
     return NextResponse.json({ erro: 'Denúncia inválida.' }, { status: 400 });
@@ -52,6 +63,7 @@ export async function PATCH(request) {
     `SELECT d.id, d.tipo_denuncia, d.status_denuncia, d.id_avaliacao,
             COALESCE(d.id_solicitacao, a.id_solicitacao) AS id_solicitacao,
             a.comentario,
+            f.id AS id_fornecedor, f.status_fornecedor,
             f.id_usuario AS usuario_fornecedor,
             c.id_usuario AS usuario_cliente,
             s.nome AS servico
@@ -115,6 +127,42 @@ export async function PATCH(request) {
     }
   }
 
+  if (suspenderFornecedor) {
+    if (ehDeAvaliacao) {
+      return NextResponse.json(
+        { erro: 'A suspensão pela análise vale só para denúncia de fornecedor.' },
+        { status: 400 }
+      );
+    }
+    if (resultado !== 'procedente') {
+      return NextResponse.json(
+        { erro: 'Só é possível suspender o fornecedor quando a denúncia é procedente.' },
+        { status: 400 }
+      );
+    }
+    // Mesmas faixas da suspensão pela aba Contas (UC 031).
+    if (motivoSuspensao.length < 10) {
+      return NextResponse.json(
+        { erro: 'Descreva o motivo da suspensão em ao menos 10 caracteres.' },
+        { status: 400 }
+      );
+    }
+    if (motivoSuspensao.length > 500) {
+      return NextResponse.json(
+        { erro: 'O motivo da suspensão não pode passar de 500 caracteres.' },
+        { status: 400 }
+      );
+    }
+    if (['suspenso', 'excluido'].includes(denuncia.status_fornecedor)) {
+      return NextResponse.json(
+        { erro: denuncia.status_fornecedor === 'suspenso'
+          ? 'Este fornecedor já está suspenso.'
+          : 'A conta deste fornecedor foi excluída.' },
+        { status: 409 }
+      );
+    }
+  }
+
   const conexao = await pool.getConnection();
   try {
     await conexao.beginTransaction();
@@ -142,6 +190,33 @@ export async function PATCH(request) {
           WHERE id = ?`,
         [motivoOcultacao, denuncia.id_avaliacao]
       );
+    }
+
+    if (suspenderFornecedor) {
+      // UC 031, etapa 5 — o mesmo UPDATE da aba Contas: status, motivo e
+      // data juntos (chk_fornecedor_suspensao), e a revisão zerada, porque
+      // ela é da suspensão vigente (UC 003, 6a.2). A guarda no WHERE cobre
+      // a suspensão feita em outra aba entre a leitura e esta escrita.
+      const [retorno] = await conexao.execute(
+        `UPDATE fornecedor
+            SET status_fornecedor = 'suspenso',
+                motivo_suspensao = ?,
+                data_suspensao = NOW(),
+                motivo_solicitacao_revisao = NULL,
+                data_solicitacao_revisao = NULL,
+                status_solicitacao_revisao = NULL,
+                resultado_solicitacao_revisao = NULL,
+                data_analise_revisao = NULL
+          WHERE id = ? AND status_fornecedor NOT IN ('suspenso', 'excluido')`,
+        [motivoSuspensao, denuncia.id_fornecedor]
+      );
+      if (retorno.affectedRows === 0) {
+        await conexao.rollback();
+        return NextResponse.json(
+          { erro: 'Este fornecedor já está suspenso.' },
+          { status: 409 }
+        );
+      }
     }
 
     await conexao.commit();
@@ -179,5 +254,21 @@ export async function PATCH(request) {
     });
   }
 
-  return NextResponse.json({ resultado, comentarioOcultado: ocultarComentario });
+  // UC 031 — o fornecedor suspenso é avisado com o motivo, como na
+  // suspensão pela aba Contas; a tela de acesso mostra o mesmo texto e a
+  // opção de pedir revisão (UC 006).
+  if (suspenderFornecedor) {
+    await notificar({
+      idUsuario: denuncia.usuario_fornecedor,
+      tipo: 'conta',
+      titulo: 'Conta suspensa',
+      mensagem: `Motivo: ${motivoSuspensao} Você pode solicitar revisão na tela de acesso.`,
+    });
+  }
+
+  return NextResponse.json({
+    resultado,
+    comentarioOcultado: ocultarComentario,
+    fornecedorSuspenso: suspenderFornecedor,
+  });
 }

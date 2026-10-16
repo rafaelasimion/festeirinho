@@ -152,7 +152,30 @@ export function validarDadosRecebimento(entrada) {
   return { erros, dados };
 }
 
-// Texto curto para exibir o destino do dinheiro em listas e no painel.
+// O destino do dinheiro em linhas, uma informação por linha: banco,
+// agência e conta, ou o tipo da chave Pix e a chave. Numa linha só, com
+// pontos no meio, os números se misturavam e quem conferia tinha de achar
+// onde acabava a agência e começava a conta (CT-101). Quem desenha as
+// linhas é o componente DestinoRecebimento.
+export function linhasRecebimento(d) {
+  if (!d?.tipo_recebimento) return [];
+  if (d.tipo_recebimento === 'pix') {
+    const rotulo = TIPOS_CHAVE_PIX.find((t) => t.valor === d.tipo_chave_pix)?.rotulo ?? 'Chave';
+    return [
+      { rotulo: 'Pix', valor: rotulo },
+      { rotulo: 'Chave', valor: d.chave_pix },
+    ];
+  }
+  const conta = TIPOS_CONTA.find((t) => t.valor === d.tipo_conta)?.rotulo ?? '';
+  return [
+    { rotulo: 'Banco', valor: d.banco },
+    { rotulo: 'Agência', valor: d.agencia },
+    { rotulo: conta ? `Conta ${conta.toLowerCase()}` : 'Conta', valor: d.numero_conta },
+  ];
+}
+
+// Texto curto, numa linha, para onde não cabe mais que isso (o assunto de
+// um aviso, por exemplo).
 export function descreverRecebimento(d) {
   if (!d?.tipo_recebimento) return '';
   if (d.tipo_recebimento === 'pix') {

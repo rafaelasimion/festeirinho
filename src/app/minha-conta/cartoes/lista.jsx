@@ -5,8 +5,8 @@ import Link from 'next/link';
 import { ArrowLeft, CreditCard, Trash2, Info } from 'lucide-react';
 import Campo from '@/componentes/campo';
 import {
-  formatarNumero, formatarValidade, detectarBandeira,
-  validarLuhn, validarValidade, validarCVV, somenteDigitos,
+  formatarNumero, formatarValidade, detectarBandeira, somenteDigitos,
+  conferirCampoCartao, conferirCartao,
 } from '@/lib/cartao';
 
 const CAMPOS_INICIAIS = {
@@ -41,7 +41,14 @@ export default function ListaCartoes({ cartoesIniciais }) {
   async function salvar() {
     setErroGeral('');
     setMensagem('');
-    setErros({});
+
+    // UC 030, fluxo 5a — o botão fica sempre clicável e, se algo estiver
+    // errado, cada campo diz o quê. Antes ele só ficava cinza, sem
+    // mensagem nenhuma (CT-59, D04).
+    const errosDaTela = conferirCartao(campos);
+    setErros(errosDaTela);
+    if (Object.keys(errosDaTela).length > 0) return;
+
     setSalvando(true);
 
     try {
@@ -100,13 +107,6 @@ export default function ListaCartoes({ cartoesIniciais }) {
     }
   }
 
-  const numeroValido = validarLuhn(campos.numero) && bandeira !== null;
-  const podeSalvar =
-    numeroValido
-    && campos.nomeImpresso.trim().length >= 3
-    && validarValidade(campos.validade)
-    && validarCVV(campos.cvv, bandeira);
-
   return (
     <main className="mx-auto w-full max-w-2xl px-4 py-10 sm:px-6">
       <Link href="/minha-conta"
@@ -140,24 +140,29 @@ export default function ListaCartoes({ cartoesIniciais }) {
       <div className="mt-6 space-y-5">
         <Campo label="Número do cartão" name="numero" value={campos.numero}
           onChange={aoDigitar} erro={erros.numero} placeholder="0000 0000 0000 0000"
+          validar={conferirCampoCartao.numero}
           inputMode="numeric" autoComplete="cc-number" />
 
         <Campo label="Nome impresso no cartão" name="nomeImpresso"
           value={campos.nomeImpresso} onChange={aoDigitar} erro={erros.nomeImpresso}
+          validar={conferirCampoCartao.nomeImpresso}
           placeholder="Como está no cartão" autoComplete="cc-name" />
 
         <div className="grid grid-cols-2 gap-4">
           <Campo label="Validade" name="validade" value={campos.validade}
             onChange={aoDigitar} erro={erros.validade} placeholder="MM/AA"
+            validar={conferirCampoCartao.validade}
             inputMode="numeric" autoComplete="cc-exp" />
 
           <Campo label="CVV" name="cvv" value={campos.cvv}
             onChange={aoDigitar} erro={erros.cvv} placeholder="123"
+            validar={(valor) => conferirCampoCartao.cvv(valor, campos.numero)}
             inputMode="numeric" autoComplete="cc-csc" />
         </div>
 
         <Campo label="Apelido do cartão (opcional)" name="apelido"
           value={campos.apelido} onChange={aoDigitar} erro={erros.apelido}
+          validar={conferirCampoCartao.apelido}
           placeholder="Ex.: cartão principal" maxLength={50} />
 
         {/* RN013 dita, e a pessoa merece saber. */}
@@ -181,7 +186,7 @@ export default function ListaCartoes({ cartoesIniciais }) {
           </p>
         )}
 
-        <button type="button" onClick={salvar} disabled={salvando || !podeSalvar}
+        <button type="button" onClick={salvar} disabled={salvando}
           className="w-full rounded-xl bg-festa-600 px-4 py-3.5 font-semibold text-white transition-colors hover:bg-festa-700 disabled:cursor-not-allowed disabled:opacity-50">
           {salvando ? 'Salvando...' : 'Salvar cartão'}
         </button>

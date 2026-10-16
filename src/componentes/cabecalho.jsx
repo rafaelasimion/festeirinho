@@ -18,6 +18,10 @@ const LINKS_CLIENTE = [
 ];
 
 const LINKS_FORNECEDOR = [
+  // UC 011 — o fornecedor também consulta a busca (RN030: vê a vitrine
+  // completa, sem o filtro de proximidade do cliente). A página sempre
+  // abriu para ele, mas faltava o caminho no menu: só se chegava pela URL.
+  { href: '/servicos', rotulo: 'Serviços' },
   // "Meus serviços" saiu: a vitrine passou a ser a única lista, e o
   // cadastro e a edição se alcançam pelos botões de lá.
   { href: '/fornecedor/vitrine', rotulo: 'Minha vitrine' },

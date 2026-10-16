@@ -3,6 +3,8 @@
 // retorno rápido ao usuário). Validação de front é conveniência; validação
 // de back é a que vale.
 
+import { diaDeHoje } from '@/lib/datas';
+
 // RF001/RF002 — idade mínima para cadastro. Vale para cliente e para
 // fornecedor pessoa física: nos dois casos há contratação e movimentação
 // de valores, que exigem capacidade civil.
@@ -144,7 +146,7 @@ export function validarUF(valor) {
   return UFS.includes(String(valor ?? '').toUpperCase());
 }
 
-// Data de nascimento: precisa ser uma data real e no passado.
+// Data de nascimento: precisa ser uma data real e não estar no futuro.
 //
 // "Real" quer dizer que o dia existe no calendário. O Date do JavaScript não
 // recusa 30/02: ele "conserta" a data e devolve 02/03, e a conferência de
@@ -153,14 +155,22 @@ export function validarUF(valor) {
 // em vez de "data inválida" (RNF005, RNF015). Encontrado pelo teste de
 // unidade da RF001 (src/testes/cadastro.test.mjs). A conferência é ler a
 // data de volta: se o dia que o Date entendeu não é o que foi digitado, a
-// data não existe.
+// data não existe. Essa leitura é em UTC de propósito: é só calendário, e
+// em UTC nenhum dia some nem se repete por horário de verão.
+//
+// "Não estar no futuro" é comparado com o dia de HOJE no relógio de quem
+// usa o sistema, e como texto (AAAA-MM-DD ordena como data). A primeira
+// correção comparava a meia-noite UTC do dia digitado com o instante atual,
+// e no Brasil a meia-noite UTC de amanhã é 21h de hoje: das 21h à
+// meia-noite, "amanhã" passava como data passada. Encontrado pelo mesmo
+// teste, que falhou rodando às 21h (D02).
 export function validarDataNascimento(valor) {
   const texto = String(valor ?? '');
   if (!/^\d{4}-\d{2}-\d{2}$/.test(texto)) return false;
   const data = new Date(`${texto}T00:00:00Z`);
   if (Number.isNaN(data.getTime())) return false;
   if (data.toISOString().slice(0, 10) !== texto) return false;
-  return data < new Date();
+  return texto <= diaDeHoje();
 }
 
 // Idade completa na data de hoje.

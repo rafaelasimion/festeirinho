@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import {
   Store, MapPin, BadgeCheck, Star, ChevronLeft, User,
-  Users, CalendarClock, AtSign, Globe, Phone,
+  Users, CalendarClock,
 } from 'lucide-react';
 import { pool } from '@/lib/db';
 import { lerSessao } from '@/lib/sessao';
@@ -57,9 +57,8 @@ export default async function DetalheServico({ params }) {
             s.dias_antecedencia,
             c.nome AS categoria, cb.descricao AS cobranca,
             f.id AS id_fornecedor,
-            f.nome_exibicao, f.descricao AS descricao_fornecedor,
+            f.nome_exibicao,
             f.status_verificacao AS verificacao_fornecedor,
-            f.instagram_url, f.whatsapp_url, f.site,
             u.cidade, u.estado, u.foto_perfil,
             ${selecaoDistancia}
        FROM servico s
@@ -127,12 +126,6 @@ export default async function DetalheServico({ params }) {
     [idServico]
   );
 
-  const redes = [
-    { url: servico.instagram_url, rotulo: 'Instagram', Icone: AtSign },
-    { url: servico.whatsapp_url, rotulo: 'WhatsApp', Icone: Phone },
-    { url: servico.site, rotulo: 'Site', Icone: Globe },
-  ].filter((rede) => rede.url);
-
   return (
     <div className="min-h-screen bg-festa-50">
       {/* Barra superior fixa: voltar e o nome do serviço, como no protótipo.
@@ -169,76 +162,60 @@ export default async function DetalheServico({ params }) {
           </div>
         </section>
 
-        {/* UC 011, passo 6 — o fornecedor e o indicador de verificação. */}
-        <section className="rounded-2xl bg-white p-5">
-          <div className="flex items-start gap-4">
-            <div className="h-14 w-14 shrink-0 overflow-hidden rounded-full bg-festa-100">
-              {servico.foto_perfil ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={servico.foto_perfil} alt={`Foto de ${servico.nome_exibicao}`}
-                  className="h-full w-full object-cover" />
-              ) : (
-                <span className="flex h-full w-full items-center justify-center">
-                  <Store className="h-6 w-6 text-festa-600" aria-hidden="true" />
-                </span>
-              )}
-            </div>
+        {/* UC 011, passo 6 — o fornecedor e o indicador de verificação, no
+            mesmo formato do fornecedor salvo em Favoritos: foto, nome, cidade
+            e o coração. A descrição e as redes do fornecedor saíram daqui:
+            são da vitrine dele (UC 045), a um clique, e aqui competiam com a
+            descrição do serviço, que é o assunto da página.
 
-            {podeSolicitar && (
-              <span className="order-last">
-                <BotaoFavorito tipo="fornecedor" id={servico.id_fornecedor}
-                  favorito={favoritos.fornecedor} rotulo={servico.nome_exibicao} />
+            O cartão inteiro é o link para a vitrine, pelo ::before do nome
+            (o mesmo truque de Favoritos), e o coração sobe de camada para
+            continuar clicável. O "isolate" fecha essa camada dentro do
+            cartão: sem ele, o coração passava por cima da barra fixa de
+            "Solicitar serviço" e do cabeçalho ao rolar a página. */}
+        <section aria-label="Fornecedor"
+          className="relative isolate flex items-center gap-4 rounded-2xl bg-white p-4 transition-colors hover:bg-festa-50/40">
+          <div className="h-14 w-14 shrink-0 overflow-hidden rounded-full bg-festa-100">
+            {servico.foto_perfil ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={servico.foto_perfil} alt="" className="h-full w-full object-cover" />
+            ) : (
+              <span className="flex h-full w-full items-center justify-center">
+                <Store className="h-6 w-6 text-festa-600" aria-hidden="true" />
               </span>
             )}
-
-            <div className="min-w-0 flex-1">
-              {/* UC 045 — o nome leva à vitrine do fornecedor, onde estão
-                  os outros serviços dele e todas as avaliações. */}
-              <h3 className="text-lg font-medium text-slate-900">
-                <Link href={`/fornecedores/${servico.id_fornecedor}`}
-                  className="flex flex-wrap items-center gap-1.5 hover:underline">
-                  {servico.nome_exibicao}
-                  {servico.verificacao_fornecedor === 'aprovado' && (
-                    <BadgeCheck className="h-5 w-5 shrink-0 text-festa-600"
-                      aria-label="Fornecedor verificado" />
-                  )}
-                </Link>
-              </h3>
-              <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-sm text-slate-600">
-                <MapPin className="h-4 w-4 shrink-0 text-festa-600" aria-hidden="true" />
-                {servico.cidade}/{servico.estado}
-                {servico.distancia_km !== null && (
-                  <span className="text-slate-500">
-                    · {Number(servico.distancia_km).toLocaleString('pt-BR', {
-                      minimumFractionDigits: 1, maximumFractionDigits: 1,
-                    })} km de você
-                  </span>
-                )}
-              </p>
-              {servico.verificacao_fornecedor === 'aprovado' && (
-                <p className="mt-1 text-xs text-slate-500">
-                  Cadastro conferido pela administração da plataforma.
-                </p>
-              )}
-            </div>
           </div>
 
-          <p className="mt-4 whitespace-pre-line text-sm text-slate-700">
-            {servico.descricao_fornecedor}
-          </p>
+          <div className="min-w-0 flex-1">
+            <p className="flex items-center gap-1.5 font-medium text-slate-900">
+              <Link href={`/fornecedores/${servico.id_fornecedor}`}
+                className="truncate rounded before:absolute before:inset-0 before:rounded-2xl hover:text-festa-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-festa-600/40">
+                {servico.nome_exibicao}
+              </Link>
+              {servico.verificacao_fornecedor === 'aprovado' && (
+                <BadgeCheck className="h-4 w-4 shrink-0 text-festa-600"
+                  aria-label="Fornecedor verificado" />
+              )}
+            </p>
+            <p className="flex flex-wrap items-center gap-1.5 text-sm text-slate-600">
+              <MapPin className="h-4 w-4 shrink-0 text-festa-600" aria-hidden="true" />
+              {servico.cidade}/{servico.estado}
+              {servico.distancia_km !== null && (
+                <span className="text-slate-500">
+                  · {Number(servico.distancia_km).toLocaleString('pt-BR', {
+                    minimumFractionDigits: 1, maximumFractionDigits: 1,
+                  })} km de você
+                </span>
+              )}
+            </p>
+            <p className="mt-0.5 text-xs text-slate-500">Ver vitrine, serviços e avaliações</p>
+          </div>
 
-          {redes.length > 0 && (
-            <ul className="mt-4 flex flex-wrap gap-4">
-              {redes.map(({ url, rotulo, Icone }) => (
-                <li key={rotulo}>
-                  <a href={url} target="_blank" rel="noreferrer noopener"
-                    className="inline-flex items-center gap-1.5 text-sm font-medium text-festa-700 hover:underline">
-                    <Icone className="h-4 w-4" aria-hidden="true" />
-                    {rotulo}
-                  </a>
-                </li>
-              ))}
-            </ul>
+          {podeSolicitar && (
+            <div className="relative z-10 shrink-0">
+              <BotaoFavorito tipo="fornecedor" id={servico.id_fornecedor}
+                favorito={favoritos.fornecedor} rotulo={servico.nome_exibicao} />
+            </div>
           )}
         </section>
 

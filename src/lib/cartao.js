@@ -99,3 +99,57 @@ export function rotuloCartao({ bandeira, ultimos_quatro_num, apelido }) {
   const base = `${bandeira} •••• ${ultimos_quatro_num}`;
   return apelido ? `${base} · ${apelido}` : base;
 }
+
+// UC 030, fluxo 5a — a conferência dos campos do cadastro de cartão, num
+// lugar só. O servidor (api/cartoes) recusa com estas mensagens, e a tela
+// mostra as mesmas, campo a campo, antes de enviar.
+//
+// A tela antes só desabilitava o botão quando algo estava errado, sem dizer
+// o quê: com 4111 1111 1111 1112 o botão ficava cinza e a pessoa não sabia
+// se era o número, a validade ou o CVV (CT-59, D04). Cada função devolve a
+// mensagem do campo, ou null se ele está certo.
+export const conferirCampoCartao = {
+  numero(valor) {
+    const digitos = somenteDigitos(valor);
+    if (digitos === '') return 'Informe o número do cartão.';
+    if (!validarLuhn(digitos)) return 'Número de cartão inválido.';
+    if (detectarBandeira(digitos) === null) return 'Bandeira não reconhecida.';
+    return null;
+  },
+  nomeImpresso(valor) {
+    const nome = String(valor ?? '').trim();
+    if (nome.length < 3 || nome.length > 100) {
+      return 'Informe o nome como está impresso no cartão.';
+    }
+    return null;
+  },
+  validade(valor) {
+    const texto = String(valor ?? '').trim();
+    if (texto === '') return 'Informe a validade.';
+    if (!validarValidade(texto)) return 'Validade inválida ou vencida.';
+    return null;
+  },
+  // O CVV depende da bandeira (4 dígitos no Amex), então recebe o número.
+  cvv(valor, numero) {
+    const digitos = somenteDigitos(valor);
+    if (digitos === '') return 'Informe o código de segurança.';
+    if (!validarCVV(digitos, detectarBandeira(numero))) return 'Código de segurança inválido.';
+    return null;
+  },
+  apelido(valor) {
+    return String(valor ?? '').trim().length > 50
+      ? 'O apelido deve ter até 50 caracteres.'
+      : null;
+  },
+};
+
+export function conferirCartao(campos) {
+  const erros = {};
+  for (const campo of ['numero', 'nomeImpresso', 'validade', 'apelido']) {
+    const mensagem = conferirCampoCartao[campo](campos[campo]);
+    if (mensagem) erros[campo] = mensagem;
+  }
+  const mensagemCvv = conferirCampoCartao.cvv(campos.cvv, campos.numero);
+  if (mensagemCvv) erros.cvv = mensagemCvv;
+  return erros;
+}

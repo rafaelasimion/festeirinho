@@ -64,6 +64,10 @@ export default async function Inicio() {
             className="inline-flex items-center rounded-xl border border-festa-600 bg-white px-5 py-3 font-semibold text-festa-700 transition-colors hover:bg-festa-50">
             Meu perfil
           </Link>
+          <Link href="/servicos"
+            className="inline-flex items-center rounded-xl border border-festa-600 bg-white px-5 py-3 font-semibold text-festa-700 transition-colors hover:bg-festa-50">
+            Ver os serviços da plataforma
+          </Link>
         </div>
       )}
 

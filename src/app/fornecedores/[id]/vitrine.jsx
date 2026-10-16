@@ -208,7 +208,11 @@ export default function Vitrine({
         )}
       </section>
 
-      {/* RF025 — o dono precisa saber por que foi recusado. */}
+      {/* RF025 — o dono precisa saber por que foi recusado, e o que fazer a
+          seguir. Só o motivo deixava a pessoa sem saber onde corrigir; o
+          botão leva direto aos dados cadastrais, onde estão todos os campos
+          que a análise confere (nome de exibição, descrição, razão social,
+          foto e redes). Corrigido, o cadastro volta à análise (RN067). */}
       {ehDono && fornecedor.statusVerificacao === 'rejeitado' && fornecedor.motivoRejeicao && (
         <div className="mt-4 rounded-2xl border border-perigo-200 bg-perigo-50 p-4">
           <p className="text-xs font-semibold uppercase tracking-wide text-perigo-700">
@@ -217,6 +221,11 @@ export default function Vitrine({
           <p className="mt-1 whitespace-pre-line text-sm text-slate-700">
             {fornecedor.motivoRejeicao}
           </p>
+          <Link href="/fornecedor/perfil"
+            className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-festa-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-festa-700">
+            <SquarePen className="h-4 w-4" aria-hidden="true" />
+            Editar dados
+          </Link>
         </div>
       )}
 

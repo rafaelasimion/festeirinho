@@ -11,6 +11,7 @@ import Etiqueta from '@/componentes/etiqueta';
 import DialogoCancelamento from '@/componentes/dialogo-cancelamento';
 import FormularioAvaliacao from '@/componentes/formulario-avaliacao';
 import DadosReembolso from '@/componentes/dados-reembolso';
+import { Bloco } from '@/componentes/bloco';
 import Chat from '@/componentes/chat';
 import DialogoDenuncia from '@/componentes/dialogo-denuncia';
 import FotosContestacao, { LinkProvaPeloSuporte } from '@/componentes/fotos-contestacao';
@@ -499,71 +500,43 @@ export default function DetalheSolicitacao({
           </AvisoCartao>
         )}
 
-        {/* UC 022 — cancelamento registrado */}
+        {/* UC 022 — cancelamento registrado. Fio à esquerda, e não caixa
+            dentro do cartão; os dados do reembolso por boleto, que têm
+            formulário, ficam num cartão próprio logo abaixo deste. */}
         {solicitacao.id_cancelamento && (
-          <div className="mt-4 space-y-2 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm">
-            <p className="font-medium text-slate-800">
-              {ROTULO_ORIGEM_CANCELAMENTO[solicitacao.solicitado_por]} ·{' '}
-              {ROTULO_STATUS_CANCELAMENTO[solicitacao.status_cancelamento]}
-            </p>
-            <p className="whitespace-pre-line text-slate-700">
+          <Bloco tom="perigo" className="mt-4"
+            rotulo={`${ROTULO_ORIGEM_CANCELAMENTO[solicitacao.solicitado_por]} · ${
+              ROTULO_STATUS_CANCELAMENTO[solicitacao.status_cancelamento]}`}>
+            <span className="block">
               <span className="font-medium">Motivo: </span>
               {solicitacao.motivo_cancelamento}
-            </p>
+            </span>
             {Number(solicitacao.valor_reembolso) > 0 && (
-              <p className="text-slate-700">
+              <span className="mt-1 block">
                 <span className="font-medium">Reembolso: </span>
                 {formatarPreco(solicitacao.valor_reembolso)}
-              </p>
+              </span>
             )}
             {Number(solicitacao.valor_multa) > 0 && (
-              <p className="text-slate-700">
+              <span className="mt-1 block">
                 <span className="font-medium">Valor retido: </span>
                 {formatarPreco(solicitacao.valor_multa)}
-              </p>
+              </span>
             )}
-
-            {/* UC 036 — reembolso de pagamento por boleto precisa de
-                dados de recebimento; Pix e cartão voltam sozinhos. */}
-            {solicitacao.status_cancelamento === 'em_analise'
-              && Number(solicitacao.valor_reembolso) > 0
-              && solicitacao.forma_pagamento === 'boleto' && (
-                <DadosReembolso
-                  idCancelamento={solicitacao.id_cancelamento}
-                  titular={titular}
-                  dados={solicitacao.id_dados_reembolso ? {
-                    status_validacao: solicitacao.validacao_reembolso,
-                    motivo_rejeicao: solicitacao.motivo_rejeicao_reembolso,
-                    tipo_recebimento: solicitacao.tipo_recebimento,
-                    chave_pix: solicitacao.chave_pix,
-                    tipo_chave_pix: solicitacao.tipo_chave_pix,
-                    banco: solicitacao.banco,
-                    tipo_conta: solicitacao.tipo_conta,
-                    agencia: solicitacao.agencia,
-                    numero_conta: solicitacao.numero_conta,
-                  } : null} />
-              )}
-          </div>
+          </Bloco>
         )}
 
         {/* RF067 / RN052 — denúncia já registrada. */}
         {podeDenunciar && solicitacao.id_denuncia && (
-          <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm">
-            <p className="font-medium text-slate-800">
-              Denúncia registrada
-              {solicitacao.status_denuncia === 'analisada'
-                && `: ${ROTULO_RESULTADO_DENUNCIA[solicitacao.resultado_analise]}`}
-            </p>
-            {solicitacao.status_denuncia === 'analisada' ? (
-              <p className="mt-1 whitespace-pre-line text-slate-700">
-                {solicitacao.justificativa_analise}
-              </p>
-            ) : (
-              <p className="mt-1 text-slate-600">
-                A administração vai analisar e você será avisado do resultado.
-              </p>
-            )}
-          </div>
+          <Bloco className="mt-4"
+            tom={solicitacao.status_denuncia === 'analisada' ? 'neutro' : 'atencao'}
+            rotulo={solicitacao.status_denuncia === 'analisada'
+              ? `Denúncia registrada · ${ROTULO_RESULTADO_DENUNCIA[solicitacao.resultado_analise]}`
+              : 'Denúncia registrada · em análise'}>
+            {solicitacao.status_denuncia === 'analisada'
+              ? solicitacao.justificativa_analise
+              : 'A administração vai analisar e você será avisado do resultado.'}
+          </Bloco>
         )}
 
         <BarraAcoes>
@@ -645,6 +618,30 @@ export default function DetalheSolicitacao({
       {erro && <p className="mb-4 text-sm text-perigo-600">{erro}</p>}
 
       {cartao}
+
+      {/* UC 036 — reembolso de pagamento por boleto precisa de dados de
+          recebimento; Pix e cartão voltam sozinhos. Cartão próprio, fora do
+          resumo (CT-80). Some quando o reembolso segue para o gateway. */}
+      {solicitacao.id_cancelamento
+        && solicitacao.status_cancelamento === 'em_analise'
+        && Number(solicitacao.valor_reembolso) > 0
+        && solicitacao.forma_pagamento === 'boleto' && (
+          <DadosReembolso
+            idCancelamento={solicitacao.id_cancelamento}
+            valor={solicitacao.valor_reembolso}
+            titular={titular}
+            dados={solicitacao.id_dados_reembolso ? {
+              status_validacao: solicitacao.validacao_reembolso,
+              motivo_rejeicao: solicitacao.motivo_rejeicao_reembolso,
+              tipo_recebimento: solicitacao.tipo_recebimento,
+              chave_pix: solicitacao.chave_pix,
+              tipo_chave_pix: solicitacao.tipo_chave_pix,
+              banco: solicitacao.banco,
+              tipo_conta: solicitacao.tipo_conta,
+              agencia: solicitacao.agencia,
+              numero_conta: solicitacao.numero_conta,
+            } : null} />
+        )}
 
       {contestacao}
 

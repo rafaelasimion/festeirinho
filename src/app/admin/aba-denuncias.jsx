@@ -2,7 +2,9 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Flag, Star, EyeOff, Check, X, Gavel } from 'lucide-react';
+import {
+  Flag, Star, EyeOff, Check, X, Gavel, Ban, ExternalLink,
+} from 'lucide-react';
 import Etiqueta from '@/componentes/etiqueta';
 import CartaoAdmin, {
   Bloco, AcoesAdmin, NotaAba, ListaVazia,
@@ -18,6 +20,13 @@ import { formatarDataHora } from '@/lib/datas';
 import AvisoPainel from '@/componentes/aviso-painel';
 
 // RF068 / UC 026 — análise das denúncias.
+
+const ROTULO_STATUS_FORNECEDOR = {
+  pausado: 'pausado',
+  suspenso: 'suspenso',
+  inativo: 'inativo',
+  excluido: 'com a conta excluída',
+};
 
 export default function AbaDenuncias({ denuncias }) {
   const router = useRouter();
@@ -65,8 +74,8 @@ export default function AbaDenuncias({ denuncias }) {
     <div className="space-y-4">
       <NotaAba>
         A denúncia é disciplinar: não gera reembolso, não bloqueia repasse e não
-        suspende conta por si só. Se o caso justificar suspensão, ela é registrada
-        na aba Contas.
+        suspende conta por si só. Se o caso justificar suspensão, marque a opção ao
+        julgar a denúncia procedente ou registre na aba Contas.
       </NotaAba>
 
       {pendentes.length > 0 && (
@@ -98,6 +107,8 @@ function ItemDenuncia({ denuncia, processando, aoAnalisar }) {
   const [justificativa, setJustificativa] = useState('');
   const [ocultar, setOcultar] = useState(false);
   const [motivoOcultacao, setMotivoOcultacao] = useState('');
+  const [suspender, setSuspender] = useState(false);
+  const [motivoSuspensao, setMotivoSuspensao] = useState('');
 
   const pendente = denuncia.status_denuncia === 'pendente';
   const ehDeAvaliacao = denuncia.tipo_denuncia === 'avaliacao';
@@ -105,6 +116,14 @@ function ItemDenuncia({ denuncia, processando, aoAnalisar }) {
   const podeOcultar = ehDeAvaliacao
     && denuncia.comentario
     && denuncia.origem_ocultacao !== 'moderacao';
+  // UC 041, fluxo 4a — suspensão no mesmo envio, só na denúncia de
+  // fornecedor e só se ele ainda não estiver suspenso nem excluído.
+  const podeSuspender = !ehDeAvaliacao
+    && !['suspenso', 'excluido'].includes(denuncia.status_fornecedor);
+  // O motivo já vem escrito a partir da denúncia, que é o que a regra pede
+  // que fique registrado (UC 041, 4a.1); a administração pode ajustar.
+  const motivoSugerido = `Denúncia procedente (${ROTULO_MOTIVO[denuncia.motivo_padrao]}) `
+    + `na solicitação nº ${denuncia.id_solicitacao}, ${denuncia.servico}.`;
 
   const rodape = !pendente ? (
     <p className="text-sm text-slate-600">
@@ -149,6 +168,42 @@ function ItemDenuncia({ denuncia, processando, aoAnalisar }) {
         </div>
       )}
 
+      {/* UC 041, fluxo 4a — a suspensão do fornecedor, decisão separada
+          do resultado, como a remoção do comentário logo acima (RN052). */}
+      {decidindo === 'procedente' && podeSuspender && (
+        <div className="rounded-xl border border-slate-200 bg-white p-3.5">
+          <label className="flex cursor-pointer items-start gap-2.5">
+            <input type="checkbox" checked={suspender}
+              onChange={(e) => {
+                setSuspender(e.target.checked);
+                if (e.target.checked && motivoSuspensao.trim() === '') {
+                  setMotivoSuspensao(motivoSugerido);
+                }
+              }}
+              className="mt-1 h-4 w-4 accent-perigo-600" />
+            <span>
+              <span className="flex items-center gap-1.5 text-sm font-medium text-slate-800">
+                <Ban className="h-4 w-4 text-perigo-600" aria-hidden="true" />
+                Suspender o fornecedor
+              </span>
+              <span className="block text-xs text-slate-500">
+                O login é bloqueado e os serviços saem da busca. As contratações
+                já confirmadas seguem. Ele pode pedir revisão na tela de acesso.
+              </span>
+            </span>
+          </label>
+
+          {suspender && (
+            <div className="mt-3">
+              <CampoTexto label="Motivo da suspensão" name={`motivo-suspensao-${denuncia.id}`}
+                rows={2} value={motivoSuspensao} minimo={10} maximo={500}
+                onChange={(e) => setMotivoSuspensao(e.target.value)}
+                placeholder="Aparece para o fornecedor na tela de acesso." />
+            </div>
+          )}
+        </div>
+      )}
+
       <AcoesAdmin>
         <BotaoAcao tom={decidindo === 'procedente' ? 'perigoCheio' : 'principal'}
           Icone={Gavel}
@@ -156,7 +211,9 @@ function ItemDenuncia({ denuncia, processando, aoAnalisar }) {
             || justificativa.trim().length < 20
             || justificativa.trim().length > 500
             || (ocultar && motivoOcultacao.trim().length < 10)
-            || (ocultar && motivoOcultacao.trim().length > 500)}
+            || (ocultar && motivoOcultacao.trim().length > 500)
+            || (suspender && motivoSuspensao.trim().length < 10)
+            || (suspender && motivoSuspensao.trim().length > 500)}
           onClick={async () => {
             const certo = await aoAnalisar({
               id: denuncia.id,
@@ -164,20 +221,26 @@ function ItemDenuncia({ denuncia, processando, aoAnalisar }) {
               justificativa,
               ocultarComentario: decidindo === 'procedente' && ocultar,
               motivoOcultacao,
+              suspenderFornecedor: decidindo === 'procedente' && suspender,
+              motivoSuspensao,
             }, decidindo === 'procedente' && ocultar
               ? 'Denúncia procedente e comentário removido da vitrine.'
-              : `Denúncia julgada ${decidindo}.`);
+              : decidindo === 'procedente' && suspender
+                ? 'Denúncia procedente e fornecedor suspenso.'
+                : `Denúncia julgada ${decidindo}.`);
             if (certo) {
               setDecidindo(null);
               setJustificativa('');
               setOcultar(false);
               setMotivoOcultacao('');
+              setSuspender(false);
+              setMotivoSuspensao('');
             }
           }}>
           Confirmar decisão
         </BotaoAcao>
         <BotaoAcao tom="discreto" disabled={processando}
-          onClick={() => { setDecidindo(null); setOcultar(false); }}>
+          onClick={() => { setDecidindo(null); setOcultar(false); setSuspender(false); }}>
           Voltar
         </BotaoAcao>
       </AcoesAdmin>
@@ -219,6 +282,25 @@ function ItemDenuncia({ denuncia, processando, aoAnalisar }) {
       <Bloco tom="perigo" rotulo={ROTULO_MOTIVO[denuncia.motivo_padrao]}>
         {denuncia.motivo}
       </Bloco>
+
+      {/* A vitrine do denunciado, para analisar perfil, serviços e
+          avaliações antes de decidir. Abre em outra aba para não perder a
+          decisão em andamento. A vitrine só existe para o público com o
+          fornecedor ativo (RN020); fora disso, o cartão diz por quê. */}
+      {!ehDeAvaliacao && (
+        denuncia.status_fornecedor === 'ativo' ? (
+          <a href={`/fornecedores/${denuncia.id_fornecedor}`} target="_blank" rel="noreferrer"
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-festa-700 hover:underline">
+            <ExternalLink className="h-4 w-4" aria-hidden="true" />
+            Ver a vitrine de {denuncia.fornecedor}
+          </a>
+        ) : (
+          <p className="text-sm text-slate-500">
+            Vitrine indisponível: o fornecedor está{' '}
+            {ROTULO_STATUS_FORNECEDOR[denuncia.status_fornecedor] ?? denuncia.status_fornecedor}.
+          </p>
+        )
+      )}
 
       {/* O conteúdo denunciado, para a análise não depender de memória. */}
       {ehDeAvaliacao && (

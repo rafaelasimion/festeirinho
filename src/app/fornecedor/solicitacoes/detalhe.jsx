@@ -33,6 +33,7 @@ import {
   AVISO_GUARDA_FOTOS_CONTESTACAO,
 } from '@/lib/contestacao';
 import Chat from '@/componentes/chat';
+import { Bloco, FIO_BLOCO } from '@/componentes/bloco';
 import TituloPainel from '@/componentes/titulo-painel';
 import DialogoDenuncia from '@/componentes/dialogo-denuncia';
 import FotosContestacao, { LinkProvaPeloSuporte } from '@/componentes/fotos-contestacao';
@@ -415,25 +416,25 @@ export default function DetalheSolicitacaoRecebida({
         >
 
         {(solicitacao.tema || solicitacao.nome_aniversariante || solicitacao.observacoes) && (
-          <div className="mt-4 space-y-1 rounded-lg bg-slate-50 p-3 text-sm text-slate-700">
+          <Bloco rotulo="Sobre a festa" className="mt-4">
             {solicitacao.tema && (
-              <p><span className="font-medium">Tema: </span>{solicitacao.tema}</p>
+              <span className="block"><span className="font-medium">Tema: </span>{solicitacao.tema}</span>
             )}
             {solicitacao.nome_aniversariante && (
-              <p>
+              <span className="block">
                 <span className="font-medium">Aniversariante: </span>
                 {solicitacao.nome_aniversariante}
                 {solicitacao.idade_aniversariante !== null &&
                   `, ${solicitacao.idade_aniversariante} anos`}
-              </p>
+              </span>
             )}
             {solicitacao.observacoes && (
-              <p className="whitespace-pre-line">
+              <span className="block">
                 <span className="font-medium">Observações: </span>
                 {solicitacao.observacoes}
-              </p>
+              </span>
             )}
-          </div>
+          </Bloco>
         )}
 
         {aberta && (
@@ -486,34 +487,33 @@ export default function DetalheSolicitacaoRecebida({
           </AvisoCartao>
         )}
 
-        {/* UC 022 — cancelamento registrado */}
+        {/* UC 022 — cancelamento registrado. Fio à esquerda, e não caixa
+            dentro do cartão. */}
         {solicitacao.id_cancelamento && (
-          <div className="mt-4 space-y-2 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm">
-            <p className="font-medium text-slate-800">
-              {ROTULO_ORIGEM_CANCELAMENTO[solicitacao.solicitado_por]} ·{' '}
-              {ROTULO_STATUS_CANCELAMENTO[solicitacao.status_cancelamento]}
-            </p>
-            <p className="whitespace-pre-line text-slate-700">
+          <Bloco tom="perigo" className="mt-4"
+            rotulo={`${ROTULO_ORIGEM_CANCELAMENTO[solicitacao.solicitado_por]} · ${
+              ROTULO_STATUS_CANCELAMENTO[solicitacao.status_cancelamento]}`}>
+            <span className="block">
               <span className="font-medium">Motivo: </span>
               {solicitacao.motivo_cancelamento}
-            </p>
+            </span>
             {Number(solicitacao.valor_multa) > 0 && (
-              <p className="text-slate-700">
+              <span className="mt-1 block">
                 <span className="font-medium">Valor retido a seu favor: </span>
                 {formatarPreco(solicitacao.valor_multa)}
                 {solicitacao.status_repasse === 'liberado'
                   ? ' · já liberado para saque'
                   : ' · liberado quando o cancelamento concluir'}
-              </p>
+              </span>
             )}
-          </div>
+          </Bloco>
         )}
 
         {/* RF037 — a avaliação recebida. RN062: a nota conta na
             média mesmo quando o comentário é privado ou foi ocultado
             pela moderação; só o texto deixa de aparecer. */}
         {solicitacao.id_avaliacao && (
-          <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3">
+          <div className={`mt-4 border-l-2 pl-3.5 ${FIO_BLOCO.neutro}`}>
             <div className="flex flex-wrap items-center gap-2">
               <span className="flex" aria-label={`Nota ${solicitacao.nota} de 5`}>
                 {[1, 2, 3, 4, 5].map((posicao) => (
@@ -541,7 +541,7 @@ export default function DetalheSolicitacaoRecebida({
             )}
 
             {solicitacao.comentario && solicitacao.id_denuncia && (
-              <p className="mt-3 border-t border-slate-200 pt-3 text-sm text-slate-600">
+              <p className="mt-2 text-sm text-slate-600">
                 Comentário denunciado
                 {solicitacao.status_denuncia === 'analisada'
                   ? `: ${ROTULO_RESULTADO_DENUNCIA[solicitacao.resultado_analise]}. ${solicitacao.justificativa_analise}`

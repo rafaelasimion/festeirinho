@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { AlertTriangle } from 'lucide-react';
 import Campo, { CampoSelecao } from '@/componentes/campo';
+import { Bloco, FIO_BLOCO } from '@/componentes/bloco';
 import {
   TIPOS_RECEBIMENTO,
   TIPOS_CHAVE_PIX,
@@ -59,14 +59,12 @@ export default function FormularioRecebimento({
 
   return (
     <div className="space-y-4">
+      {/* Fio à esquerda, e não caixa: o formulário já fica dentro de um
+          cartão, no reembolso e no saque. */}
       {motivoRejeicao && (
-        <div className="flex gap-3 rounded-lg border border-perigo-200 bg-perigo-50 p-3 text-sm">
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-perigo-600" aria-hidden="true" />
-          <div>
-            <p className="font-medium text-slate-800">Os dados anteriores foram rejeitados</p>
-            <p className="mt-0.5 text-slate-700">{motivoRejeicao}</p>
-          </div>
-        </div>
+        <Bloco tom="perigo" rotulo="Os dados anteriores foram rejeitados">
+          {motivoRejeicao}
+        </Bloco>
       )}
 
       <fieldset>
@@ -119,20 +117,18 @@ export default function FormularioRecebimento({
         </>
       )}
 
-      <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-        <p className="mb-3 text-xs text-slate-600">
+      <div className={`space-y-3 border-l-2 pl-3.5 ${FIO_BLOCO.neutro}`}>
+        <p className="text-xs text-slate-600">
           Os dados precisam pertencer ao titular desta conta. Uma conta de terceiro
           é recusada na validação.
         </p>
-        <div className="space-y-3">
-          <Campo label="Nome do titular" name="nomeTitular" value={campos.nomeTitular}
-            onChange={aoDigitar} erro={erros.nomeTitular} />
-          <Campo label="CPF ou CNPJ do titular" name="cpfCnpjTitular"
-            value={campos.cpfCnpjTitular} onChange={aoDigitar} erro={erros.cpfCnpjTitular} />
-        </div>
+        <Campo label="Nome do titular" name="nomeTitular" value={campos.nomeTitular}
+          onChange={aoDigitar} erro={erros.nomeTitular} />
+        <Campo label="CPF ou CNPJ do titular" name="cpfCnpjTitular"
+          value={campos.cpfCnpjTitular} onChange={aoDigitar} erro={erros.cpfCnpjTitular} />
       </div>
 
-      {erroServidor && <p className="text-sm text-red-600">{erroServidor}</p>}
+      {erroServidor && <p className="text-sm text-perigo-600">{erroServidor}</p>}
 
       <div className="flex flex-wrap gap-2">
         <button type="button" onClick={enviar} disabled={processando}

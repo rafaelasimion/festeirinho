@@ -2,8 +2,10 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   validarLuhn, detectarBandeira, validarValidade, validarCVV, ultimosQuatro,
+  conferirCartao,
 } from '@/lib/cartao';
 import { validarDadosRecebimento } from '@/lib/recebimento';
+import { marcosDaSolicitacao } from '@/lib/solicitacao';
 
 // RF032 / RN013 — cadastro de cartão: só número válido sai do formulário,
 // e do número completo só os quatro últimos dígitos ficam no sistema.
@@ -41,6 +43,24 @@ describe('RF032 · cartão de crédito', () => {
 
   it('RN013: do número só os quatro últimos dígitos são guardados', () => {
     assert.equal(ultimosQuatro('4111 1111 1111 1234'), '1234');
+  });
+
+  // UC 030, 5a / D04 — cada campo errado tem a sua mensagem, a mesma na
+  // tela e no servidor.
+  it('5a: cada campo errado diz o que está errado (CT-59)', () => {
+    const erros = conferirCartao({
+      numero: '4111 1111 1111 1112', nomeImpresso: 'Ana Souza',
+      validade: '01/20', cvv: '12', apelido: '',
+    });
+    assert.equal(erros.numero, 'Número de cartão inválido.');
+    assert.equal(erros.validade, 'Validade inválida ou vencida.');
+    assert.equal(erros.cvv, 'Código de segurança inválido.');
+    assert.equal(erros.nomeImpresso, undefined);
+  });
+
+  it('5a: formulário vazio pede cada campo, e o apelido é opcional', () => {
+    const erros = conferirCartao({ numero: '', nomeImpresso: '', validade: '', cvv: '', apelido: '' });
+    assert.deepEqual(Object.keys(erros).sort(), ['cvv', 'nomeImpresso', 'numero', 'validade']);
   });
 });
 
@@ -119,5 +139,37 @@ describe('RN061 · dados de recebimento', () => {
   it('forma de recebimento fora das duas opções: recusada', () => {
     const { erros } = validarDadosRecebimento({ ...titular, tipoRecebimento: 'dinheiro' });
     assert.ok(erros.tipoRecebimento);
+  });
+});
+
+// RF023 / RN025 / RN048 — o pagamento que não acontece aparece no
+// histórico da solicitação (CT-65, D05).
+describe('RF023 · histórico de pagamento não realizado', () => {
+  const base = {
+    status: 'cancelado',
+    data_solicitacao: '2026-10-14 09:00:00',
+    data_resposta_fornecedor: '2026-10-14 10:00:00',
+  };
+  const titulos = (solicitacao) => marcosDaSolicitacao(solicitacao).map((m) => m.titulo);
+
+  it('prazo esgotado: marco de cancelamento depois da aprovação', () => {
+    assert.deepEqual(titulos({
+      ...base, status_pagamento: 'expirado', data_fim_pagamento: '2026-10-14 11:05:00',
+    }), ['Solicitação enviada', 'Aprovada pelo fornecedor', 'Cancelada: prazo de pagamento esgotado']);
+  });
+
+  it('três recusas: marco próprio', () => {
+    assert.ok(titulos({
+      ...base, status_pagamento: 'recusado', data_fim_pagamento: '2026-10-14 10:30:00',
+    }).includes('Cancelada: pagamento recusado'));
+  });
+
+  it('cancelamento pelo UC 022 não ganha o marco de pagamento', () => {
+    const lista = titulos({
+      ...base, status_pagamento: 'cancelado', data_cancelamento: '2026-10-14 10:20:00',
+      solicitado_por: 'cliente',
+    });
+    assert.ok(lista.includes('Cancelamento registrado'));
+    assert.ok(!lista.some((t) => t.startsWith('Cancelada:')));
   });
 });

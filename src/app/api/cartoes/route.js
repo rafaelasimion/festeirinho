@@ -2,8 +2,7 @@ import { NextResponse } from 'next/server';
 import { pool } from '@/lib/db';
 import { obterClienteLogado } from '@/lib/autorizacao';
 import {
-  somenteDigitos, validarLuhn, detectarBandeira, ultimosQuatro,
-  validarValidade, validarCVV,
+  somenteDigitos, detectarBandeira, ultimosQuatro, conferirCartao,
 } from '@/lib/cartao';
 
 // RF032 / UC 030 — cadastro de cartão de crédito.
@@ -57,14 +56,9 @@ export async function POST(request) {
   const bandeira = detectarBandeira(numero);
 
   // ---------- validação de entrada ----------
-  const erros = {};
-  if (!validarLuhn(numero)) erros.numero = 'Número de cartão inválido.';
-  else if (bandeira === null) erros.numero = 'Bandeira não reconhecida.';
-  if (nomeImpresso.length < 3 || nomeImpresso.length > 100)
-    erros.nomeImpresso = 'Informe o nome como está impresso no cartão.';
-  if (!validarValidade(validade)) erros.validade = 'Validade inválida ou vencida.';
-  if (!validarCVV(cvv, bandeira)) erros.cvv = 'Código de segurança inválido.';
-  if (apelido.length > 50) erros.apelido = 'O apelido deve ter até 50 caracteres.';
+  // As mesmas regras e mensagens que a tela mostra campo a campo
+  // (lib/cartao.js). A tela confere antes de enviar; esta é a que vale.
+  const erros = conferirCartao({ numero, nomeImpresso, validade, cvv, apelido });
 
   if (Object.keys(erros).length > 0) {
     return NextResponse.json({ erros }, { status: 400 });

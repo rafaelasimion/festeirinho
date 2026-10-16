@@ -304,6 +304,19 @@ export function marcosDaSolicitacao(solicitacao) {
     solicitacao.forma_pagamento ? ROTULO_FORMA_PAGAMENTO[solicitacao.forma_pagamento] : null,
     'sucesso');
 
+  // RN025 / RN048 — o pagamento que não acontece também encerra a
+  // solicitação, mas sem passar pelo cancelamento do UC 022, então o marco
+  // "Cancelamento registrado" lá embaixo não aparece. Sem este, o histórico
+  // terminava na aprovação e a pessoa via "Cancelado" no status sem saber
+  // por quê (CT-65, D05).
+  if (solicitacao.status_pagamento === 'expirado') {
+    pôr(solicitacao.data_fim_pagamento, 'Cancelada: prazo de pagamento esgotado',
+      'O pagamento não foi confirmado dentro do prazo.', 'perigo');
+  } else if (solicitacao.status_pagamento === 'recusado') {
+    pôr(solicitacao.data_fim_pagamento, 'Cancelada: pagamento recusado',
+      'O pagamento foi recusado três vezes.', 'perigo');
+  }
+
   pôr(solicitacao.data_registro_conclusao_fornecedor,
     'Conclusão registrada pelo fornecedor');
 

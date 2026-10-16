@@ -8,7 +8,7 @@ import CartaoAdmin, { AcoesAdmin, ListaVazia, FIO_BLOCO } from '@/componentes/ca
 import { BotaoAcao } from '@/componentes/acoes-solicitacao';
 import { CampoTexto } from '@/componentes/campo';
 import { formatarPreco } from '@/lib/solicitacao';
-import { descreverRecebimento, TIPOS_CHAVE_PIX } from '@/lib/recebimento';
+import DestinoRecebimento from '@/componentes/destino-recebimento';
 import { formatarDataHora } from '@/lib/datas';
 import AvisoPainel from '@/componentes/aviso-painel';
 
@@ -128,7 +128,6 @@ function ItemValidacao({ dados, processando, aoDecidir }) {
   // documento informado com o da conta, para a administração não ter de
   // conferir de cabeça.
   const documentoConfere = dados.cpf_cnpj_titular === dados.documento_conta;
-  const rotuloChave = TIPOS_CHAVE_PIX.find((t) => t.valor === dados.tipo_chave_pix)?.rotulo;
 
   const rodape = rejeitando ? (
     <div className="space-y-3">
@@ -183,10 +182,8 @@ function ItemValidacao({ dados, processando, aoDecidir }) {
           <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
             Destino informado
           </dt>
-          <dd className="mt-1 text-slate-700">
-            {dados.tipo_recebimento === 'pix'
-              ? <>Pix · {rotuloChave}<br />{dados.chave_pix}</>
-              : <>{descreverRecebimento(dados)}</>}
+          <dd className="mt-1">
+            <DestinoRecebimento dados={dados} />
           </dd>
         </div>
 
@@ -251,8 +248,12 @@ function ItemProcessamento({ item, processando, aoConcluir }) {
       subtitulo={
         <>
           {item.nome_conta}
-          {item.destino && (
-            <span className="mt-0.5 block text-xs text-slate-500">{item.destino}</span>
+          {item.recebimento ? (
+            <DestinoRecebimento dados={item.recebimento} className="mt-1" />
+          ) : (
+            <span className="mt-0.5 block text-xs text-slate-500">
+              Estorno pelo meio de pagamento original
+            </span>
           )}
         </>
       }

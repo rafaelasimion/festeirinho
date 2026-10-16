@@ -65,6 +65,16 @@ export async function buscarSolicitacoes(idUsuario, idFornecedor, { id = null } 
             e.cidade, e.estado, e.cep,
             p.status AS status_pagamento, p.valor_bruto,
             p.data_pagamento, p.forma_pagamento,
+            -- RN025 / RN048 — o pagamento que termina sem ser pago (prazo
+            -- esgotado ou três recusas) cancela a solicitação sem registro
+            -- em cancelamento, porque não passa pelo UC 022. O momento em
+            -- que isso aconteceu é o do aviso que o sistema mandou às duas
+            -- partes; sem o aviso, vale a data-limite do pagamento.
+            CASE WHEN p.status IN ('expirado', 'recusado') THEN
+              COALESCE((SELECT MIN(n.data_criacao) FROM notificacao n
+                         WHERE n.id_solicitacao = so.id AND n.tipo = 'pagamento'),
+                       p.data_limite)
+            END AS data_fim_pagamento,
             ca.id AS id_cancelamento, ca.solicitado_por,
             ca.data_solicitacao AS data_cancelamento,
             ca.motivo AS motivo_cancelamento,
@@ -135,6 +145,7 @@ function serializar(linhas) {
     data_analise_contestacao: iso(linha.data_analise_contestacao),
     data_resposta_fornecedor: iso(linha.data_resposta_fornecedor),
     data_pagamento: iso(linha.data_pagamento),
+    data_fim_pagamento: iso(linha.data_fim_pagamento),
     data_cancelamento: iso(linha.data_cancelamento),
     duracao: Number(linha.duracao),
     valor_final: Number(linha.valor_final),

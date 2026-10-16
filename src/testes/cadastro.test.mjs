@@ -120,6 +120,31 @@ describe('RF001 · data de nascimento e maioridade', () => {
   it('29 de fevereiro em ano bissexto: aceito', () => {
     assert.equal(validarDataNascimento('2000-02-29'), true);
   });
+
+  // D02 — às 21h de Brasília já é o dia seguinte em UTC. A validação
+  // comparava com a meia-noite UTC e, das 21h à meia-noite, aceitava a data
+  // de amanhã. O teste de cima só pegava isso quando rodava nesse horário;
+  // este fixa o relógio em 21h30 para pegar sempre.
+  it('às 21h30 de Brasília, a data de amanhã continua no futuro (D02)', () => {
+    const DataReal = Date;
+    const fusoAnterior = process.env.TZ;
+    const instante = DataReal.parse('2026-10-16T00:30:00Z'); // 15/10, 21h30 em Brasília
+    process.env.TZ = 'America/Sao_Paulo';
+    globalThis.Date = class extends DataReal {
+      constructor(...argumentos) {
+        super(...(argumentos.length ? argumentos : [instante]));
+      }
+      static now() { return instante; }
+    };
+    try {
+      assert.equal(validarDataNascimento('2026-10-16'), false, 'amanhã');
+      assert.equal(validarDataNascimento('2026-10-15'), true, 'hoje');
+    } finally {
+      globalThis.Date = DataReal;
+      if (fusoAnterior === undefined) delete process.env.TZ;
+      else process.env.TZ = fusoAnterior;
+    }
+  });
 });
 
 // RNF005 — números digitados no padrão brasileiro.

@@ -1,7 +1,6 @@
 import { redirect } from 'next/navigation';
 import { pool } from '@/lib/db';
 import { administradorAtivo } from '@/lib/sessao-admin';
-import { descreverRecebimento } from '@/lib/recebimento';
 import { marcarContasInativas } from '@/lib/inatividade-servidor';
 import PainelVerificacao from './painel';
 import { paraSerializar } from '@/lib/datas';
@@ -221,7 +220,10 @@ export default async function Admin() {
             (SELECT COUNT(*) FROM cancelamento ca
                JOIN solicitacao so2 ON so2.id = ca.id_solicitacao
               WHERE so2.id_cliente = c.id
-                AND ca.solicitado_por = 'cliente') AS alerta_cancelamentos
+                AND ca.solicitado_por = 'cliente') AS alerta_cancelamentos,
+            -- Denúncia é sempre contra fornecedor (RN052); a coluna existe
+            -- aqui só para os dois lados do UNION terem o mesmo formato.
+            0 AS alerta_denuncias
        FROM cliente c
        JOIN usuario u ON u.id = c.id_usuario
 
@@ -244,7 +246,17 @@ export default async function Admin() {
                JOIN solicitacao so2 ON so2.id = ca.id_solicitacao
                JOIN servico s2      ON s2.id = so2.id_servico
               WHERE s2.id_fornecedor = f.id
-                AND ca.solicitado_por IN ('fornecedor', 'sistema')) AS alerta_cancelamentos
+                AND ca.solicitado_por IN ('fornecedor', 'sistema')) AS alerta_cancelamentos,
+            -- UC 041 — denúncias de clientes julgadas procedentes. A
+            -- suspensão não é automática (RN052), mas a conta precisa
+            -- aparecer aqui para a administração decidir; antes ela só
+            -- surgia em "Mostrar todas" (CT-120).
+            (SELECT COUNT(*) FROM denuncia dn
+               JOIN solicitacao so3 ON so3.id = dn.id_solicitacao
+               JOIN servico s3      ON s3.id = so3.id_servico
+              WHERE s3.id_fornecedor = f.id
+                AND dn.tipo_denuncia = 'fornecedor'
+                AND dn.resultado_analise = 'procedente') AS alerta_denuncias
        FROM fornecedor f
        JOIN usuario u ON u.id = f.id_usuario
 
@@ -260,7 +272,8 @@ export default async function Admin() {
             d.status_denuncia, d.resultado_analise, d.justificativa_analise,
             d.data_analise,
             a.nota, a.comentario, a.status_avaliacao, a.origem_ocultacao,
-            s.nome AS servico, f.nome_exibicao AS fornecedor, u.nome AS cliente
+            s.nome AS servico, f.nome_exibicao AS fornecedor, u.nome AS cliente,
+            f.id AS id_fornecedor, f.status_fornecedor, so.id AS id_solicitacao
        FROM denuncia d
        JOIN avaliacao a    ON a.id = d.id_avaliacao
        JOIN solicitacao so ON so.id = a.id_solicitacao
@@ -277,7 +290,8 @@ export default async function Admin() {
             d.data_analise,
             NULL AS nota, NULL AS comentario, NULL AS status_avaliacao,
             NULL AS origem_ocultacao,
-            s.nome AS servico, f.nome_exibicao AS fornecedor, u.nome AS cliente
+            s.nome AS servico, f.nome_exibicao AS fornecedor, u.nome AS cliente,
+            f.id AS id_fornecedor, f.status_fornecedor, so.id AS id_solicitacao
        FROM denuncia d
        JOIN solicitacao so ON so.id = d.id_solicitacao
        JOIN servico s      ON s.id  = so.id_servico
@@ -326,6 +340,7 @@ export default async function Admin() {
         data_analise_revisao: iso(c.data_analise_revisao),
         alerta_contestacoes: Number(c.alerta_contestacoes),
         alerta_cancelamentos: Number(c.alerta_cancelamentos),
+        alerta_denuncias: Number(c.alerta_denuncias),
       }))}
       dadosPendentes={dadosPendentes.map((d) => ({
         ...d,
@@ -344,8 +359,16 @@ export default async function Admin() {
         valor: Number(p.valor),
         nome_conta: p.nome_conta,
         // Estorno por Pix ou cartão volta pelo próprio gateway, sem dados
-        // informados; aí não há destino a descrever.
-        destino: p.tipo_recebimento ? descreverRecebimento(p) : 'Estorno pelo meio de pagamento original',
+        // informados; aí não há destino a mostrar, e o cartão diz isso.
+        recebimento: p.tipo_recebimento ? {
+          tipo_recebimento: p.tipo_recebimento,
+          tipo_chave_pix: p.tipo_chave_pix,
+          chave_pix: p.chave_pix,
+          banco: p.banco,
+          tipo_conta: p.tipo_conta,
+          agencia: p.agencia,
+          numero_conta: p.numero_conta,
+        } : null,
       }))}
     />
   );

@@ -29,6 +29,13 @@ export default function FormularioServico() {
   const [opcoes, setOpcoes] = useState(null);
   const [editando, setEditando] = useState(null); // null | 'novo' | id do serviço
   const [campos, setCampos] = useState(CAMPOS_VAZIOS);
+  // O que está gravado no banco, para saber se há o que salvar. Com isso o
+  // pé do formulário mostra um botão só por vez: "Concluir" quando nada
+  // mudou e "Salvar alterações" quando mudou. Antes os dois ficavam lado a
+  // lado o tempo todo, e depois do primeiro salvamento — quando o que falta
+  // são as fotos, gravadas na hora — não dava para saber se ainda era
+  // preciso clicar em "Salvar" (anotação da rodada de testes de 15/10).
+  const [camposSalvos, setCamposSalvos] = useState(CAMPOS_VAZIOS);
   const [erros, setErros] = useState({});
   const [mensagem, setMensagem] = useState('');
   const [erroGeral, setErroGeral] = useState('');
@@ -53,17 +60,19 @@ export default function FormularioServico() {
   // função roda no retorno da primeira carga, quando o setOpcoes da mesma
   // carga ainda não chegou ao estado.
   function abrirNovo(antecedencia) {
-    setCampos({
+    const iniciais = {
       ...CAMPOS_VAZIOS,
       diasAntecedencia: String(antecedencia ?? ''),
-    });
+    };
+    setCampos(iniciais);
+    setCamposSalvos(iniciais);
     setErros({});
     setMensagem('');
     setEditando('novo');
   }
 
   function abrirEdicao(servico) {
-    setCampos({
+    const gravados = {
       nome: servico.nome,
       descricao: servico.descricao,
       idCategoria: String(servico.id_categoria),
@@ -71,7 +80,9 @@ export default function FormularioServico() {
       precoBase: String(servico.preco_base),
       capacidadeMax: servico.capacidade_max === null ? '' : String(servico.capacidade_max),
       diasAntecedencia: String(servico.dias_antecedencia),
-    });
+    };
+    setCampos(gravados);
+    setCamposSalvos(gravados);
     setErros({});
     setMensagem('');
     setEditando(servico.id);
@@ -234,6 +245,7 @@ export default function FormularioServico() {
           // ser penduradas num serviço que já existe. Então o formulário
           // continua aberto, agora em modo de edição, com as fotos liberadas.
           setEditando(dados.id);
+          setCamposSalvos(campos);
           setMensagem('Serviço cadastrado. Agora adicione as fotos — a primeira vira a principal.');
         } else {
           setEditando(null);
@@ -262,6 +274,13 @@ export default function FormularioServico() {
   }
 
   const editandoExistente = typeof editando === 'number';
+  const alterado = JSON.stringify(campos) !== JSON.stringify(camposSalvos);
+
+  function descartarAlteracoes() {
+    setCampos(camposSalvos);
+    setErros({});
+    setMensagem('');
+  }
 
   return (
     <main className="mx-auto w-full max-w-2xl px-4 py-10 sm:px-6 sm:py-14">
@@ -382,16 +401,31 @@ export default function FormularioServico() {
             </div>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2">
-            <button type="button" onClick={salvar} disabled={salvando}
-              className="w-full rounded-xl bg-festa-600 px-4 py-3.5 font-semibold text-white transition-colors hover:bg-festa-700 disabled:cursor-not-allowed disabled:opacity-50">
-              {salvando ? 'Salvando...' : 'Salvar'}
-            </button>
+          {/* Um caminho por vez. Serviço já gravado e nada mudou: só
+              "Concluir", que volta à vitrine (as fotos já foram salvas).
+              Mudou algum campo: "Salvar alterações", e o outro botão
+              desfaz em vez de sair, para a mudança não se perder num clique
+              distraído. Serviço novo: "Salvar" e "Cancelar", como antes. */}
+          {editandoExistente && !alterado ? (
             <button type="button" onClick={() => router.push('/fornecedor/vitrine')}
-              className="w-full rounded-xl border border-festa-600 bg-white px-4 py-3.5 font-semibold text-festa-700 transition-colors hover:bg-festa-50">
-              {editandoExistente ? 'Concluir' : 'Cancelar'}
+              className="w-full rounded-xl bg-festa-600 px-4 py-3.5 font-semibold text-white transition-colors hover:bg-festa-700">
+              Concluir
             </button>
-          </div>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2">
+              <button type="button" onClick={salvar} disabled={salvando}
+                className="w-full rounded-xl bg-festa-600 px-4 py-3.5 font-semibold text-white transition-colors hover:bg-festa-700 disabled:cursor-not-allowed disabled:opacity-50">
+                {salvando ? 'Salvando...' : editandoExistente ? 'Salvar alterações' : 'Salvar'}
+              </button>
+              <button type="button" disabled={salvando}
+                onClick={editandoExistente
+                  ? descartarAlteracoes
+                  : () => router.push('/fornecedor/vitrine')}
+                className="w-full rounded-xl border border-festa-600 bg-white px-4 py-3.5 font-semibold text-festa-700 transition-colors hover:bg-festa-50 disabled:opacity-50">
+                {editandoExistente ? 'Descartar alterações' : 'Cancelar'}
+              </button>
+            </div>
+          )}
         </div>
       )}
     </main>

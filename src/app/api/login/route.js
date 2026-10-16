@@ -146,22 +146,45 @@ export async function POST(request) {
       );
     }
 
-    // 6c — conta inativa volta automaticamente para ativa antes de concluir.
-    if (perfil.status === 'inativo') {
-      await pool.execute(
-        ehCliente
-          ? `UPDATE cliente SET status_cliente = 'ativo' WHERE id_usuario = ?`
-          : `UPDATE fornecedor SET status_fornecedor = 'ativo' WHERE id_usuario = ?`,
+    // 6c — conta inativa volta automaticamente para ativa antes de concluir,
+    // e o passo 7 grava a data do login. São duas tabelas, então vão numa
+    // transação só (RNF007): sem ela, uma falha entre as duas deixava a
+    // conta reativada com a data de login antiga, e a próxima rotina de
+    // inatividade (RN043, RN047) a desativava de novo. Encontrado na revisão
+    // de código da RNF007 (D03).
+    //
+    // A guarda "AND status = 'inativo'" cobre a suspensão registrada entre a
+    // leitura do perfil, lá em cima, e esta escrita: sem ela, o login
+    // devolvia a 'ativo' uma conta que a administração acabara de suspender.
+    const conexao = await pool.getConnection();
+    try {
+      await conexao.beginTransaction();
+
+      if (perfil.status === 'inativo') {
+        await conexao.execute(
+          ehCliente
+            ? `UPDATE cliente SET status_cliente = 'ativo'
+                WHERE id_usuario = ? AND status_cliente = 'inativo'`
+            : `UPDATE fornecedor SET status_fornecedor = 'ativo'
+                WHERE id_usuario = ? AND status_fornecedor = 'inativo'`,
+          [usuario.id]
+        );
+      }
+
+      // ---------- passo 7: autentica ----------
+      // Base para a inativação automática por inatividade (RN043, RN047).
+      await conexao.execute(
+        'UPDATE usuario SET data_ultimo_login = NOW() WHERE id = ?',
         [usuario.id]
       );
-    }
 
-    // ---------- passo 7: autentica ----------
-    // Base para a inativação automática por inatividade (RN043, RN047).
-    await pool.execute(
-      'UPDATE usuario SET data_ultimo_login = NOW() WHERE id = ?',
-      [usuario.id]
-    );
+      await conexao.commit();
+    } catch (erroTransacao) {
+      await conexao.rollback();
+      throw erroTransacao;
+    } finally {
+      conexao.release();
+    }
 
     await criarSessao({ id: usuario.id, tipoUsuario: usuario.tipo_usuario });
 
