@@ -1,4 +1,5 @@
 import { pool } from '@/lib/db';
+import { antecedenciaExigida } from '@/lib/parametros';
 
 // RN014 — os parâmetros do negócio ficam na tabela configuracao, não no
 // código. Assim a administração ajusta prazos e percentuais sem que
@@ -61,4 +62,11 @@ export async function calcularAntecedenciaMinimaDias() {
     configuracoes.prazo_pagamento_horas +
     24;
   return Math.ceil(horas / 24);
+}
+
+// RN046 / UC 028, fluxo 5b — a antecedência que uma solicitação nova
+// precisa respeitar: a do serviço ou o mínimo vigente, o que for maior. A
+// conta, sem banco, mora em lib/parametros, junto da que calcula o mínimo.
+export async function antecedenciaExigidaDias(diasDoServico) {
+  return antecedenciaExigida(diasDoServico, await calcularAntecedenciaMinimaDias());
 }

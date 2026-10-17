@@ -3,7 +3,7 @@ import { pool } from '@/lib/db';
 import { lerSessao } from '@/lib/sessao';
 import { obterClienteLogado, obterFornecedorLogado } from '@/lib/autorizacao';
 import { obterConfiguracoes } from '@/lib/configuracao';
-import { motivosDoTipo } from '@/lib/denuncia';
+import { motivosDoTipo, marcoPrazoDenuncia } from '@/lib/denuncia';
 
 // RF067 / RN052 — registro de denúncia.
 //
@@ -65,9 +65,11 @@ async function denunciarFornecedor(idSolicitacao, motivoPadrao, descricao) {
   const [linhas] = await pool.execute(
     `SELECT so.id, so.status,
             so.data_confirmacao_conclusao_cliente,
-            ca.data_solicitacao AS data_cancelamento
+            ca.data_solicitacao AS data_cancelamento,
+            p.status AS status_pagamento, p.data_limite
        FROM solicitacao so
        LEFT JOIN cancelamento ca ON ca.id_solicitacao = so.id
+       LEFT JOIN pagamento p     ON p.id_solicitacao = so.id
       WHERE so.id = ? AND so.id_cliente = ?
       LIMIT 1`,
     [idSolicitacao, cliente.id]
@@ -86,10 +88,11 @@ async function denunciarFornecedor(idSolicitacao, motivoPadrao, descricao) {
     );
   }
 
-  // RN052 — prazo contado da confirmação da conclusão ou do registro do
-  // cancelamento. Em solicitação apenas confirmada não há marco ainda, e
-  // por isso o prazo sequer começou a correr.
-  const marco = solicitacao.data_confirmacao_conclusao_cliente ?? solicitacao.data_cancelamento;
+  // RN052 — prazo contado da confirmação da conclusão, do registro do
+  // cancelamento ou, no cancelamento por falta de pagamento (RN025), da
+  // data-limite do pagamento. Em solicitação apenas confirmada não há marco
+  // ainda, e por isso o prazo sequer começou a correr.
+  const marco = marcoPrazoDenuncia(solicitacao);
   if (marco) {
     const configuracoes = await obterConfiguracoes();
     const limite = new Date(marco);

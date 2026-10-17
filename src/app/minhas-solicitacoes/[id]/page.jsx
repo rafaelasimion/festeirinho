@@ -7,6 +7,7 @@ import {
   fecharPendenciasVencidas,
 } from '../consulta';
 import DetalheSolicitacao from '../detalhe';
+import { marcoPrazoDenuncia } from '@/lib/denuncia';
 
 // UC 014, passos 3 e 4 — a página de uma solicitação específica.
 export default async function PaginaSolicitacao({ params }) {
@@ -36,12 +37,13 @@ export default async function PaginaSolicitacao({ params }) {
   if (!solicitacao) notFound();
 
   // RN052 / UC 040, fluxo 2b — o prazo da denúncia conta da confirmação da
-  // conclusão ou do registro do cancelamento. Em solicitação só confirmada
-  // ele ainda não começou. É a mesma conta que a rota de denúncias faz; aqui
-  // ela decide se a tela oferece a denúncia ou o suporte, em vez de oferecer
-  // um botão que o servidor vai recusar.
-  const marcoDenuncia =
-    solicitacao.data_confirmacao_conclusao_cliente ?? solicitacao.data_cancelamento;
+  // conclusão, do registro do cancelamento ou, no cancelamento por falta de
+  // pagamento (RN025), da data-limite do pagamento. Em solicitação só
+  // confirmada ele ainda não começou. É a mesma conta que a rota de
+  // denúncias faz (lib/denuncia); aqui ela decide se a tela oferece a
+  // denúncia ou o suporte, em vez de oferecer um botão que o servidor vai
+  // recusar.
+  const marcoDenuncia = marcoPrazoDenuncia(solicitacao);
   let denunciaNoPrazo = true;
   if (marcoDenuncia) {
     const limite = new Date(marcoDenuncia);

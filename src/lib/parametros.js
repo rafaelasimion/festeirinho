@@ -54,9 +54,13 @@ export const PARAMETROS = {
     grupo: 'prazos', rotulo: 'Pagamento (Pix e cartão)', unidade: 'horas',
     min: 1, max: 720, inteiro: true, regra: 'RN024',
   },
+  // O piso de 4 dias acompanha o vencimento simulado do boleto, de 3 dias
+  // (api/pagamentos): com menos que isso, o teto da RN024 — 24h antes do
+  // evento — encurtava o vencimento logo na emissão, e o boleto nascia
+  // vencendo antes do prazo que o próprio gateway lhe deu.
   antecedencia_minima_boleto_dias: {
     grupo: 'prazos', rotulo: 'Antecedência para ofertar boleto', unidade: 'dias',
-    min: 1, max: 60, inteiro: true, regra: 'RN012',
+    min: 4, max: 60, inteiro: true, regra: 'RN012',
   },
   prazo_confirmacao_conclusao_horas: {
     grupo: 'prazos', rotulo: 'Confirmação da conclusão pelo cliente', unidade: 'horas',
@@ -147,6 +151,20 @@ export function antecedenciaMinimaDias(valores) {
     Number(valores.prazo_pagamento_horas) +
     24;
   return Math.ceil(horas / 24);
+}
+
+// RN046 / UC 028, fluxo 5b — a antecedência que uma solicitação nova
+// precisa respeitar.
+//
+// Quando a administração aumenta os prazos, os serviços já cadastrados com
+// antecedência abaixo do novo mínimo não são alterados à revelia do
+// fornecedor (UC 028, 5b.1). Mas o envio não pode seguir pelo valor
+// antigo: uma solicitação no limite, respondida no fim do prazo do
+// fornecedor, geraria um pagamento cuja data-limite (24h antes do evento,
+// RN024) já teria passado no momento da aprovação. Até o fornecedor editar
+// o serviço, vale o maior dos dois.
+export function antecedenciaExigida(diasDoServico, minimoDaPlataforma) {
+  return Math.max(Number(diasDoServico), Number(minimoDaPlataforma));
 }
 
 export function formatarValorParametro(chave, valor) {

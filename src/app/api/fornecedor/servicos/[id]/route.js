@@ -11,7 +11,7 @@ import { validarServico } from '@/lib/servico';
 // fornecedor.
 async function obterServicoDoFornecedor(idServico, idFornecedor) {
   const [linhas] = await pool.execute(
-    `SELECT id, nome, descricao, id_categoria, preco_base,
+    `SELECT id, nome, descricao, id_categoria, id_cobranca, preco_base,
             status_servico, status_verificacao
        FROM servico
       WHERE id = ? AND id_fornecedor = ?
@@ -48,14 +48,20 @@ export async function PUT(request, { params }) {
     return NextResponse.json({ erros }, { status: 400 });
   }
 
-  // RN067 — mudar nome, descrição, categoria ou preço base devolve o
-  // serviço para verificação. E aqui o efeito é mais forte que no perfil
-  // do fornecedor: o serviço deixa de ser exibido aos clientes até a nova
-  // aprovação, sem versão anterior mantida no ar.
+  // RN067 — mudar nome, descrição, categoria, preço base ou tipo de
+  // cobrança devolve o serviço para verificação. E aqui o efeito é mais
+  // forte que no perfil do fornecedor: o serviço deixa de ser exibido aos
+  // clientes até a nova aprovação, sem versão anterior mantida no ar.
+  //
+  // O tipo de cobrança entra pelo mesmo motivo do preço: ele é metade do
+  // preço anunciado. "R$ 800,00" fixo e "R$ 800,00 por pessoa" são ofertas
+  // diferentes — com 50 convidados, a segunda custa R$ 40.000,00 —, e só a
+  // primeira passou pela moderação.
   const mudouDadoRelevante =
     atual.nome !== dados.nome ||
     atual.descricao !== dados.descricao ||
     atual.id_categoria !== dados.idCategoria ||
+    atual.id_cobranca !== dados.idCobranca ||
     Number(atual.preco_base) !== dados.precoBase;
 
   const novoStatusVerificacao = mudouDadoRelevante ? 'pendente' : atual.status_verificacao;

@@ -1,9 +1,9 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  validarParametro, validarConsistencia, antecedenciaMinimaDias,
+  validarParametro, validarConsistencia, antecedenciaMinimaDias, antecedenciaExigida,
 } from '@/lib/parametros';
-import { MOTIVOS_AVALIACAO, MOTIVOS_FORNECEDOR } from '@/lib/denuncia';
+import { MOTIVOS_AVALIACAO, MOTIVOS_FORNECEDOR, marcoPrazoDenuncia } from '@/lib/denuncia';
 import { MOTIVOS_CONTESTACAO } from '@/lib/contestacao';
 import { mudouDadoDaVitrine } from '@/lib/fornecedor';
 
@@ -49,6 +49,64 @@ describe('RN046 · antecedência mínima de um serviço', () => {
 
   it('arredonda para cima: 49 h + 24 h + 24 h = 97 h → 5 dias', () => {
     assert.equal(antecedenciaMinimaDias({ ...valoresPadrao, prazo_resposta_fornecedor_horas: 49 }), 5);
+  });
+
+  it('UC 028, 5b: prazos aumentados valem para o serviço antigo até ele ser editado', () => {
+    // Serviço cadastrado com 4 dias; a resposta do fornecedor passa a 96 h:
+    // 96 + 24 + 24 = 144 h → 6 dias.
+    const novoMinimo = antecedenciaMinimaDias({ ...valoresPadrao, prazo_resposta_fornecedor_horas: 96 });
+    assert.equal(novoMinimo, 6);
+    assert.equal(antecedenciaExigida(4, novoMinimo), 6);
+  });
+
+  it('a antecedência maior que o mínimo, escolhida pelo fornecedor, continua valendo', () => {
+    assert.equal(antecedenciaExigida(10, 4), 10);
+  });
+});
+
+// RN012 / RN024 — o boleto vence em 3 dias (simulado) e a data-limite não
+// passa das 24 h antes do evento; abaixo de 4 dias, ele nasceria encurtado.
+describe('RN012 · antecedência mínima para ofertar boleto', () => {
+  it('aceita 4 dias e recusa 3', () => {
+    assert.equal(validarParametro('antecedencia_minima_boleto_dias', '4'), null);
+    assert.notEqual(validarParametro('antecedencia_minima_boleto_dias', '3'), null);
+  });
+});
+
+// RN052 — de onde conta o prazo da denúncia de fornecedor.
+describe('RN052 · marco do prazo da denúncia', () => {
+  const base = {
+    data_confirmacao_conclusao_cliente: null,
+    data_cancelamento: null,
+    status_pagamento: null,
+    data_limite: null,
+  };
+
+  it('solicitação só confirmada: o prazo ainda não começou', () => {
+    assert.equal(marcoPrazoDenuncia({ ...base, status_pagamento: 'pago' }), null);
+  });
+
+  it('conclusão confirmada: conta da confirmação', () => {
+    assert.equal(
+      marcoPrazoDenuncia({ ...base, data_confirmacao_conclusao_cliente: '2026-10-10T18:00:00' }),
+      '2026-10-10T18:00:00'
+    );
+  });
+
+  it('cancelamento registrado: conta do registro', () => {
+    assert.equal(
+      marcoPrazoDenuncia({ ...base, data_cancelamento: '2026-10-01T09:00:00', status_pagamento: 'cancelado' }),
+      '2026-10-01T09:00:00'
+    );
+  });
+
+  it('RN025, prazo esgotado ou terceira recusa: conta da data-limite do pagamento', () => {
+    for (const status of ['expirado', 'recusado']) {
+      assert.equal(
+        marcoPrazoDenuncia({ ...base, status_pagamento: status, data_limite: '2026-09-20T12:00:00' }),
+        '2026-09-20T12:00:00'
+      );
+    }
   });
 });
 

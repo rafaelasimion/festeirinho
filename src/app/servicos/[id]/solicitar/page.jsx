@@ -1,6 +1,7 @@
 import { redirect, notFound } from 'next/navigation';
 import { pool } from '@/lib/db';
 import { lerSessao } from '@/lib/sessao';
+import { antecedenciaExigidaDias } from '@/lib/configuracao';
 import FormularioSolicitacao from './formulario';
 
 export default async function SolicitarServico({ params }) {
@@ -47,6 +48,10 @@ export default async function SolicitarServico({ params }) {
     'SELECT id, descricao FROM tipo_local ORDER BY id'
   );
 
+  // RN046 — a tela usa a mesma antecedência que o servidor vai exigir: a do
+  // serviço ou, se os prazos da plataforma subiram depois, o mínimo vigente.
+  const diasAntecedencia = await antecedenciaExigidaDias(servicos[0].dias_antecedencia);
+
   // O servidor entrega para a tela apenas o que ela precisa mostrar.
   return (
     <FormularioSolicitacao
@@ -55,7 +60,7 @@ export default async function SolicitarServico({ params }) {
         nome: servicos[0].nome,
         precoBase: Number(servicos[0].preco_base),
         capacidadeMax: servicos[0].capacidade_max,
-        diasAntecedencia: servicos[0].dias_antecedencia,
+        diasAntecedencia,
         cobranca: servicos[0].cobranca,
         fornecedor: servicos[0].nome_exibicao,
         fotoPrincipal: servicos[0].foto_principal,

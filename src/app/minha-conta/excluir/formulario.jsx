@@ -114,8 +114,8 @@ export default function FormularioExclusao({ impedimentos, ehFornecedor }) {
                 <span className="font-medium">São apagados: </span>
                 nome, nome de usuário, e-mail, telefone, foto, localização
                 {ehFornecedor
-                  ? ', CPF ou CNPJ, razão social e redes sociais.'
-                  : ', CPF e data de nascimento.'}
+                  ? ', CPF ou CNPJ, data de nascimento, razão social e redes sociais.'
+                  : ', CPF, data de nascimento, os cartões salvos e o nome do aniversariante informado nas solicitações.'}
               </li>
               <li>
                 <span className="font-medium">São preservados sem identificação: </span>

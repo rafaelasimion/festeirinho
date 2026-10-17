@@ -243,6 +243,33 @@ export async function excluirConta(idUsuario, tipoUsuario) {
           WHERE id_usuario = ?`,
         [idUsuario]
       );
+
+      // RN044-A — o token do cartão é uma credencial de cobrança, pelo
+      // mesmo raciocínio do hash da senha: guardado ativo, continuaria
+      // servindo para cobrar. A remoção é a mesma do UC 029, lógica, porque
+      // os pagamentos antigos apontam para o cartão (RN044-B); o apelido sai
+      // junto, já que costuma trazer nome ("cartão da Ana"). Pagamento em
+      // andamento não há: a exclusão é recusada antes, enquanto houver
+      // solicitação aguardando pagamento (RN044).
+      await conexao.execute(
+        `UPDATE cartao_credito cc
+           JOIN cliente c ON c.id = cc.id_cliente
+            SET cc.status = 'removido', cc.apelido = NULL
+          WHERE c.id_usuario = ?`,
+        [idUsuario]
+      );
+
+      // RN044-A — o nome do aniversariante identifica uma criança (LGPD,
+      // art. 14). O resto da solicitação fica, porque é o registro da
+      // contratação (RN044-B): data, endereço, valores e a idade, que
+      // sozinha não identifica ninguém.
+      await conexao.execute(
+        `UPDATE solicitacao so
+           JOIN cliente c ON c.id = so.id_cliente
+            SET so.nome_aniversariante = NULL
+          WHERE c.id_usuario = ? AND so.nome_aniversariante IS NOT NULL`,
+        [idUsuario]
+      );
     }
 
     // RN044-A — os dados de recebimento também guardam identificador direto:

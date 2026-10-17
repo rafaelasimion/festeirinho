@@ -3,6 +3,8 @@ import { Store, MapPin, BadgeCheck, Star, Search } from 'lucide-react';
 import { pool } from '@/lib/db';
 import { formatarPreco, SUFIXO_PRECO } from '@/lib/solicitacao';
 import { lerSessao } from '@/lib/sessao';
+import { calcularAntecedenciaMinimaDias } from '@/lib/configuracao';
+import { antecedenciaExigida } from '@/lib/parametros';
 import Etiqueta from '@/componentes/etiqueta';
 import MolduraFoto from '@/componentes/moldura-foto';
 import BotaoFavorito from '@/componentes/botao-favorito';
@@ -181,6 +183,10 @@ export default async function Vitrine({ searchParams }) {
 
   const [categorias] = await pool.query('SELECT id, nome FROM categoria ORDER BY nome');
 
+  // RN046 — o mínimo vigente sai uma vez para a lista inteira; cada cartão
+  // anuncia o maior entre ele e a antecedência do serviço.
+  const minimoAntecedencia = await calcularAntecedenciaMinimaDias();
+
   return (
     <main className="mx-auto max-w-4xl px-6 py-10">
       <h1 className="mb-2 text-2xl font-semibold text-slate-900">
@@ -343,7 +349,7 @@ export default async function Vitrine({ searchParams }) {
                 </div>
 
                 <p className="text-xs text-slate-500">
-                  antecedência de {servico.dias_antecedencia} dias
+                  antecedência de {antecedenciaExigida(servico.dias_antecedencia, minimoAntecedencia)} dias
                   {servico.capacidade_max !== null &&
                     ` · até ${servico.capacidade_max} convidados`}
                 </p>

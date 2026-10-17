@@ -84,7 +84,7 @@ export default function AbaConfiguracoes({ configuracoes }) {
         setAviso(
           `A antecedência mínima dos serviços passou de ${minimoAnterior} para ${minimoNovo} dias.` +
           (servicosAbaixoDoMinimo > 0
-            ? ` ${servicosAbaixoDoMinimo} serviço(s) ativo(s) estão abaixo do novo mínimo e precisarão ser ajustados na próxima edição.`
+            ? ` ${servicosAbaixoDoMinimo} serviço(s) ativo(s) estão abaixo do novo mínimo: as novas solicitações para eles já passam a exigir ${minimoNovo} dias, e o cadastro será ajustado na próxima edição.`
             : '')
         );
       }

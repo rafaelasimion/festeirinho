@@ -251,7 +251,7 @@ export default function FormularioServico() {
           setEditando(null);
           setMensagem(
             dados.voltouParaVerificacao
-              ? 'Serviço salvo. Como você mudou nome, descrição, categoria ou preço, ele saiu da vitrine até a nova aprovação.'
+              ? 'Serviço salvo. Como você mudou nome, descrição, categoria, preço ou forma de cobrança, ele saiu da vitrine até a nova aprovação.'
               : 'Serviço salvo.'
           );
         }
@@ -388,15 +388,15 @@ export default function FormularioServico() {
           {/* RN031 e RN067 — quem cadastra precisa saber disto ANTES de
               escrever, não depois de salvar: o serviço nasce pendente e não
               aparece na busca até ser aprovado, e mexer em nome, descrição,
-              categoria, preço ou fotos devolve um serviço já aprovado à
-              análise. A tela antes só dizia isso na mensagem pós-salvamento. */}
+              categoria, preço, forma de cobrança ou fotos devolve um serviço
+              já aprovado à análise. A tela antes só dizia isso na mensagem pós-salvamento. */}
           <div className="rounded-xl border border-festa-100 bg-festa-50 p-4">
             <div className="flex gap-3">
               <Info className="mt-0.5 h-5 w-5 shrink-0 text-festa-600" aria-hidden="true" />
               <p className="text-sm text-slate-700">
                 {editando === 'novo'
                   ? 'Todo serviço passa pela análise da administração antes de aparecer na busca — é a conferência de que ele cabe no escopo de festas infantis.'
-                  : 'Mudar nome, descrição, categoria, preço ou fotos devolve o serviço à análise, e ele sai da busca até a nova aprovação. As solicitações em andamento não são afetadas.'}
+                  : 'Mudar nome, descrição, categoria, preço, forma de cobrança ou fotos devolve o serviço à análise, e ele sai da busca até a nova aprovação. As solicitações em andamento não são afetadas.'}
               </p>
             </div>
           </div>

@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { pool } from '@/lib/db';
 import { lerSessao } from '@/lib/sessao';
+import { antecedenciaExigidaDias } from '@/lib/configuracao';
 import { administradorAtivo } from '@/lib/sessao-admin';
 import { formatarPreco, SUFIXO_PRECO, EXPLICACAO_COBRANCA } from '@/lib/solicitacao';
 import Etiqueta from '@/componentes/etiqueta';
@@ -83,6 +84,10 @@ export default async function DetalheServico({ params }) {
 
   if (servicos.length === 0) notFound();
   const servico = servicos[0];
+
+  // RN046 — a antecedência anunciada é a que o envio vai exigir: a do
+  // serviço ou o mínimo vigente da plataforma, o que for maior.
+  const diasAntecedencia = await antecedenciaExigidaDias(servico.dias_antecedencia);
 
   // Fornecedor fora do ar só chega aqui pela visão da administração: sem
   // botão de solicitar nem coração, mesmo que o navegador também tenha uma
@@ -273,7 +278,7 @@ export default async function DetalheServico({ params }) {
             <CalendarClock className="h-6 w-6 shrink-0 text-festa-600" aria-hidden="true" />
             <div className="min-w-0">
               <p className="font-medium text-slate-900">Antecedência</p>
-              <p className="text-sm text-slate-600">{servico.dias_antecedencia} dias</p>
+              <p className="text-sm text-slate-600">{diasAntecedencia} dias</p>
             </div>
           </div>
         </div>

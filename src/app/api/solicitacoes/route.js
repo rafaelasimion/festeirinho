@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { pool } from '@/lib/db';
 import { notificar, partesDaSolicitacao } from '@/lib/notificacao-servidor';
 import { obterClienteLogado } from '@/lib/autorizacao';
-import { obterConfiguracoes } from '@/lib/configuracao';
+import { obterConfiguracoes, antecedenciaExigidaDias } from '@/lib/configuracao';
 import { calcularValorFinal, lerDuracao } from '@/lib/solicitacao';
 import { somenteDigitos, validarUF, lerInteiro } from '@/lib/validacao';
 
@@ -85,17 +85,20 @@ export async function POST(request) {
   const erros = {};
 
   // RN042 / RN016 — data futura, respeitando a antecedência do serviço.
+  // RN046 — ou o mínimo vigente da plataforma, quando os prazos subiram
+  // depois que o serviço foi cadastrado (UC 013, passo 6).
+  const diasExigidos = await antecedenciaExigidaDias(servico.dias_antecedencia);
   if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(dataHoraEvento)) {
     erros.dataHoraEvento = 'Informe a data e a hora do evento.';
   } else {
     const evento = new Date(dataHoraEvento);
     const minimo = new Date();
-    minimo.setDate(minimo.getDate() + servico.dias_antecedencia);
+    minimo.setDate(minimo.getDate() + diasExigidos);
     if (Number.isNaN(evento.getTime())) {
       erros.dataHoraEvento = 'Data inválida.';
     } else if (evento < minimo) {
       erros.dataHoraEvento =
-        `Este serviço exige ao menos ${servico.dias_antecedencia} dias de antecedência.`;
+        `Este serviço exige ao menos ${diasExigidos} dias de antecedência.`;
     }
   }
 
