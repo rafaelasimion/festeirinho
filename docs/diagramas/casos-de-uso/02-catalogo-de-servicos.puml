@@ -1,0 +1,76 @@
+@startuml 02-catalogo-de-servicos
+' Festeirinho — Diagrama de Casos de Uso 02: Catálogo de serviços e vitrine
+' Fonte: casos-de-uso.docx (UC 008 a 012, 024, 025, 045)
+left to right direction
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam titleFontSize 16
+skinparam usecase {
+  BackgroundColor #EEEDFB
+  BorderColor #534AB7
+  ArrowColor #555555
+}
+skinparam actor {
+  BorderColor #534AB7
+  BackgroundColor #FFFFFF
+}
+skinparam rectangle {
+  BorderColor #534AB7
+  FontStyle bold
+}
+skinparam note {
+  BackgroundColor #FFF8E7
+  BorderColor #D85A30
+}
+skinparam legend {
+  BackgroundColor #FFFFFF
+  BorderColor #999999
+  FontSize 11
+}
+
+title Diagrama de Casos de Uso — Catálogo de serviços e vitrine
+
+actor "Cliente" as Cliente
+actor "Fornecedor" as Fornecedor
+actor "Usuário" as Usuario
+actor "Administrador" as Admin
+
+Usuario <|-- Cliente
+Usuario <|-- Fornecedor
+
+rectangle "Sistema Festeirinho" {
+  usecase "UC 008\nCadastrar serviço" as UC008
+  usecase "UC 009\nEditar serviço" as UC009
+  usecase "UC 010\nAtivar/desativar serviço" as UC010
+  usecase "UC 011\nConsultar/buscar serviços" as UC011
+  usecase "UC 045\nConsultar vitrine\ndo fornecedor" as UC045
+  usecase "UC 012\nGerenciar favoritos" as UC012
+  usecase "UC 024\nVerificar fornecedor" as UC024
+  usecase "UC 025\nModerar serviço cadastrado" as UC025
+}
+
+Fornecedor -- UC008
+Fornecedor -- UC009
+Fornecedor -- UC010
+Usuario -- UC011
+Usuario -- UC045
+Cliente -- UC012
+
+UC024 -- Admin
+UC025 -- Admin
+UC045 -- Admin
+
+note right of UC025
+  O serviço entra com verificação "pendente"
+  e só aparece na busca (UC 011) depois de
+  aprovado aqui (RF013, RN067).
+end note
+
+note right of UC045
+  A administração consulta a vitrine a partir
+  das denúncias e das revisões de suspensão,
+  mesmo com o fornecedor fora do ar (fluxo 1b).
+end note
+
+@enduml

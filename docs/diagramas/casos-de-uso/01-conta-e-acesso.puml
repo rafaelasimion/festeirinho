@@ -1,0 +1,72 @@
+@startuml 01-conta-e-acesso
+' Festeirinho — Diagrama de Casos de Uso 01: Conta e acesso
+' Fonte: casos-de-uso.docx (UC 001 a 007, 027, 031, 035, 044)
+left to right direction
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam titleFontSize 16
+skinparam usecase {
+  BackgroundColor #EEEDFB
+  BorderColor #534AB7
+  ArrowColor #555555
+}
+skinparam actor {
+  BorderColor #534AB7
+  BackgroundColor #FFFFFF
+}
+skinparam rectangle {
+  BorderColor #534AB7
+  FontStyle bold
+}
+skinparam note {
+  BackgroundColor #FFF8E7
+  BorderColor #D85A30
+}
+
+title Diagrama de Casos de Uso — Conta e acesso
+
+actor "Cliente" as Cliente
+actor "Fornecedor" as Fornecedor
+actor "Usuário" as Usuario
+actor "Administrador" as Admin
+
+Usuario <|-- Cliente
+Usuario <|-- Fornecedor
+
+rectangle "Sistema Festeirinho" {
+  usecase "UC 001\nCadastrar cliente" as UC001
+  usecase "UC 002\nCadastrar fornecedor" as UC002
+  usecase "UC 003\nRealizar login" as UC003
+  usecase "UC 004\nEditar dados cadastrais" as UC004
+  usecase "UC 005\nPausar/reativar\ndisponibilidade do fornecedor" as UC005
+  usecase "UC 006\nSolicitar revisão\nde suspensão" as UC006
+  usecase "UC 007\nExcluir conta" as UC007
+  usecase "UC 044\nAutenticar administrador" as UC044
+  usecase "UC 027\nSuspender cliente" as UC027
+  usecase "UC 031\nSuspender fornecedor" as UC031
+  usecase "UC 035\nAnalisar solicitação de\nrevisão de suspensão" as UC035
+}
+
+Cliente -- UC001
+Fornecedor -- UC002
+Fornecedor -- UC005
+
+Usuario -- UC003
+Usuario -- UC004
+Usuario -- UC006
+Usuario -- UC007
+
+UC044 -- Admin
+UC027 -- Admin
+UC031 -- Admin
+UC035 -- Admin
+
+UC006 .> UC003 : <<extend>>
+note on link
+  <b>condição:</b>
+  conta suspensa, sem
+  revisão registrada
+end note
+
+@enduml

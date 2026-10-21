@@ -16,6 +16,10 @@ Projeto desenvolvido como Trabalho de Conclusão de Curso do curso de Análise e
 - **bcryptjs** para hash de senhas
 - **jose** para geração e validação de tokens de sessão
 
+## Documentação
+
+Requisitos, regras de negócio, casos de uso, diagramas e scripts do banco de dados estão na pasta [docs](docs/README.md).
+
 ## Autores
  
 - Rafaela Maniero Simion

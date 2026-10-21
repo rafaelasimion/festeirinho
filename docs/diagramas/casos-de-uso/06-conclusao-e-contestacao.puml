@@ -1,0 +1,72 @@
+@startuml 06-conclusao-e-contestacao
+' Festeirinho — Diagrama de Casos de Uso 06: Conclusão, avaliação e contestação
+' Fonte: casos-de-uso.docx (UC 019 a 021, 042, 043, 046)
+left to right direction
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam titleFontSize 16
+skinparam usecase {
+  BackgroundColor #EEEDFB
+  BorderColor #534AB7
+  ArrowColor #555555
+}
+skinparam actor {
+  BorderColor #534AB7
+  BackgroundColor #FFFFFF
+}
+skinparam rectangle {
+  BorderColor #534AB7
+  FontStyle bold
+}
+skinparam note {
+  BackgroundColor #FFF8E7
+  BorderColor #D85A30
+}
+skinparam legend {
+  BackgroundColor #FFFFFF
+  BorderColor #999999
+  FontSize 11
+}
+
+title Diagrama de Casos de Uso — Conclusão, avaliação e contestação
+
+actor "Cliente" as Cliente
+actor "Fornecedor" as Fornecedor
+actor "Administrador" as Admin
+
+rectangle "Sistema Festeirinho" {
+  usecase "UC 019\nRegistrar conclusão\ndo serviço" as UC019
+  usecase "UC 020\nConfirmar conclusão\ndo serviço" as UC020
+  usecase "UC 042\nContestar conclusão\ndo serviço" as UC042
+  usecase "UC 021\nAvaliar serviço" as UC021
+  usecase "UC 046\nApresentar versão do\nfornecedor na contestação" as UC046
+  usecase "UC 043\nAnalisar contestação\nde conclusão" as UC043
+  usecase "UC 039\nContatar suporte" as UC039 #FFFFFF;line.dashed;line:888888;text:666666
+}
+
+Fornecedor -- UC019
+Fornecedor -- UC046
+Cliente -- UC020
+Cliente -- UC042
+Cliente -- UC021
+
+UC043 -- Admin
+
+UC039 .> UC046 : <<extend>>
+note on link
+  <b>condição:</b>
+  fornecedor tem vídeo ou
+  documento a apresentar
+end note
+
+note "UC 020 e UC 042 são alternativos:\no cliente confirma ou contesta a\nconclusão, no mesmo prazo (RN039)." as N1
+UC020 .. N1
+UC042 .. N1
+
+legend right
+  Caso de uso tracejado: detalhado em outro
+  diagrama, aparece aqui pelo relacionamento.
+endlegend
+
+@enduml

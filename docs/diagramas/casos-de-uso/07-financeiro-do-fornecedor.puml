@@ -1,0 +1,71 @@
+@startuml 07-financeiro-do-fornecedor
+' Festeirinho — Diagrama de Casos de Uso 07: Financeiro do fornecedor
+' Fonte: casos-de-uso.docx (UC 032, 033, 037, 038)
+left to right direction
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam titleFontSize 16
+skinparam usecase {
+  BackgroundColor #EEEDFB
+  BorderColor #534AB7
+  ArrowColor #555555
+}
+skinparam actor {
+  BorderColor #534AB7
+  BackgroundColor #FFFFFF
+}
+skinparam rectangle {
+  BorderColor #534AB7
+  FontStyle bold
+}
+skinparam note {
+  BackgroundColor #FFF8E7
+  BorderColor #D85A30
+}
+skinparam legend {
+  BackgroundColor #FFFFFF
+  BorderColor #999999
+  FontSize 11
+}
+
+title Diagrama de Casos de Uso — Financeiro do fornecedor
+
+actor "Fornecedor" as Fornecedor
+actor "Administrador" as Admin
+actor "Gateway de pagamento" as Gateway <<sistema externo>>
+
+rectangle "Sistema Festeirinho" {
+  usecase "UC 033\nVisualizar dashboard\nfinanceiro" as UC033
+  usecase "UC 037\nSolicitar saque" as UC037
+  usecase "UC 032\nExportar relatório\nfinanceiro mensal" as UC032
+  usecase "UC 038\nValidar dados\nde recebimento" as UC038
+}
+
+Fornecedor -- UC033
+Fornecedor -- UC037
+Fornecedor -- UC032
+
+UC037 .> UC033 : <<extend>>
+note on link
+  <b>condição:</b>
+  saldo disponível ≥ valor
+  mínimo de saque
+end note
+UC032 .> UC033 : <<extend>>
+note on link
+  <b>condição:</b>
+  fornecedor aciona a
+  exportação
+end note
+
+UC038 -- Admin
+UC037 -- Gateway
+
+note right of UC038
+  Valida os dados de recebimento do saque
+  (UC 037) e do reembolso de cancelamento
+  pago via boleto (UC 036).
+end note
+
+@enduml

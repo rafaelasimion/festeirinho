@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="560" viewBox="0 0 960 560">
+<defs><marker id="s" viewBox="0 0 10 10" refX="9.5" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,1 L10,5 L0,9 z" fill="#444"/></marker></defs>
+<rect width="960" height="560" fill="white"/>
+<style>text{font-family:Arial,"Liberation Sans",Helvetica,sans-serif;fill:#111}.t{font-size:17px;font-weight:bold}.n{font-size:15px}.p{font-size:13.5px;fill:#333}.r{font-size:13.5px;fill:#222}</style>
+<rect x="20" y="70" width="200" height="190" rx="12" fill="#EEEDFB" stroke="#534AB7" stroke-width="1.6"/>
+<text class="t" x="120" y="102" text-anchor="middle"><tspan x="120" dy="0">Navegador</tspan></text>
+<text class="n" x="120" y="132" text-anchor="middle"><tspan x="120" dy="0">Cliente</tspan><tspan x="120" dy="21">Fornecedor</tspan><tspan x="120" dy="21">Administração</tspan></text>
+<text class="p" x="120" y="212" text-anchor="middle"><tspan x="120" dy="0">celular, tablet ou</tspan><tspan x="120" dy="17">computador</tspan></text>
+<rect x="290" y="40" width="400" height="440" rx="12" fill="#F7F7FD" stroke="#534AB7" stroke-width="1.6"/>
+<text class="t" x="490" y="70" text-anchor="middle"><tspan x="490" dy="0">Aplicação Next.js (Node.js)</tspan></text>
+<rect x="315" y="92" width="350" height="74" rx="12" fill="#FFFFFF" stroke="#534AB7" stroke-width="1.6"/>
+<text class="n" x="490" y="121" text-anchor="middle"><tspan x="490" dy="0">Telas — React e Tailwind CSS</tspan><tspan x="490" dy="20">(src/app)</tspan></text>
+<rect x="315" y="196" width="350" height="92" rx="12" fill="#FFFFFF" stroke="#534AB7" stroke-width="1.6"/>
+<text class="n" x="490" y="224" text-anchor="middle"><tspan x="490" dy="0">Rotas de API — validação no servidor,</tspan><tspan x="490" dy="20">sessão e controle de acesso</tspan><tspan x="490" dy="20">(src/app/api)</tspan></text>
+<rect x="315" y="318" width="350" height="74" rx="12" fill="#FFFFFF" stroke="#534AB7" stroke-width="1.6"/>
+<text class="n" x="490" y="347" text-anchor="middle"><tspan x="490" dy="0">Regras de negócio — módulos puros</tspan><tspan x="490" dy="20">e de servidor (src/lib)</tspan></text>
+<text class="p" x="490" y="425" text-anchor="middle"><tspan x="490" dy="0">Sessão: token assinado em cookie httpOnly</tspan><tspan x="490" dy="18">Senhas: hash bcrypt · PDF e Excel nos relatórios</tspan></text>
+<path d="M490,168 L490,194" fill="none" stroke="#444" stroke-width="1.5" marker-end="url(#s)" marker-start="url(#s)"/>
+<path d="M490,290 L490,316" fill="none" stroke="#444" stroke-width="1.5" marker-end="url(#s)" marker-start="url(#s)"/>
+<path d="M760,136 a90,16 0 0,0 180,0 a90,16 0 0,0 -180,0 v128 a90,16 0 0,0 180,0 v-128" fill="#EEEDFB" stroke="#534AB7" stroke-width="1.6"/>
+<text class="t" x="850" y="184" text-anchor="middle"><tspan x="850" dy="0">MySQL 8</tspan></text>
+<text class="p" x="850" y="210" text-anchor="middle"><tspan x="850" dy="0">23 tabelas</tspan><tspan x="850" dy="17">regras críticas em</tspan><tspan x="850" dy="17">CHECK, UNIQUE e FK</tspan></text>
+<rect x="760" y="312" width="180" height="92" rx="12" fill="#EEEDFB" stroke="#534AB7" stroke-width="1.6"/>
+<text class="t" x="850" y="340" text-anchor="middle"><tspan x="850" dy="0">Imagens enviadas</tspan></text>
+<text class="p" x="850" y="364" text-anchor="middle"><tspan x="850" dy="0">fotos dos serviços e</tspan><tspan x="850" dy="17">provas da contestação</tspan></text>
+<rect x="760" y="430" width="180" height="112" rx="12" fill="#FFFFFF" stroke="#534AB7" stroke-width="1.6" stroke-dasharray="7 5"/>
+<text class="t" x="850" y="458" text-anchor="middle"><tspan x="850" dy="0">Gateway de</tspan><tspan x="850" dy="20">pagamento</tspan></text>
+<text class="p" x="850" y="500" text-anchor="middle"><tspan x="850" dy="0">transações e webhook</tspan><tspan x="850" dy="17">(simulado nesta versão)</tspan></text>
+<rect x="20" y="440" width="200" height="92" rx="12" fill="#FFFFFF" stroke="#534AB7" stroke-width="1.6" stroke-dasharray="7 5"/>
+<text class="t" x="120" y="470" text-anchor="middle"><tspan x="120" dy="0">Suporte externo</tspan></text>
+<text class="p" x="120" y="494" text-anchor="middle"><tspan x="120" dy="0">WhatsApp e e-mail</tspan><tspan x="120" dy="17">(fora da plataforma)</tspan></text>
+<path d="M222,129 L313,129" fill="none" stroke="#444" stroke-width="1.5" marker-end="url(#s)" marker-start="url(#s)"/>
+<text class="r" x="256" y="119" text-anchor="middle"><tspan x="256" dy="0">HTTPS</tspan></text>
+<path d="M667,215 L758,215" fill="none" stroke="#444" stroke-width="1.5" marker-end="url(#s)"/>
+<text class="r" x="725" y="205" text-anchor="middle"><tspan x="725" dy="0">mysql2</tspan></text>
+<path d="M667,262 L758,350" fill="none" stroke="#444" stroke-width="1.5" marker-end="url(#s)"/>
+<path d="M667,276 L758,476" fill="none" stroke="#444" stroke-width="1.5" marker-end="url(#s)" marker-start="url(#s)"/>
+<path d="M120,260 L120,438" fill="none" stroke="#444" stroke-width="1.5" marker-end="url(#s)"/>
+<text class="r" x="130" y="340" text-anchor="start"><tspan x="130" dy="0">link com mensagem</tspan><tspan x="130" dy="16">pré-preenchida</tspan></text>
+</svg>

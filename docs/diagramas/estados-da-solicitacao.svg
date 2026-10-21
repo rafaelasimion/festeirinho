@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="950" viewBox="0 0 1040 950">
+<defs><marker id="seta" viewBox="0 0 10 10" refX="9.5" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,1 L10,5 L0,9 z" fill="#444444"/></marker></defs>
+<rect width="1040" height="950" fill="white"/>
+<style>text{font-family:Arial,"Liberation Sans",Helvetica,sans-serif;fill:#111}.est{font-size:17px}.rot{font-size:14.5px;fill:#222}.tit{font-size:17px;font-weight:bold}</style>
+<rect x="372" y="318" width="376" height="440" rx="16" fill="#F7F7FD" stroke="#534AB7" stroke-width="1.6"/>
+<text class="tit" x="390" y="343">Confirmado</text>
+<circle cx="560" cy="32" r="9" fill="#222"/>
+<path d="M560,41 L560,82.0" fill="none" stroke="#444444" stroke-width="1.4" marker-end="url(#seta)"/>
+<text class="rot" x="572" y="52" text-anchor="start"><tspan x="572" dy="0">cliente envia a</tspan><tspan x="572" dy="17">solicitação (UC 013)</tspan></text>
+<path d="M560,128.0 L560,202.0" fill="none" stroke="#444444" stroke-width="1.4" marker-end="url(#seta)"/>
+<text class="rot" x="550" y="160" text-anchor="end"><tspan x="550" dy="0">fornecedor</tspan><tspan x="550" dy="17">aprova (RF020)</tspan></text>
+<path d="M640,128.0 L770,202.0" fill="none" stroke="#444444" stroke-width="1.4" marker-end="url(#seta)"/>
+<text class="rot" x="672" y="160" text-anchor="end"><tspan x="672" dy="0">fornecedor</tspan><tspan x="672" dy="17">recusa (RF019)</tspan></text>
+<path d="M665,111 L935,202.0" fill="none" stroke="#444444" stroke-width="1.4" marker-end="url(#seta)"/>
+<text class="rot" x="850" y="140" text-anchor="start"><tspan x="850" dy="0">prazo de resposta</tspan><tspan x="850" dy="17">esgotado (RN035)</tspan></text>
+<path d="M560,248.0 L560,318" fill="none" stroke="#444444" stroke-width="1.4" marker-end="url(#seta)"/>
+<text class="rot" x="572" y="276" text-anchor="start"><tspan x="572" dy="0">gateway confirma o</tspan><tspan x="572" dy="17">pagamento (RF025)</tspan></text>
+<path d="M444.0,225 L182,225 Q165,225 165,242 L165,537.0" fill="none" stroke="#444444" stroke-width="1.4" marker-end="url(#seta)"/>
+<text class="rot" x="272" y="252" text-anchor="middle"><tspan x="272" dy="0">data-limite esgotada ou</tspan><tspan x="272" dy="17">3ª recusa (RN025);</tspan><tspan x="272" dy="17">cancelamento pelas</tspan><tspan x="272" dy="17">partes (RN041)</tspan></text>
+<circle cx="560" cy="366" r="8" fill="#222"/>
+<path d="M560,374 L560,407.0" fill="none" stroke="#444444" stroke-width="1.4" marker-end="url(#seta)"/>
+<path d="M560,453.0 L560,537.0" fill="none" stroke="#444444" stroke-width="1.4" marker-end="url(#seta)"/>
+<text class="rot" x="572" y="490" text-anchor="start"><tspan x="572" dy="0">fornecedor registra a</tspan><tspan x="572" dy="17">conclusão (RF034)</tspan></text>
+<path d="M560,583.0 L560,667.0" fill="none" stroke="#444444" stroke-width="1.4" marker-end="url(#seta)"/>
+<text class="rot" x="572" y="620" text-anchor="start"><tspan x="572" dy="0">cliente contesta</tspan><tspan x="572" dy="17">no prazo (RF069)</tspan></text>
+<path d="M444.0,438 L195,537.0" fill="none" stroke="#444444" stroke-width="1.4" marker-end="url(#seta)"/>
+<text class="rot" x="362" y="384" text-anchor="end"><tspan x="362" dy="0">cancelamento pelas partes</tspan><tspan x="362" dy="17">antes do evento (RN041);</tspan><tspan x="362" dy="17">sem registro da conclusão</tspan><tspan x="362" dy="17">no prazo (RN066)</tspan></text>
+<path d="M444.0,690 L230.0,570" fill="none" stroke="#444444" stroke-width="1.4" marker-end="url(#seta)"/>
+<text class="rot" x="300" y="672" text-anchor="middle"><tspan x="300" dy="0">procedente</tspan><tspan x="300" dy="17">(RN069)</tspan></text>
+<path d="M676.0,560 L792,560 Q808,560 808,576 L808,834 Q808,850 792,850 L630.0,850" fill="none" stroke="#444444" stroke-width="1.4" marker-end="url(#seta)"/>
+<text class="rot" x="820" y="700" text-anchor="start"><tspan x="820" dy="0">cliente confirma</tspan><tspan x="820" dy="17">(RF035) ou prazo</tspan><tspan x="820" dy="17">esgotado (RN039)</tspan></text>
+<path d="M560,713.0 L560,827.0" fill="none" stroke="#444444" stroke-width="1.4" marker-end="url(#seta)"/>
+<text class="rot" x="572" y="783" text-anchor="start"><tspan x="572" dy="0">improcedente</tspan><tspan x="572" dy="17">(RN069)</tspan></text>
+<path d="M790,248.0 L790,289" fill="none" stroke="#444444" stroke-width="1.4" marker-end="url(#seta)"/>
+<circle cx="790" cy="300" r="10" fill="white" stroke="#222" stroke-width="1.8"/>
+<circle cx="790" cy="300" r="6" fill="#222"/>
+<path d="M955,248.0 L955,289" fill="none" stroke="#444444" stroke-width="1.4" marker-end="url(#seta)"/>
+<circle cx="955" cy="300" r="10" fill="white" stroke="#222" stroke-width="1.8"/>
+<circle cx="955" cy="300" r="6" fill="#222"/>
+<path d="M165,583.0 L165,629" fill="none" stroke="#444444" stroke-width="1.4" marker-end="url(#seta)"/>
+<circle cx="165" cy="640" r="10" fill="white" stroke="#222" stroke-width="1.8"/>
+<circle cx="165" cy="640" r="6" fill="#222"/>
+<path d="M560,873.0 L560,911" fill="none" stroke="#444444" stroke-width="1.4" marker-end="url(#seta)"/>
+<circle cx="560" cy="922" r="10" fill="white" stroke="#222" stroke-width="1.8"/>
+<circle cx="560" cy="922" r="6" fill="#222"/>
+<rect x="455.0" y="82.0" width="210" height="46" rx="14" fill="#EEEDFB" stroke="#534AB7" stroke-width="1.6"/>
+<text class="est" x="560" y="111" text-anchor="middle">Aguardando análise</text>
+<rect x="444.0" y="202.0" width="232" height="46" rx="14" fill="#EEEDFB" stroke="#534AB7" stroke-width="1.6"/>
+<text class="est" x="560" y="231" text-anchor="middle">Aguardando pagamento</text>
+<rect x="731.0" y="202.0" width="118" height="46" rx="14" fill="#EEEDFB" stroke="#534AB7" stroke-width="1.6"/>
+<text class="est" x="790" y="231" text-anchor="middle">Recusado</text>
+<rect x="896.0" y="202.0" width="118" height="46" rx="14" fill="#EEEDFB" stroke="#534AB7" stroke-width="1.6"/>
+<text class="est" x="955" y="231" text-anchor="middle">Expirado</text>
+<rect x="444.0" y="407.0" width="232" height="46" rx="14" fill="#FFFFFF" stroke="#534AB7" stroke-width="1.6"/>
+<text class="est" x="560" y="436" text-anchor="middle">Aguardando a execução</text>
+<rect x="444.0" y="537.0" width="232" height="46" rx="14" fill="#FFFFFF" stroke="#534AB7" stroke-width="1.6"/>
+<text class="est" x="560" y="566" text-anchor="middle">Conclusão registrada</text>
+<rect x="444.0" y="667.0" width="232" height="46" rx="14" fill="#FFFFFF" stroke="#534AB7" stroke-width="1.6"/>
+<text class="est" x="560" y="696" text-anchor="middle">Contestação pendente</text>
+<rect x="100.0" y="537.0" width="130" height="46" rx="14" fill="#EEEDFB" stroke="#534AB7" stroke-width="1.6"/>
+<text class="est" x="165" y="566" text-anchor="middle">Cancelado</text>
+<rect x="490.0" y="827.0" width="140" height="46" rx="14" fill="#EEEDFB" stroke="#534AB7" stroke-width="1.6"/>
+<text class="est" x="560" y="856" text-anchor="middle">Concluído</text>
+</svg>

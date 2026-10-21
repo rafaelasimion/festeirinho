@@ -1,0 +1,62 @@
+@startuml 03-contratacao
+' Festeirinho — Diagrama de Casos de Uso 03: Contratação
+' Fonte: casos-de-uso.docx (UC 013 a 017)
+left to right direction
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam titleFontSize 16
+skinparam usecase {
+  BackgroundColor #EEEDFB
+  BorderColor #534AB7
+  ArrowColor #555555
+}
+skinparam actor {
+  BorderColor #534AB7
+  BackgroundColor #FFFFFF
+}
+skinparam rectangle {
+  BorderColor #534AB7
+  FontStyle bold
+}
+skinparam note {
+  BackgroundColor #FFF8E7
+  BorderColor #D85A30
+}
+skinparam legend {
+  BackgroundColor #FFFFFF
+  BorderColor #999999
+  FontSize 11
+}
+
+title Diagrama de Casos de Uso — Contratação
+
+actor "Cliente" as Cliente
+actor "Fornecedor" as Fornecedor
+actor "Usuário" as Usuario
+
+Usuario <|-- Cliente
+Usuario <|-- Fornecedor
+
+rectangle "Sistema Festeirinho" {
+  usecase "UC 013\nSolicitar serviço" as UC013
+  usecase "UC 014\nAcompanhar status\nda solicitação" as UC014
+  usecase "UC 015\nAnalisar solicitação\nrecebida" as UC015
+  usecase "UC 016\nTrocar mensagens via chat" as UC016
+  usecase "UC 017\nConsultar central\nde notificações" as UC017
+}
+
+Cliente -- UC013
+Cliente -- UC014
+Fornecedor -- UC015
+Usuario -- UC016
+Usuario -- UC017
+
+note right of UC016
+  Disponível da aprovação (UC 015) até o
+  registro da conclusão ou o cancelamento,
+  só para alinhamento operacional: não altera
+  valor nem escopo (RF024, RN022, RN029).
+end note
+
+@enduml

@@ -1,0 +1,76 @@
+@startuml 04-pagamento
+' Festeirinho — Diagrama de Casos de Uso 04: Pagamento
+' Fonte: casos-de-uso.docx (UC 018, 029, 030, 034)
+left to right direction
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam titleFontSize 16
+skinparam usecase {
+  BackgroundColor #EEEDFB
+  BorderColor #534AB7
+  ArrowColor #555555
+}
+skinparam actor {
+  BorderColor #534AB7
+  BackgroundColor #FFFFFF
+}
+skinparam rectangle {
+  BorderColor #534AB7
+  FontStyle bold
+}
+skinparam note {
+  BackgroundColor #FFF8E7
+  BorderColor #D85A30
+}
+skinparam legend {
+  BackgroundColor #FFFFFF
+  BorderColor #999999
+  FontSize 11
+}
+
+title Diagrama de Casos de Uso — Pagamento
+
+actor "Cliente" as Cliente
+actor "Fornecedor" as Fornecedor
+actor "Usuário" as Usuario
+actor "Gateway de pagamento" as Gateway <<sistema externo>>
+
+Usuario <|-- Cliente
+Usuario <|-- Fornecedor
+
+rectangle "Sistema Festeirinho" {
+  usecase "UC 018\nRealizar pagamento" as UC018
+  usecase "UC 030\nCadastrar cartão\nde crédito" as UC030
+  usecase "UC 029\nRemover cartão\nde crédito" as UC029
+  usecase "UC 034\nEmitir comprovante\nde contratação" as UC034
+  usecase "UC 039\nContatar suporte" as UC039 #FFFFFF;line.dashed;line:888888;text:666666
+}
+
+Cliente -- UC018
+Cliente -- UC030
+Cliente -- UC029
+Usuario -- UC034
+
+UC018 -- Gateway
+UC030 -- Gateway
+
+UC030 .> UC018 : <<extend>>
+note on link
+  <b>condição:</b>
+  cliente opta por
+  cadastrar um cartão novo
+end note
+UC039 .> UC018 : <<extend>>
+note on link
+  <b>condição:</b>
+  cliente aciona o suporte
+  na tela de pagamento
+end note
+
+legend right
+  Caso de uso tracejado: detalhado em outro
+  diagrama, aparece aqui pelo relacionamento.
+endlegend
+
+@enduml
