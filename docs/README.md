@@ -3,7 +3,7 @@
 Documentação do Trabalho de Graduação **Sistema Festeirinho: plataforma para planejamento e contratação de serviços para festas infantis**, do curso de Análise e Desenvolvimento de Sistemas da Fatec Franca (2026).
 
 - **Autores:** Fábio Augusto Tostes Fernandes e Rafaela Cristina Maniero Simion
-- **Orientador:** Prof. Leonardo Henrique Raiz
+- **Orientador:** Prof. Me. Leonardo Henrique Raiz
 
 ## Formatos
 
