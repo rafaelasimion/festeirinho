@@ -97,11 +97,62 @@ function ResumoDaContratacao({ pagamento, etiqueta, children }) {
   );
 }
 
+// RN050 — as regras de cancelamento aparecem ANTES do pagamento, que é o
+// momento em que o cliente aceita a contratação (dever de informação prévia
+// do CDC, art. 6º, III, e art. 46). Até aqui elas só apareciam depois: no
+// comprovante e no diálogo de cancelamento. Os percentuais são os
+// congelados neste pagamento, os mesmos que o comprovante vai reproduzir.
+function RegrasDeCancelamento({ faixas }) {
+  const percentual = (valor) => `${valor.toLocaleString('pt-BR')}%`;
+
+  return (
+    <section className="mt-8" aria-labelledby="titulo-cancelamento">
+      <h2 id="titulo-cancelamento" className="mb-3 text-sm font-medium text-slate-900">
+        Se você precisar cancelar
+      </h2>
+
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+        <table className="w-full text-sm">
+          <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+            <tr>
+              <th scope="col" className="px-4 py-2 text-left font-medium">Quando</th>
+              <th scope="col" className="px-4 py-2 text-right font-medium">Retenção</th>
+              <th scope="col" className="px-4 py-2 text-right font-medium">Reembolso</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-200">
+            {faixas.map((faixa) => (
+              <tr key={faixa.rotulo}>
+                <td className="px-4 py-2 text-slate-700">{faixa.rotulo}</td>
+                <td className="px-4 py-2 text-right tabular-nums text-slate-600">
+                  {percentual(faixa.multa)}
+                </td>
+                <td className="px-4 py-2 text-right font-medium tabular-nums text-slate-900">
+                  {percentual(faixa.reembolso)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <p className="mt-2 text-xs text-slate-500">
+        A antecedência é contada até a data e o horário do evento. O valor retido
+        vai para o fornecedor, como compensação pela data reservada; se o
+        cancelamento partir dele, você recebe o valor integral de volta. Estes
+        percentuais valem para esta contratação mesmo que a plataforma os altere
+        depois.
+      </p>
+    </section>
+  );
+}
+
 export default function FormularioPagamento({
   pagamento,
   boletoDisponivel,
   diasMinimosBoleto,
   cartoes = [],
+  faixasCancelamento = [],
 }) {
   const router = useRouter();
   const [forma, setForma] = useState('pix');
@@ -277,6 +328,8 @@ export default function FormularioPagamento({
           </OpcaoPagamento>
         </div>
       </fieldset>
+
+      {faixasCancelamento.length > 0 && <RegrasDeCancelamento faixas={faixasCancelamento} />}
 
       {pagamento.numeroTentativas > 0 && (
         <p className="mt-4 text-sm text-slate-600">

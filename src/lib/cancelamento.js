@@ -17,6 +17,23 @@ export const ROTULO_ORIGEM_CANCELAMENTO = {
   sistema: 'Cancelado automaticamente pelo sistema',
 };
 
+// RN050 — as quatro faixas, na mesma ordem e com os mesmos rótulos na tela
+// de pagamento (antes de o cliente pagar) e no comprovante (depois). Os
+// percentuais são sempre os CONGELADOS no pagamento (RN027): o que o cliente
+// vê ao pagar é o que vale num cancelamento futuro, mesmo que a
+// administração mude a configuração depois.
+export function faixasDeCancelamento(pagamento) {
+  return [
+    ['7 dias ou mais antes do evento', pagamento.perc_multa_faixa_mais_7d],
+    ['Entre 7 dias e 48 horas', pagamento.perc_multa_faixa_7d_48h],
+    ['Entre 48 e 24 horas', pagamento.perc_multa_faixa_48h_24h],
+    ['Menos de 24 horas', pagamento.perc_multa_faixa_24h],
+  ].map(([rotulo, percentual]) => {
+    const multa = Number(percentual);
+    return { rotulo, multa, reembolso: 100 - multa };
+  });
+}
+
 // RN050 — a faixa vem da antecedência em relação ao evento, e os percentuais
 // são os CONGELADOS no pagamento (RN027), não os atuais da configuração.
 export function calcularFaixa(dataEvento, pagamento) {

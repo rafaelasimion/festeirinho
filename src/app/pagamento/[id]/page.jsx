@@ -3,6 +3,7 @@ import { pool } from '@/lib/db';
 import { lerSessao } from '@/lib/sessao';
 import { obterConfiguracoes } from '@/lib/configuracao';
 import { expirarPagamentosVencidos } from '@/lib/pagamento-servidor';
+import { faixasDeCancelamento } from '@/lib/cancelamento';
 import FormularioPagamento from './formulario';
 import { paraSerializar } from '@/lib/datas';
 
@@ -22,6 +23,10 @@ export default async function Pagamento({ params }) {
     `SELECT p.id, p.valor_bruto, p.status, p.data_limite,
             p.numero_tentativas, p.forma_pagamento, p.data_pagamento,
             p.id_transacao_gateway,
+            -- RN050 — os percentuais congelados quando o pagamento foi
+            -- gerado: são as faixas que o cliente aceita ao pagar.
+            p.perc_multa_faixa_mais_7d, p.perc_multa_faixa_7d_48h,
+            p.perc_multa_faixa_48h_24h, p.perc_multa_faixa_24h,
             so.id AS id_solicitacao, so.status AS status_solicitacao,
             so.data_hora_evento, so.numero_convidados, so.duracao,
             s.nome AS servico, f.nome_exibicao AS fornecedor,
@@ -87,6 +92,7 @@ export default async function Pagamento({ params }) {
       boletoDisponivel={boletoDisponivel}
       diasMinimosBoleto={configuracoes.antecedencia_minima_boleto_dias}
       cartoes={cartoes}
+      faixasCancelamento={faixasDeCancelamento(pagamento)}
     />
   );
 }

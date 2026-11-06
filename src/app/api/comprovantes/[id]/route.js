@@ -2,6 +2,7 @@ import PDFDocument from 'pdfkit';
 import { pool } from '@/lib/db';
 import { lerSessao } from '@/lib/sessao';
 import { formatarDataHora } from '@/lib/datas';
+import { faixasDeCancelamento } from '@/lib/cancelamento';
 import {
   COR, MARGEM, caixaAlta, naBase, fio, cabecalhoDocumento, avisoComFio,
 } from '@/lib/pdf-marca';
@@ -258,20 +259,14 @@ function montarPdf(dados) {
     fio(doc, y);
   }
 
-  const faixas = [
-    ['7 dias ou mais antes do evento', dados.perc_multa_faixa_mais_7d],
-    ['Entre 7 dias e 48 horas', dados.perc_multa_faixa_7d_48h],
-    ['Entre 48 e 24 horas', dados.perc_multa_faixa_48h_24h],
-    ['Menos de 24 horas', dados.perc_multa_faixa_24h],
-  ];
-  for (const [rotulo, percentual] of faixas) {
-    const multa = Number(percentual);
+  // As mesmas faixas que o cliente viu na tela de pagamento, antes de pagar.
+  for (const { rotulo, multa, reembolso } of faixasDeCancelamento(dados)) {
     const base = y + 12.5;
     doc.font('Helvetica').fontSize(9).fillColor(COR.escuro);
     naBase(doc, rotulo, MARGEM, base);
     doc.font('Helvetica-Bold');
     naBase(doc, `${multa}%`, xRetencao, base, { width: LARGURA_PERCENTUAL, align: 'right' });
-    naBase(doc, `${100 - multa}%`, xReembolso, base, { width: LARGURA_PERCENTUAL, align: 'right' });
+    naBase(doc, `${reembolso}%`, xReembolso, base, { width: LARGURA_PERCENTUAL, align: 'right' });
     y += 18;
     fio(doc, y);
   }
