@@ -57,14 +57,16 @@ Cada diagrama tem a imagem e o código PlantUML que a gera.
 Para recriar o banco num MySQL 8.0.16 ou superior, execute os scripts nesta ordem, a partir da raiz do repositório:
 
 ```
-mysql -u root -p < docs/banco-de-dados/festeirinho-ddl.sql
-mysql -u root -p < docs/banco-de-dados/festeirinho-smoke-test.sql
-mysql -u root -p --table < docs/banco-de-dados/festeirinho-testes-restricoes.sql
+mysql -u root -p --default-character-set=utf8mb4 < docs/banco-de-dados/festeirinho-ddl.sql
+mysql -u root -p --default-character-set=utf8mb4 < docs/banco-de-dados/festeirinho-smoke-test.sql
+mysql -u root -p --default-character-set=utf8mb4 --table < docs/banco-de-dados/festeirinho-testes-restricoes.sql
 ```
+
+A opção `--default-character-set=utf8mb4` faz o cliente `mysql` ler os scripts como UTF-8. Sem ela, o cliente pode usar o conjunto de caracteres do sistema operacional e gravar os acentos errados (“AnimaÃ§Ã£o” em vez de “Animação”). No Windows, rode os comandos no Prompt de Comando, porque o PowerShell não aceita o `<`.
 
 O DDL cria o banco do zero; se o servidor já tiver um banco `festeirinho`, apague-o antes. Os outros dois scripts gravam dados de demonstração, por isso devem rodar num banco de testes. O último executa cada teste dentro de uma transação desfeita em seguida e mostra, no fim, quantos foram aprovados.
 
-A carga inicial do DDL cria um administrador de demonstração. Troque a senha dele antes de usar o sistema fora do ambiente de testes.
+A carga inicial do DDL cria um administrador de demonstração: `admin@festeirinho.com`, senha `admin@festeirinho2026`. Troque a senha dele antes de usar o sistema fora do ambiente de testes.
 
 ## Como atualizar os diagramas
 
