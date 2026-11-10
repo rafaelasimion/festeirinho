@@ -237,7 +237,10 @@ export default async function Inicio() {
   }
 
   return (
-    <main className="mx-auto w-full max-w-4xl px-4 pt-6 sm:px-6 sm:pt-10">
+    // px-6, como as outras páginas e o cabeçalho: tudo alinha com a logo.
+    // No celular o alto começa colado no cabeçalho (o herói ocupa a largura
+    // toda); do sm para cima, ele ganha um respiro de cartão.
+    <main className="mx-auto w-full max-w-4xl px-6 sm:pt-10">
       <Heroi titulo={heroi.titulo} texto={heroi.texto} fala={heroi.fala}
         compacto={heroi.compacto}>
         {heroi.conteudo}
@@ -300,6 +303,13 @@ export default async function Inicio() {
 // O texto vem primeiro no HTML, e só a ordem visual muda no celular: o
 // leitor de tela começa pelo título, não pelo balão.
 //
+// No celular não há cartão: a faixa do mascote vai de uma borda à outra,
+// colada no cabeçalho, e o texto fica direto na página. Com moldura, a 16px
+// das bordas da tela, o cartão parecia uma caixa dentro da própria página,
+// e o balão, a busca e os atalhos, que também têm borda, viravam cartão
+// dentro de cartão. O -mx-6 desfaz o px-6 do main só ali. Do sm para cima,
+// com espaço em volta, ele volta a ser o cartão branco do sistema.
+//
 // Lado a lado só a partir do lg (1024px). No tablet em pé (768px), a coluna
 // do mascote deixava o texto tão estreito que o título quebrava em quatro
 // linhas e a busca cortava o próprio exemplo; ali ainda cabe melhor o
@@ -332,9 +342,9 @@ function Heroi({ titulo, texto, fala, compacto = false, children }) {
 
   return (
     <section aria-labelledby="titulo-inicio"
-      className="overflow-hidden rounded-[2rem] border border-festa-100 bg-white shadow-sm">
+      className="-mx-6 overflow-hidden bg-white sm:mx-0 sm:rounded-[2rem] sm:border sm:border-festa-100 sm:shadow-sm">
       <div className="flex flex-col lg:flex-row">
-        <div className={`min-w-0 flex-1 px-6 pb-8 pt-6 sm:px-8 lg:pl-10 lg:pr-8 ${arranjo.texto}`}>
+        <div className={`min-w-0 flex-1 px-6 pt-6 sm:px-8 sm:pb-8 lg:pl-10 lg:pr-8 ${arranjo.texto}`}>
           <h1 id="titulo-inicio"
             className="text-balance text-3xl font-semibold leading-tight text-slate-900 sm:text-4xl">
             {titulo}
@@ -345,7 +355,7 @@ function Heroi({ titulo, texto, fala, compacto = false, children }) {
           {children}
         </div>
 
-        <div className={`order-first flex items-end justify-between gap-3 bg-festa-50 px-4 pt-5 min-[400px]:px-5 sm:px-8 lg:order-none lg:shrink-0 ${arranjo.cena}`}
+        <div className={`order-first flex items-end justify-between gap-3 bg-festa-50 px-6 pt-5 sm:px-8 lg:order-none lg:shrink-0 ${arranjo.cena}`}
           style={FUNDO_FESTA}>
           {fala && <Balao lateral={compacto}>{fala}</Balao>}
           {/* Decorativo: quem fala é o balão, que é texto de verdade. A
@@ -442,15 +452,24 @@ function AtalhosCategorias({ categorias }) {
   );
 }
 
-// Sem caixa em volta: são três frases, não três destinos. A borda e a
-// sombra ficam para o que se clica.
+// Borda fina e sem sombra. Sem a borda, no computador os três pilares
+// boiavam no branco, e no celular um encostava no outro, sem dizer onde
+// terminava cada um. A sombra continua só no que se clica: pilar não leva
+// a lugar nenhum.
+//
+// No celular o ícone fica ao lado do texto, para os três caberem sem
+// esticar a página; do sm para cima ele sobe para cima do título, que
+// assim ganha a largura do cartão inteiro. O p-4 também no computador é
+// medido: com p-5, "Pagamento pela plataforma" passava 2px da largura e
+// quebrava em duas linhas.
 function Pilares() {
   return (
     <section aria-labelledby="titulo-pilares" className="mt-10">
       <h2 id="titulo-pilares" className="sr-only">Por que contratar pelo Festeirinho</h2>
-      <ul className="grid gap-5 sm:grid-cols-3 sm:gap-6">
+      <ul className="grid gap-3 sm:grid-cols-3">
         {DESTAQUES.map(({ titulo, texto, Icone }) => (
-          <li key={titulo} className="flex items-start gap-3">
+          <li key={titulo}
+            className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-white p-4 sm:flex-col">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-festa-100">
               <Icone className="h-5 w-5 text-festa-600" aria-hidden="true" />
             </span>
