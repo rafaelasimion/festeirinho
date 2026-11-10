@@ -21,8 +21,8 @@ import ResumoFornecedor, { buscarResumoFornecedor, falaDoMascote } from './resum
 //
 //   visitante   a vitrine completa (RN030), e o convite para os dois lados
 //               do sistema — quem contrata e quem oferece;
-//   cliente     os serviços que o alcançam (RN068), do mais perto para o
-//               mais longe, logo na entrada;
+//   cliente     os serviços que o alcançam (RN068), começando pelos
+//               fornecedores mais próximos, logo na entrada;
 //   fornecedor  o que espera uma ação dele e, abaixo, a vitrine como os
 //               clientes a veem.
 //
@@ -139,9 +139,13 @@ export default async function Inicio() {
     buscarServicos({
       sessao,
       localizacao,
-      // Com coordenadas, o mais perto primeiro — é a promessa do "perto de
-      // você". Sem elas não há distância, e o melhor avaliado abre a fila.
-      ordem: comCoordenadas ? 'distancia' : 'avaliacao',
+      // A ordem padrão da busca: um serviço de cada fornecedor por vez, o
+      // que põe na amostra quatro fornecedores diferentes sempre que eles
+      // existem. Com coordenadas, os mais próximos abrem a fila — é a
+      // promessa do "perto de você". Sem elas, a fila é sorteada a cada
+      // dia. Antes, o melhor avaliado a abria, e o fornecedor que ainda não
+      // tinha avaliação nunca chegava à tela inicial.
+      ordem: 'variados',
       limite: QUANTOS_NA_INICIAL,
     }),
     contarServicosPorCategoria({ localizacao }),
@@ -180,7 +184,7 @@ export default async function Inicio() {
     // diz isso: sem explicar, uma lista curta parece defeito do sistema.
     secao = comCoordenadas ? {
       titulo: 'Perto de você',
-      descricao: 'Fornecedores que atendem a sua localização, do mais perto para o mais longe.',
+      descricao: 'Fornecedores que atendem a sua localização, começando pelos mais próximos.',
       vazio: 'Nenhum fornecedor atende a sua região por enquanto.',
     } : {
       titulo: `Em ${regiao}`,
@@ -206,7 +210,7 @@ export default async function Inicio() {
     };
     secao = {
       titulo: 'Na vitrine da plataforma',
-      descricao: 'Os serviços como os clientes veem, com os mais bem avaliados primeiro.',
+      descricao: 'Os serviços como os clientes veem, alternando os fornecedores numa ordem que muda a cada dia.',
       vazio: 'Ainda não há serviços aprovados disponíveis.',
     };
   } else {
@@ -231,7 +235,7 @@ export default async function Inicio() {
     };
     secao = {
       titulo: 'Serviços em destaque',
-      descricao: 'Os mais bem avaliados da vitrine.',
+      descricao: 'Uma amostra da vitrine, sorteada a cada dia.',
       vazio: 'Ainda não há serviços aprovados disponíveis.',
     };
   }

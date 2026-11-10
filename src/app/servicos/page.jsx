@@ -41,7 +41,10 @@ export default async function Vitrine({ searchParams }) {
   const ordensDisponiveis = Object.fromEntries(
     Object.entries(ORDENACOES).filter(([valor]) => valor !== 'distancia' || comCoordenadas)
   );
-  const ordemPadrao = comCoordenadas ? 'distancia' : 'recentes';
+  // A variada é o padrão para todo mundo: alterna os fornecedores e, com
+  // coordenadas, já começa cada rodada pelo mais próximo. Quem quer a lista
+  // rigorosa por distância, data ou preço escolhe no seletor.
+  const ordemPadrao = 'variados';
   const ordem = ordensDisponiveis[parametros?.ordem] ? parametros.ordem : ordemPadrao;
 
   const servicos = await buscarServicos({

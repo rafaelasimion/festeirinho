@@ -14,7 +14,40 @@ import { pool } from '@/lib/db';
 // A ordenação vem de uma lista fechada. O valor recebido da URL escolhe uma
 // entrada da lista; ele NUNCA é colado no SQL. ORDER BY não aceita
 // parâmetro "?", então esta lista é a única proteção possível ali.
+//
+// A primeira entrada é a ordem padrão, e por isso é também a primeira
+// opção do seletor da busca.
 export const ORDENACOES = {
+  variados: {
+    rotulo: 'Variados',
+    // Os serviços de um mesmo fornecedor saíam sempre juntos. Na distância
+    // todos eles empatam, porque a conta é feita com a sede do fornecedor.
+    // Na data de cadastro ficam vizinhos, porque o fornecedor costuma
+    // cadastrar tudo de uma vez, e nas outras ordens o empate caía no s.id,
+    // que segue a mesma ordem de cadastro. A tela inicial, que mostra só os
+    // primeiros, chegava a ser de um fornecedor só.
+    //
+    // Aqui a lista é montada em rodadas: a primeira traz um serviço de cada
+    // fornecedor, a segunda, o seguinte de cada um, e assim por diante. O
+    // ROW_NUMBER numera os serviços dentro de cada fornecedor, e esse
+    // número é a rodada. Dentro da rodada, havendo distância, o fornecedor
+    // mais próximo vem primeiro (RN068) e o que entrou pela regra de cidade
+    // vai ao fim; sem distância, a ordem dos fornecedores é sorteada. Como
+    // essa ordem é a mesma em todas as rodadas, dois serviços do mesmo
+    // fornecedor só ficam lado a lado no fim da lista, quando só ele ainda
+    // tem serviço para mostrar.
+    //
+    // O sorteio é o MD5 do id junto com a data do dia — o MD5 aqui não
+    // protege nada, só embaralha. Mesma data, mesma resposta: a lista não
+    // muda entre um carregamento e outro, nem quando a pessoa volta de um
+    // serviço, e muda sozinha no dia seguinte, revezando quem aparece
+    // primeiro. ORDER BY RAND() sortearia de novo a cada visita.
+    sql: `ROW_NUMBER() OVER (
+              PARTITION BY s.id_fornecedor
+              ORDER BY MD5(CONCAT(CURDATE(), ' servico ', s.id)), s.id),
+            distancia_km IS NULL, distancia_km,
+            MD5(CONCAT(CURDATE(), ' fornecedor ', s.id_fornecedor))`,
+  },
   distancia: {
     rotulo: 'Mais perto de mim',
     // Fornecedor sem coordenada entrou pela regra de cidade; sem distância
@@ -117,7 +150,7 @@ function filtroDaVitrine({ localizacao, texto, idCategoria, cidade }) {
 // usa também para escrever o aviso do filtro na tela.
 export async function buscarServicos({
   sessao, localizacao = null, texto = '', idCategoria = null, cidade = '',
-  ordem = 'recentes', limite = null,
+  ordem = 'variados', limite = null,
 }) {
   const ehCliente = sessao?.tipoUsuario === 'cliente';
 
@@ -150,7 +183,7 @@ export async function buscarServicos({
     localizacao, texto, idCategoria, cidade,
   });
 
-  const criterio = ORDENACOES[ordem] ?? ORDENACOES.recentes;
+  const criterio = ORDENACOES[ordem] ?? ORDENACOES.variados;
 
   // LIMIT também não aceita "?" no execute do mysql2, então o número entra
   // no texto — e só depois de conferido que é um inteiro positivo.
