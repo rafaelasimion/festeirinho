@@ -36,6 +36,26 @@
   --color-perigo-600: #D92626;
   --color-perigo-700: #821717;
   --color-perigo-800: #570F0F;
+
+  /* A chegada do mascote na tela inicial: ele sobe dando um pulinho e,
+     logo depois, o balão de fala abre. É o único movimento da página e
+     acontece uma vez, ao carregar — nada fica se mexendo enquanto a pessoa
+     lê (critério 2.2.2 da WCAG, que entra no nível AA pedido pela RNF013).
+     Quem pede
+     movimento reduzido no sistema não vê nenhum dos dois: as classes são
+     usadas com motion-safe:. */
+  --animate-mascote-chega: mascote-chega 700ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  --animate-balao-abre: balao-abre 350ms ease-out 550ms both;
+
+  @keyframes mascote-chega {
+    from { opacity: 0; transform: translateY(1.5rem) scale(0.94); }
+    to   { opacity: 1; transform: none; }
+  }
+
+  @keyframes balao-abre {
+    from { opacity: 0; transform: scale(0.85); }
+    to   { opacity: 1; transform: none; }
+  }
 }
 
 @theme inline {

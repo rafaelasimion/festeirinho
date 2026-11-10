@@ -1,13 +1,12 @@
 import Link from 'next/link';
-import { Store, MapPin, BadgeCheck, Star, Search } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { pool } from '@/lib/db';
-import { formatarPreco, SUFIXO_PRECO } from '@/lib/solicitacao';
 import { lerSessao } from '@/lib/sessao';
 import { calcularAntecedenciaMinimaDias } from '@/lib/configuracao';
-import { antecedenciaExigida } from '@/lib/parametros';
-import Etiqueta from '@/componentes/etiqueta';
-import MolduraFoto from '@/componentes/moldura-foto';
-import BotaoFavorito from '@/componentes/botao-favorito';
+import {
+  ORDENACOES, buscarServicos, lerLocalizacaoCliente, temCoordenadas,
+} from '@/lib/busca-servicos';
+import CartaoServico from '@/componentes/cartao-servico';
 
 // Esta página só LÊ e mostra. Por isso ela consulta o banco direto, sem
 // passar por uma rota de API: componente de servidor já roda no servidor.
@@ -16,33 +15,10 @@ import BotaoFavorito from '@/componentes/botao-favorito';
 // filtros vão para a URL (/servicos?q=bolo&categoria=3) e a página os lê
 // daqui. Não há JavaScript no navegador — funciona até com ele desligado,
 // e o endereço de uma busca pode ser copiado e compartilhado.
-
-// A ordenação vem de uma lista fechada. O valor recebido da URL escolhe uma
-// entrada da lista; ele NUNCA é colado no SQL. ORDER BY não aceita
-// parâmetro "?", então esta lista é a única proteção possível ali.
-const ORDENACOES = {
-  distancia: {
-    rotulo: 'Mais perto de mim',
-    // Fornecedor sem coordenada entrou pela regra de cidade; sem distância
-    // para medir, vai ao fim da lista.
-    sql: 'distancia_km IS NULL, distancia_km ASC',
-  },
-  recentes: { rotulo: 'Mais recentes', sql: 's.data_cadastro DESC' },
-  avaliacao: {
-    rotulo: 'Melhor avaliados',
-    // Serviços sem avaliação vão para o fim, e não para o começo.
-    sql: 'av.media_nota IS NULL, av.media_nota DESC, av.total_avaliacoes DESC',
-  },
-  menor_preco: { rotulo: 'Menor preço', sql: 's.preco_base ASC' },
-  maior_preco: { rotulo: 'Maior preço', sql: 's.preco_base DESC' },
-};
-
-// No LIKE, % e _ são curingas. Sem escapar, quem digitasse "100%" buscaria
-// "100 seguido de qualquer coisa". A barra invertida é o escape padrão do
-// MySQL.
-function escaparLike(texto) {
-  return texto.replace(/[\\%_]/g, '\\$&');
-}
+//
+// A consulta em si mora em lib/busca-servicos.js, e o cartão em
+// componentes/cartao-servico.jsx: a tela inicial mostra a mesma vitrine e
+// precisa mostrá-la do mesmo jeito.
 
 export default async function Vitrine({ searchParams }) {
   const parametros = await searchParams;
@@ -52,15 +28,8 @@ export default async function Vitrine({ searchParams }) {
   // RN068 — o filtro de proximidade é do CLIENTE: é a localização dele que
   // define quais fornecedores o alcançam. Visitante e fornecedor navegam na
   // vitrine completa (RN030).
-  let localizacao = null;
-  if (podeSolicitar) {
-    const [linhas] = await pool.execute(
-      'SELECT latitude, longitude, cidade, estado FROM usuario WHERE id = ? LIMIT 1',
-      [sessao.id]
-    );
-    localizacao = linhas[0] ?? null;
-  }
-  const temCoordenadas = Boolean(localizacao && localizacao.latitude !== null);
+  const localizacao = await lerLocalizacaoCliente(sessao);
+  const comCoordenadas = temCoordenadas(localizacao);
 
   const texto = String(parametros?.q ?? '').trim().slice(0, 100);
   const idCategoria = Number(parametros?.categoria);
@@ -70,116 +39,19 @@ export default async function Vitrine({ searchParams }) {
 
   // "Mais perto de mim" só existe quando há distância a medir.
   const ordensDisponiveis = Object.fromEntries(
-    Object.entries(ORDENACOES).filter(([valor]) => valor !== 'distancia' || temCoordenadas)
+    Object.entries(ORDENACOES).filter(([valor]) => valor !== 'distancia' || comCoordenadas)
   );
-  const ordemPadrao = temCoordenadas ? 'distancia' : 'recentes';
+  const ordemPadrao = comCoordenadas ? 'distancia' : 'recentes';
   const ordem = ordensDisponiveis[parametros?.ordem] ? parametros.ordem : ordemPadrao;
 
-  // Os valores da lista de seleção vêm ANTES dos valores do WHERE: a ordem
-  // dos "?" no comando é a ordem do array.
-  const valoresSelecao = [];
-  const valoresCondicao = [];
-
-  // O parâmetro do favorito pertence ao JOIN, que vem depois da lista de
-  // seleção e antes do WHERE. Visitante e fornecedor passam 0: nenhum
-  // favorito casa com esse id, e a coluna sai nula.
-  const valoresJuncao = [podeSolicitar ? sessao.id : 0];
-
-  // ST_Distance_Sphere recebe POINT(longitude, latitude) — nessa ordem — e
-  // devolve metros. Sem coordenada do cliente não há distância a calcular.
-  let selecaoDistancia = 'NULL AS distancia_km';
-  if (temCoordenadas) {
-    selecaoDistancia = `ROUND(
-              ST_Distance_Sphere(POINT(u.longitude, u.latitude), POINT(?, ?)) / 1000, 1
-            ) AS distancia_km`;
-    valoresSelecao.push(localizacao.longitude, localizacao.latitude);
-  }
-
-  // RN020 — só aparece o que está ativo e aprovado, de fornecedor ativo.
-  const condicoes = [
-    "s.status_servico = 'ativo'",
-    "s.status_verificacao = 'aprovado'",
-    "f.status_fornecedor = 'ativo'",
-  ];
-
-  // RN068 — proximidade. Com as duas coordenadas, vale a distância contra o
-  // raio declarado pelo fornecedor. Faltando a de qualquer das partes, o
-  // critério passa a ser cidade e estado iguais: ninguém é excluído da busca
-  // por não ter autorizado a captura da localização.
-  if (localizacao) {
-    if (temCoordenadas) {
-      condicoes.push(`(
-             (u.latitude IS NOT NULL
-               AND ST_Distance_Sphere(POINT(u.longitude, u.latitude), POINT(?, ?))
-                   <= f.raio_atendimento_km * 1000)
-          OR (u.latitude IS NULL AND u.cidade = ? AND u.estado = ?))`);
-      valoresCondicao.push(
-        localizacao.longitude, localizacao.latitude,
-        localizacao.cidade, localizacao.estado
-      );
-    } else {
-      condicoes.push('(u.cidade = ? AND u.estado = ?)');
-      valoresCondicao.push(localizacao.cidade, localizacao.estado);
-    }
-  }
-
-  if (texto) {
-    // Um termo busca em nome e descrição do serviço, no nome do fornecedor
-    // e na categoria — é onde a pessoa espera encontrar o que digitou.
-    condicoes.push(`(s.nome LIKE CONCAT('%', ?, '%')
-                  OR s.descricao LIKE CONCAT('%', ?, '%')
-                  OR f.nome_exibicao LIKE CONCAT('%', ?, '%')
-                  OR c.nome LIKE CONCAT('%', ?, '%'))`);
-    const termo = escaparLike(texto);
-    valoresCondicao.push(termo, termo, termo, termo);
-  }
-
-  if (temCategoria) {
-    condicoes.push('s.id_categoria = ?');
-    valoresCondicao.push(idCategoria);
-  }
-
-  if (cidade) {
-    condicoes.push(`u.cidade LIKE CONCAT('%', ?, '%')`);
-    valoresCondicao.push(escaparLike(cidade));
-  }
-
-  // A média de avaliações vem de uma subconsulta agrupada. Entram TODAS as
-  // notas, inclusive as de avaliação oculta: a RN062 esconde só o
-  // comentário, nunca a nota.
-  //
-  // RN068 — latitude e longitude são dado pessoal e NÃO saem daqui: a
-  // consulta devolve apenas cidade, estado e a distância calculada.
-  const [servicos] = await pool.execute(
-    `SELECT s.id, s.nome, s.descricao, s.preco_base, s.capacidade_max,
-            s.dias_antecedencia,
-            c.nome AS categoria, cb.descricao AS cobranca,
-            f.nome_exibicao, f.status_verificacao AS verificacao_fornecedor,
-            u.cidade, u.estado,
-            av.media_nota, av.total_avaliacoes,
-            fp.imagem_url AS foto_principal,
-            fv.id AS id_favorito,
-            ${selecaoDistancia}
-       FROM servico s
-       JOIN fornecedor f ON f.id = s.id_fornecedor
-       JOIN usuario u    ON u.id = f.id_usuario
-       JOIN categoria c  ON c.id = s.id_categoria
-       JOIN cobranca cb  ON cb.id = s.id_cobranca
-       LEFT JOIN foto_servico fp ON fp.id_servico = s.id AND fp.principal = TRUE
-       -- RF015 — o coração já nasce preenchido no que o cliente salvou.
-       LEFT JOIN favorito fv ON fv.id_servico = s.id AND fv.id_cliente = ?
-       LEFT JOIN (
-            SELECT so.id_servico,
-                   AVG(a.nota)  AS media_nota,
-                   COUNT(*)     AS total_avaliacoes
-              FROM avaliacao a
-              JOIN solicitacao so ON so.id = a.id_solicitacao
-             GROUP BY so.id_servico
-       ) av ON av.id_servico = s.id
-      WHERE ${condicoes.join(' AND ')}
-      ORDER BY ${ORDENACOES[ordem].sql}`,
-    [...valoresSelecao, ...valoresJuncao, ...valoresCondicao]
-  );
+  const servicos = await buscarServicos({
+    sessao,
+    localizacao,
+    texto,
+    idCategoria: temCategoria ? idCategoria : null,
+    cidade,
+    ordem,
+  });
 
   const [categorias] = await pool.query('SELECT id, nome FROM categoria ORDER BY nome');
 
@@ -197,9 +69,17 @@ export default async function Vitrine({ searchParams }) {
           explicar, uma lista curta parece defeito do sistema. */}
       {localizacao && (
         <p className="mb-6 text-sm text-slate-600">
-          {temCoordenadas
-            ? 'Mostrando fornecedores cuja área de atendimento alcança a sua localização.'
-            : `Mostrando fornecedores de ${localizacao.cidade}/${localizacao.estado}. Informe sua localização em Minha conta para ver também os de cidades vizinhas que atendem a sua região.`}
+          {comCoordenadas ? (
+            'Mostrando fornecedores cuja área de atendimento alcança a sua localização.'
+          ) : (
+            <>
+              Mostrando fornecedores de {localizacao.cidade}/{localizacao.estado}.{' '}
+              <Link href="/minha-conta#localizacao" className="font-medium text-festa-700 hover:underline">
+                Informe sua localização em Minha conta
+              </Link>{' '}
+              para ver também os de cidades vizinhas que atendem a sua região.
+            </>
+          )}
         </p>
       )}
 
@@ -277,123 +157,12 @@ export default async function Vitrine({ searchParams }) {
       ) : (
         <ul className="grid gap-6 sm:grid-cols-2">
           {servicos.map((servico) => (
-            // flex-col + h-full: todos os cards da linha ficam da mesma
-            // altura, e o botão encosta no rodapé de cada um.
-            <li key={servico.id}
-              className="flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white">
-
-              {/* Foto principal do serviço (RF012). Sem foto entra o padrão
-                  de festa, e a proporção fixa mantém a grade alinhada nos
-                  dois casos. */}
-              <MolduraFoto foto={servico.foto_principal} alt={servico.nome}
-                className="aspect-[4/3]">
-                <span className="absolute right-3 top-3">
-                  <Etiqueta tom="roxo">{servico.categoria}</Etiqueta>
-                </span>
-              </MolduraFoto>
-
-              <div className="flex flex-1 flex-col gap-3 p-5">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                  <h2 className="font-medium text-slate-900">
-                    <Link href={`/servicos/${servico.id}`} className="hover:underline">
-                      {servico.nome}
-                    </Link>
-                  </h2>
-                  <Estrelas media={servico.media_nota} total={servico.total_avaliacoes} />
-                  {/* Três linhas e ponto: o texto completo está na página
-                      de detalhes. Expandir aqui desalinharia a grade. */}
-                  <p className="mt-2 line-clamp-3 whitespace-pre-line text-sm text-slate-700">
-                    {servico.descricao}
-                  </p>
-                  </div>
-                  {podeSolicitar && (
-                    <BotaoFavorito tipo="servico" id={servico.id}
-                      favorito={Boolean(servico.id_favorito)} rotulo={servico.nome} />
-                  )}
-                </div>
-
-                <div className="flex items-end justify-between gap-4">
-                  <div className="space-y-1 text-sm">
-                    <p className="flex items-center gap-1.5 font-medium text-festa-700">
-                      <Store className="h-4 w-4 shrink-0" aria-hidden="true" />
-                      {servico.nome_exibicao}
-                      {servico.verificacao_fornecedor === 'aprovado' && (
-                        <BadgeCheck className="h-4 w-4 shrink-0 text-festa-600"
-                          aria-label="Fornecedor verificado" />
-                      )}
-                    </p>
-                    <p className="flex items-center gap-1.5 text-slate-600">
-                      <MapPin className="h-4 w-4 shrink-0 text-festa-600" aria-hidden="true" />
-                      {servico.cidade}/{servico.estado}
-                      {servico.distancia_km !== null && (
-                        <span className="text-slate-500">
-                          · {Number(servico.distancia_km).toLocaleString('pt-BR', {
-                            minimumFractionDigits: 1, maximumFractionDigits: 1,
-                          })} km
-                        </span>
-                      )}
-                    </p>
-                  </div>
-
-                  <div className="shrink-0 text-right">
-                    <p className="text-lg font-semibold text-slate-900">
-                      {formatarPreco(servico.preco_base)}
-                    </p>
-                    {SUFIXO_PRECO[servico.cobranca] && (
-                      <p className="text-xs text-slate-500">
-                        {SUFIXO_PRECO[servico.cobranca].trim()}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                <p className="text-xs text-slate-500">
-                  antecedência de {antecedenciaExigida(servico.dias_antecedencia, minimoAntecedencia)} dias
-                  {servico.capacidade_max !== null &&
-                    ` · até ${servico.capacidade_max} convidados`}
-                </p>
-
-                {/* UC 011 — o card leva aos detalhes; a solicitação parte
-                    de lá, com as fotos, o fornecedor e as avaliações à
-                    vista. */}
-                <Link href={`/servicos/${servico.id}`}
-                  className="mt-auto block rounded-lg bg-festa-600 px-4 py-3 text-center font-medium text-white transition-colors hover:bg-festa-700">
-                  Ver detalhes
-                </Link>
-              </div>
-            </li>
+            <CartaoServico key={servico.id} servico={servico}
+              minimoAntecedencia={minimoAntecedencia}
+              podeFavoritar={podeSolicitar} />
           ))}
         </ul>
       )}
     </main>
-  );
-}
-
-function Estrelas({ media, total }) {
-  if (!total) {
-    return <p className="mt-1 text-xs text-slate-500">Ainda sem avaliações</p>;
-  }
-
-  const nota = Number(media);
-  const cheias = Math.round(nota);
-
-  return (
-    <p className="mt-1 flex items-center gap-1.5">
-      <span className="flex" aria-hidden="true">
-        {[1, 2, 3, 4, 5].map((posicao) => (
-          <Star key={posicao}
-            className={`h-4 w-4 ${posicao <= cheias
-              ? 'fill-atencao-600 text-atencao-600'
-              : 'text-slate-300'}`} />
-        ))}
-      </span>
-      <span className="text-xs text-slate-500">
-        {nota.toFixed(1)} ({total})
-      </span>
-      <span className="sr-only">
-        Nota média {nota.toFixed(1)} de 5, com base em {total} avaliações.
-      </span>
-    </p>
   );
 }

@@ -129,8 +129,11 @@ export default async function MinhaConta() {
           primeira tela do perfil as põe mais à vista do que merecem. */}
 
       {/* RF066 / RN068 — quem não autorizou a captura no cadastro pode
-          fazê-lo aqui. Sem coordenadas, a busca filtra por cidade. */}
-      <section className="mt-8">
+          fazê-lo aqui. Sem coordenadas, a busca filtra por cidade. O id é o
+          destino do "Informe sua localização" da busca e da tela inicial;
+          o scroll-mt deixa um respiro acima do título quando a página rola
+          até ele. */}
+      <section id="localizacao" className="mt-8 scroll-mt-6">
         <h2 className="mb-2 px-1 text-xs font-semibold uppercase tracking-wider text-slate-500">
           Localização
         </h2>

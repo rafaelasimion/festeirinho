@@ -32,6 +32,14 @@ const TONS = {
     icone: 'text-perigo-600',
     titulo: 'text-perigo-700',
   },
+  // Algo esperando a pessoa — uma solicitação para responder, um prazo
+  // correndo. Só o ícone muda de cor: o título continua escuro, porque o
+  // laranja é aviso, não erro, e não deve gritar como o vermelho.
+  atencao: {
+    caixa: 'bg-atencao-100',
+    icone: 'text-atencao-700',
+    titulo: 'text-slate-900',
+  },
 };
 
 export function ItemMenu({

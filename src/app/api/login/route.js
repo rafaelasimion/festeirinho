@@ -188,10 +188,14 @@ export async function POST(request) {
 
     await criarSessao({ id: usuario.id, tipoUsuario: usuario.tipo_usuario });
 
+    // UC 003, passo 7 — "apresenta a tela inicial correspondente ao seu
+    // perfil". A tela inicial passou a ser diferente para cliente e
+    // fornecedor, e é ela o destino; antes o login levava a Minha conta,
+    // que é o menu do perfil, não a tela inicial.
     return NextResponse.json({
       nome: usuario.nome,
       tipoUsuario: usuario.tipo_usuario,
-      destino: '/minha-conta',
+      destino: '/',
     });
   } catch (erro) {
     console.error('[login]', erro);
