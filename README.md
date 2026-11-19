@@ -1,4 +1,6 @@
 # Festeirinho
+
+![alt text](festeirinho.png)
  
 Plataforma web para contratação de serviços para festas infantis, conectando clientes a fornecedores (buffet, decoração, animação, fotografia, entre outros).
  
