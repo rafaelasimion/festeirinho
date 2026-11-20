@@ -8,6 +8,7 @@ import { UFS, lerInteiro } from '@/lib/validacao';
 import {
   calcularValorFinal,
   lerDuracao,
+  erroQuantidade,
   formatarPreco,
   SUFIXO_PRECO,
   EXPLICACAO_COBRANCA,
@@ -27,6 +28,7 @@ const CAMPOS_INICIAIS = {
   dataHoraEvento: '',
   duracao: '',
   numeroConvidados: '',
+  quantidade: '',
   idTipoLocal: '',
   tema: '',
   nomeAniversariante: '',
@@ -69,10 +71,23 @@ export default function FormularioSolicitacao({ servico, tiposLocal }) {
   const duracaoLida = lerDuracao(campos.duracao);
   const convidadosLidos = lerInteiro(campos.numeroConvidados);
 
+  // RN029 — a quantidade só existe na cobrança por unidade, e só entra na
+  // conta quando passa pela mesma regra que o servidor aplica: um 0 ou um
+  // 2,5 recusados logo abaixo não podem render um total aqui em cima.
+  const porUnidade = servico.cobranca === 'unidade';
+  const quantidadeLida = porUnidade && erroQuantidade(campos.quantidade) === null
+    ? lerInteiro(campos.quantidade)
+    : null;
+
+  // Antes eram três tipos, e o último caso do ternário — "o resto" — era a
+  // cobrança por pessoa. Com a quarta forma, cada uma é nomeada: um tipo
+  // novo cairia calado nos convidados.
   const multiplicador =
     servico.cobranca === 'fixo' ? 1
       : servico.cobranca === 'hora' ? duracaoLida
-        : convidadosLidos;
+        : servico.cobranca === 'pessoa' ? convidadosLidos
+          : porUnidade ? quantidadeLida
+            : null;
 
   const valorFinal =
     multiplicador !== null && multiplicador > 0
@@ -81,6 +96,7 @@ export default function FormularioSolicitacao({ servico, tiposLocal }) {
         cobranca: servico.cobranca,
         duracao: duracaoLida,
         numeroConvidados: convidadosLidos,
+        quantidade: quantidadeLida,
       })
       : null;
 
@@ -89,7 +105,8 @@ export default function FormularioSolicitacao({ servico, tiposLocal }) {
   const faltaParaTotal =
     servico.cobranca === 'hora' ? 'a duração'
       : servico.cobranca === 'pessoa' ? 'o número de convidados'
-        : 'os dados do evento';
+        : porUnidade ? 'a quantidade'
+          : 'os dados do evento';
 
   // RN016/RN042 — a data precisa respeitar a antecedência mínima do serviço.
   function validarDataEvento(valor) {
@@ -205,7 +222,9 @@ export default function FormularioSolicitacao({ servico, tiposLocal }) {
 
       <div className="mt-8 space-y-4">
         <SecaoFormulario numero={1} titulo="Sobre o evento"
-          descricao="Quando é, quanto dura e para quantas pessoas.">
+          descricao={porUnidade
+            ? 'Quando é, quanto dura, para quantas pessoas e quantas unidades.'
+            : 'Quando é, quanto dura e para quantas pessoas.'}>
           <Campo label="Data e hora do evento" name="dataHoraEvento" type="datetime-local"
             min={dataMinima(servico.diasAntecedencia)}
             value={campos.dataHoraEvento} onChange={aoDigitar} erro={erros.dataHoraEvento}
@@ -223,6 +242,18 @@ export default function FormularioSolicitacao({ servico, tiposLocal }) {
               ? `Capacidade máxima deste serviço: ${servico.capacidadeMax} convidados.`
               : null}
             validar={validarConvidados} />
+
+          {/* RF017 — só na cobrança por unidade. O número de convidados
+              continua obrigatório logo acima, porque é ele que confere a
+              capacidade máxima (RN017); a quantidade é o que multiplica o
+              preço, e os dois raramente coincidem: 50 convidados podem
+              pedir 300 docinhos. */}
+          {porUnidade && (
+            <Campo label="Quantidade" name="quantidade" type="number" min="1"
+              value={campos.quantidade} onChange={aoDigitar} erro={erros.quantidade}
+              dica="Quantas unidades você quer contratar. O preço do serviço é por unidade."
+              validar={erroQuantidade} />
+          )}
 
           <CampoSelecao label="Tipo de local" name="idTipoLocal" value={campos.idTipoLocal}
             onChange={aoDigitar} erro={erros.idTipoLocal}>

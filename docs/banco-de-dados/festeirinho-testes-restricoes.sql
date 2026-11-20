@@ -5,8 +5,9 @@
 -- Atenção: exige o DDL com as constraints chk_fornecedor_suspensao,
 -- chk_cliente_revisao e chk_fornecedor_revisao, com os CHECKs null-safe (<=>)
 -- com a coluna solicitacao.id_cobranca (migração de 08/10), com a tabela
--- foto_contestacao (migração de 10/10) e com a versão do fornecedor na
--- contestação (migração de 10/10 b).
+-- foto_contestacao (migração de 10/10), com a versão do fornecedor na
+-- contestação (migração de 10/10 b) e com a cobrança por unidade
+-- (migração de 20/11).
 --
 -- Cada teste executa uma instrução dentro de uma transação e a desfaz,
 -- comparando o resultado com o esperado. Nada é persistido.
@@ -730,6 +731,38 @@ CALL teste('T66', 'RN029', 'Solicitação com tipo de cobrança inexistente',
      data_limite_resposta_fornecedor)
    VALUES (@cli, @serv, @end_f, @tl, 99, ''2027-08-01 10:00:00'', 4.0, 30,
            250.00, 1000.00, NOW() + INTERVAL 48 HOUR)');
+
+-- =====================================================================
+-- COBRANÇA POR UNIDADE (RN029, RF027, RF058)
+-- Cobre a coluna solicitacao.quantidade e a chk_solicitacao_quantidade.
+-- Exigir a quantidade quando a cobrança é por unidade, e só nela, é papel
+-- da aplicação: o CHECK não alcança a descrição da cobrança.
+-- =====================================================================
+SET @cob_un = (SELECT id FROM cobranca WHERE descricao = 'unidade');
+
+CALL teste('T75', 'RN029', 'Quantidade zero na cobrança por unidade',
+  'bloqueio',
+  'INSERT INTO solicitacao (id_cliente, id_servico, id_endereco, id_tipo_local, id_cobranca,
+     data_hora_evento, duracao, numero_convidados, quantidade,
+     valor_referencia, valor_final, data_limite_resposta_fornecedor)
+   VALUES (@cli, @serv, @end_f, @tl, @cob_un, ''2027-08-01 10:00:00'', 4.0, 30, 0,
+           2.00, 600.00, NOW() + INTERVAL 48 HOUR)');
+
+CALL teste('T76', 'RN029', 'Valor final que não fecha com a quantidade',
+  'bloqueio',
+  'INSERT INTO solicitacao (id_cliente, id_servico, id_endereco, id_tipo_local, id_cobranca,
+     data_hora_evento, duracao, numero_convidados, quantidade,
+     valor_referencia, valor_final, data_limite_resposta_fornecedor)
+   VALUES (@cli, @serv, @end_f, @tl, @cob_un, ''2027-08-01 10:00:00'', 4.0, 30, 300,
+           2.00, 500.00, NOW() + INTERVAL 48 HOUR)');
+
+CALL teste('T77', 'RN029', 'Cobrança por unidade com valor coerente (deve passar)',
+  'aceite',
+  'INSERT INTO solicitacao (id_cliente, id_servico, id_endereco, id_tipo_local, id_cobranca,
+     data_hora_evento, duracao, numero_convidados, quantidade,
+     valor_referencia, valor_final, data_limite_resposta_fornecedor)
+   VALUES (@cli, @serv, @end_f, @tl, @cob_un, ''2027-08-01 10:00:00'', 4.0, 30, 300,
+           2.00, 600.00, NOW() + INTERVAL 48 HOUR)');
 
 -- =====================================================================
 -- RELATÓRIO

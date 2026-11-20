@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { CalendarClock, MapPin, Users, ChevronRight } from 'lucide-react';
+import { CalendarClock, MapPin, Users, Package, ChevronRight } from 'lucide-react';
 import MolduraFoto from '@/componentes/moldura-foto';
 
 // Casca do cartão de solicitação, igual nas duas telas — a do cliente e a
@@ -20,7 +20,7 @@ import MolduraFoto from '@/componentes/moldura-foto';
 // nome do cliente, que não tem página. Sem href, o texto fica texto.
 export default function CartaoSolicitacao({
   como: Tag = 'li',
-  titulo, subtitulo, preco, foto, etiquetas, quando, convidados, local,
+  titulo, subtitulo, preco, foto, etiquetas, quando, convidados, quantidade, local,
   hrefTitulo, hrefSubtitulo, children,
 }) {
   return (
@@ -86,6 +86,14 @@ export default function CartaoSolicitacao({
             <p className="flex items-start gap-2">
               <Users className="mt-0.5 h-4 w-4 shrink-0 text-festa-600" aria-hidden="true" />
               <span>{convidados}</span>
+            </p>
+          )}
+          {/* RN029 — só na cobrança por unidade: é o que o fornecedor
+              precisa produzir ou levar, e não sai do número de convidados. */}
+          {quantidade && (
+            <p className="flex items-start gap-2">
+              <Package className="mt-0.5 h-4 w-4 shrink-0 text-festa-600" aria-hidden="true" />
+              <span>{quantidade}</span>
             </p>
           )}
           <p className="flex items-start gap-2">

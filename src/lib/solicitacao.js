@@ -1,10 +1,11 @@
-import { lerDecimal } from '@/lib/validacao';
+import { lerDecimal, lerInteiro } from '@/lib/validacao';
 
 // RN029 — o valor final não é negociado: é calculado pelo sistema.
 //
-//   cobrança "hora"   → preço base × duração informada
-//   cobrança "pessoa" → preço base × número de convidados
-//   cobrança "fixo"   → o próprio preço base, sem multiplicador
+//   cobrança "hora"    → preço base × duração informada
+//   cobrança "pessoa"  → preço base × número de convidados
+//   cobrança "unidade" → preço base × quantidade informada
+//   cobrança "fixo"    → o próprio preço base, sem multiplicador
 //
 // O preço base e o tipo de cobrança usados são os vigentes NO MOMENTO DO
 // ENVIO. Por isso a solicitação guarda uma cópia do preço (valor_referencia)
@@ -39,7 +40,9 @@ export function lerDuracao(valor) {
 // para baixo onde a conta decimal arredonda para cima. É um centavo, e nada
 // no banco quebra por causa dele — mas é um centavo que ninguém consegue
 // explicar olhando o comprovante, e some ao trabalhar com inteiros.
-export function calcularValorFinal({ precoBase, cobranca, duracao, numeroConvidados }) {
+export function calcularValorFinal({
+  precoBase, cobranca, duracao, numeroConvidados, quantidade,
+}) {
   const centavos = Math.round(Number(precoBase) * 100);
   if (!Number.isFinite(centavos)) return null;
 
@@ -52,8 +55,19 @@ export function calcularValorFinal({ precoBase, cobranca, duracao, numeroConvida
     return (centavos * Math.round(convidados)) / 100;
   }
 
+  // Aqui não se arredonda a quantidade, como se faz com os convidados acima:
+  // o banco confere que o valor final é o valor de referência vezes a
+  // quantidade GRAVADA (chk_solicitacao_quantidade), e 2,5 arredondado para 3
+  // daria um valor que não fecha com o 2,5 do registro. Quantidade que não é
+  // inteira e positiva não é quantidade.
+  if (cobranca === 'unidade') {
+    const unidades = Number(quantidade);
+    if (!Number.isInteger(unidades) || unidades <= 0) return null;
+    return (centavos * unidades) / 100;
+  }
+
   // Forma de cobrança desconhecida não cai num multiplicador por descuido:
-  // a tabela cobranca tem três linhas, e qualquer outra coisa aqui é defeito.
+  // a tabela cobranca tem quatro linhas, e qualquer outra coisa aqui é defeito.
   if (cobranca !== 'hora') return null;
 
   // Cobrança por hora: a duração tem uma casa decimal, que vira décimos.
@@ -67,6 +81,41 @@ export function calcularValorFinal({ precoBase, cobranca, duracao, numeroConvida
   return (resto >= 5 ? inteiros + 1 : inteiros) / 100;
 }
 
+// RF017 — a quantidade da cobrança por unidade.
+//
+// O teto não vem de regra nenhuma: é um limite de sanidade, como a duração
+// máxima de 999,9 horas. Uma festa grande pede alguns milhares de salgados,
+// e um número com cinco dígitos já cobre isso com folga.
+export const QUANTIDADE_MAXIMA = 99999;
+
+// Devolve a mensagem do que está errado, ou null quando a quantidade serve.
+// A tela e a rota usam esta mesma função, e por isso dizem a mesma coisa —
+// a lição da duração e dos convidados, cujas mensagens precisaram ser
+// igualadas à mão depois que as duas pontas passaram a explicar o mesmo
+// erro de jeitos diferentes.
+export function erroQuantidade(valor) {
+  const n = lerInteiro(valor);
+  if (n === null) {
+    return String(valor ?? '').trim() === ''
+      ? 'Informe a quantidade.'
+      : 'A quantidade precisa ser um número inteiro.';
+  }
+  if (n <= 0) return 'A quantidade precisa ser maior que zero.';
+  if (n > QUANTIDADE_MAXIMA) {
+    return `Quantidade máxima de ${QUANTIDADE_MAXIMA.toLocaleString('pt-BR')} unidades.`;
+  }
+  return null;
+}
+
+// "1 unidade", "300 unidades", "1.500 unidades". Devolve null quando a
+// solicitação não é por unidade, para quem chama poder só passar adiante —
+// o cartão e o comprovante omitem a linha quando não há o que mostrar.
+export function textoQuantidade(quantidade) {
+  if (quantidade === null || quantidade === undefined) return null;
+  const n = Number(quantidade);
+  return `${n.toLocaleString('pt-BR')} ${n === 1 ? 'unidade' : 'unidades'}`;
+}
+
 export function formatarPreco(valor) {
   return Number(valor).toLocaleString('pt-BR', {
     style: 'currency',
@@ -78,6 +127,7 @@ export function formatarPreco(valor) {
 export const ROTULO_COBRANCA = {
   hora: 'Por hora',
   pessoa: 'Por pessoa',
+  unidade: 'Por unidade',
   fixo: 'Valor fixo',
 };
 
@@ -86,6 +136,7 @@ export const ROTULO_COBRANCA = {
 export const SUFIXO_PRECO = {
   hora: ' por hora',
   pessoa: ' por pessoa',
+  unidade: ' por unidade',
   fixo: '',
 };
 
@@ -93,6 +144,7 @@ export const SUFIXO_PRECO = {
 export const EXPLICACAO_COBRANCA = {
   hora: 'Preço por hora multiplicado pela duração informada.',
   pessoa: 'Preço por pessoa multiplicado pelo número de convidados.',
+  unidade: 'Preço por unidade multiplicado pela quantidade informada.',
   fixo: 'Valor fixo do serviço, independente da duração e do número de convidados.',
 };
 

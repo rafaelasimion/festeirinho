@@ -26,6 +26,7 @@ import CartaoSolicitacao, {
 import { BarraAcoes, BotaoAcao, LinkAcao } from '@/componentes/acoes-solicitacao';
 import {
   formatarPreco,
+  textoQuantidade,
   ROTULO_STATUS_SOLICITACAO,
   TOM_STATUS_SOLICITACAO,
   ROTULO_MOTIVO_RECUSA,
@@ -450,6 +451,7 @@ export default function DetalheSolicitacao({
         }
         quando={`${formatarDataHora(solicitacao.data_hora_evento)} · ${solicitacao.duracao}h`}
         convidados={`${solicitacao.numero_convidados} convidados`}
+        quantidade={textoQuantidade(solicitacao.quantidade)}
         local={`${solicitacao.cidade}/${solicitacao.estado}`}
         hrefTitulo={`/servicos/${solicitacao.id_servico}`}
         hrefSubtitulo={`/fornecedores/${solicitacao.id_fornecedor}`}

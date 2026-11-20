@@ -206,7 +206,7 @@ CREATE TABLE categoria (
 
 CREATE TABLE cobranca (
   id         TINYINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  descricao  ENUM('hora','pessoa','fixo') NOT NULL COMMENT 'define a fórmula do valor final (RN029)',
+  descricao  ENUM('hora','pessoa','fixo','unidade') NOT NULL COMMENT 'define a fórmula do valor final (RN029)',
   PRIMARY KEY (id),
   UNIQUE KEY uk_cobranca_descricao (descricao)
 ) ENGINE=InnoDB;
@@ -326,6 +326,8 @@ CREATE TABLE solicitacao (
   data_hora_evento                    DATETIME      NOT NULL COMMENT 'imutável após o envio (RF024, RN042)',
   duracao                             DECIMAL(4,1)  NOT NULL COMMENT 'em horas; aceita fração (ex.: 2.5)',
   numero_convidados                   INT UNSIGNED  NOT NULL COMMENT 'obrigatório sempre (RF017)',
+  quantidade                          INT UNSIGNED  NULL
+                                        COMMENT 'só na cobrança por unidade: multiplica o preço base (RN029); imutável após o envio (RF024)',
   tema                                VARCHAR(100)  NULL,
   nome_aniversariante                 VARCHAR(150)  NULL,
   idade_aniversariante                TINYINT UNSIGNED NULL,
@@ -372,6 +374,16 @@ CREATE TABLE solicitacao (
   CONSTRAINT chk_solicitacao_duracao CHECK (duracao > 0),
   CONSTRAINT chk_solicitacao_convidados CHECK (numero_convidados > 0),
   CONSTRAINT chk_solicitacao_valores CHECK (valor_final > 0 AND valor_referencia > 0),
+  -- RN029/RF027: na cobrança por unidade, o valor final é o valor de
+  -- referência multiplicado pela quantidade informada. O CHECK não alcança a
+  -- descrição da cobrança, que está em outra tabela, então quem exige a
+  -- quantidade nesse caso, e só nele, é a aplicação, no envio. O que fica
+  -- garantido aqui é que uma quantidade gravada é positiva e é exatamente o
+  -- que multiplica o preço — a conta do comprovante (RF058) sempre fecha. A
+  -- multiplicação é inteira e não arredonda, por isso a igualdade é exata.
+  CONSTRAINT chk_solicitacao_quantidade CHECK (
+    quantidade IS NULL
+    OR (quantidade > 0 AND valor_final = valor_referencia * quantidade)),
   CONSTRAINT chk_solicitacao_recusa CHECK (   -- RN021
     (status = 'recusado' AND motivo_recusa IS NOT NULL)
     OR (status <> 'recusado' AND motivo_recusa IS NULL)),
@@ -841,7 +853,7 @@ INSERT INTO administrador (nome, email, senha_hash) VALUES
   ('Administração Festeirinho', 'admin@festeirinho.com',
    '$2b$10$z2r.GYeCZITi495X3aJhKO3bwCZT2G59qaxQ3TAYke0HT1IGmQlwa');
 
-INSERT INTO cobranca (descricao) VALUES ('hora'), ('pessoa'), ('fixo');
+INSERT INTO cobranca (descricao) VALUES ('hora'), ('pessoa'), ('fixo'), ('unidade');
 
 INSERT INTO tipo_local (descricao) VALUES
   ('Residência'), ('Salão'), ('Chácara'), ('Condomínio'), ('Outro');

@@ -3,6 +3,7 @@ import { pool } from '@/lib/db';
 import { lerSessao } from '@/lib/sessao';
 import { formatarDataHora } from '@/lib/datas';
 import { faixasDeCancelamento } from '@/lib/cancelamento';
+import { textoQuantidade } from '@/lib/solicitacao';
 import {
   COR, MARGEM, caixaAlta, naBase, fio, cabecalhoDocumento, avisoComFio,
 } from '@/lib/pdf-marca';
@@ -27,6 +28,7 @@ const ROTULO_FORMA = {
 const ROTULO_COBRANCA = {
   hora: 'por hora',
   pessoa: 'por pessoa',
+  unidade: 'por unidade',
   fixo: 'valor fixo',
 };
 
@@ -48,6 +50,7 @@ export async function GET(request, { params }) {
 
   const [linhas] = await pool.execute(
     `SELECT so.id, so.data_hora_evento, so.duracao, so.numero_convidados,
+            so.quantidade,
             so.tema, so.nome_aniversariante, so.idade_aniversariante,
             so.valor_referencia, so.valor_final, so.data_solicitacao,
             s.nome AS servico, c.nome AS categoria, cb.descricao AS cobranca,
@@ -218,6 +221,10 @@ function montarPdf(dados) {
   linha('Categoria', dados.categoria);
   linha('Tipo de cobrança', ROTULO_COBRANCA[dados.cobranca] ?? dados.cobranca);
   linha('Valor de referência', dinheiro(dados.valor_referencia));
+  // RN029 — na cobrança por unidade, a quantidade é o outro fator da conta:
+  // valor de referência × quantidade = valor pago, lá no destaque. Nos
+  // demais tipos a coluna é NULL e a linha não aparece.
+  if (dados.quantidade !== null) linha('Quantidade', textoQuantidade(dados.quantidade));
 
   // ---------------- evento ----------------
   secao('Evento');

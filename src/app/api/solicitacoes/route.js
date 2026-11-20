@@ -3,7 +3,7 @@ import { pool } from '@/lib/db';
 import { notificar, partesDaSolicitacao } from '@/lib/notificacao-servidor';
 import { obterClienteLogado } from '@/lib/autorizacao';
 import { obterConfiguracoes, antecedenciaExigidaDias } from '@/lib/configuracao';
-import { calcularValorFinal, lerDuracao } from '@/lib/solicitacao';
+import { calcularValorFinal, lerDuracao, erroQuantidade } from '@/lib/solicitacao';
 import { somenteDigitos, validarUF, lerInteiro } from '@/lib/validacao';
 
 // RF017 — envio de solicitação pelo cliente.
@@ -57,6 +57,11 @@ export async function POST(request) {
   // que depende dela, e é a mesma que a tela usa.
   const duracao = lerDuracao(corpo.duracao);
   const numeroConvidados = lerInteiro(corpo.numeroConvidados);
+  // RN029 — a quantidade só existe na cobrança por unidade. Nas demais, o que
+  // vier no corpo é ignorado e a coluna fica NULL: um número solto ali não
+  // multiplicaria nada e ainda apareceria no comprovante como se contasse.
+  const porUnidade = servico.cobranca === 'unidade';
+  const quantidade = porUnidade ? lerInteiro(corpo.quantidade) : null;
   const idTipoLocal = Number(corpo.idTipoLocal);
   const tema = String(corpo.tema ?? '').trim();
   const nomeAniversariante = String(corpo.nomeAniversariante ?? '').trim();
@@ -127,6 +132,12 @@ export async function POST(request) {
       `Este serviço atende no máximo ${servico.capacidade_max} convidados.`;
   }
 
+  // RF017 — a mesma regra e as mesmas mensagens da tela (lib/solicitacao).
+  if (porUnidade) {
+    const problema = erroQuantidade(corpo.quantidade);
+    if (problema) erros.quantidade = problema;
+  }
+
   if (!Number.isInteger(idTipoLocal)) erros.idTipoLocal = 'Selecione o tipo de local.';
   if (cep.length !== 8) erros.cep = 'Informe um CEP com 8 dígitos.';
   if (rua.length < 2 || rua.length > 200) erros.rua = 'Informe a rua.';
@@ -161,6 +172,7 @@ export async function POST(request) {
     cobranca: servico.cobranca,
     duracao,
     numeroConvidados,
+    quantidade,
   });
 
   if (valorFinal === null || valorFinal <= 0) {
@@ -194,19 +206,21 @@ export async function POST(request) {
     // RN029 — o preço (valor_referencia) e o tipo de cobrança (id_cobranca)
     // vigentes agora são congelados junto com o valor final calculado a
     // partir deles. Os três juntos são o que o comprovante reproduz (RF058),
-    // por mais que o serviço mude depois.
+    // por mais que o serviço mude depois. Na cobrança por unidade, a
+    // quantidade vai junto, e o banco confere que ela fecha com o valor
+    // final (chk_solicitacao_quantidade).
     const [resultadoSolicitacao] = await conexao.execute(
       `INSERT INTO solicitacao
          (id_cliente, id_servico, id_endereco, id_tipo_local, id_cobranca,
-          data_hora_evento, duracao, numero_convidados,
+          data_hora_evento, duracao, numero_convidados, quantidade,
           tema, nome_aniversariante, idade_aniversariante, observacoes,
           valor_referencia, valor_final,
           data_limite_resposta_fornecedor)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
                DATE_ADD(NOW(), INTERVAL ? HOUR))`,
       [
         cliente.id, idServico, resultadoEndereco.insertId, idTipoLocal, servico.id_cobranca,
-        dataEventoSql, duracao, numeroConvidados,
+        dataEventoSql, duracao, numeroConvidados, quantidade,
         tema || null, nomeAniversariante || null, idadeAniversariante, observacoes || null,
         valorReferencia, valorFinal,
         prazoRespostaHoras,

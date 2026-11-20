@@ -28,7 +28,7 @@ export default async function Pagamento({ params }) {
             p.perc_multa_faixa_mais_7d, p.perc_multa_faixa_7d_48h,
             p.perc_multa_faixa_48h_24h, p.perc_multa_faixa_24h,
             so.id AS id_solicitacao, so.status AS status_solicitacao,
-            so.data_hora_evento, so.numero_convidados, so.duracao,
+            so.data_hora_evento, so.numero_convidados, so.duracao, so.quantidade,
             s.nome AS servico, f.nome_exibicao AS fornecedor,
             e.cidade, e.estado,
             -- Mesmo resumo do cartão de "Minhas solicitações": quem chega
@@ -85,6 +85,7 @@ export default async function Pagamento({ params }) {
         dataHoraEvento: paraSerializar(pagamento.data_hora_evento),
         duracao: pagamento.duracao,
         numeroConvidados: pagamento.numero_convidados,
+        quantidade: pagamento.quantidade,
         cidade: pagamento.cidade,
         estado: pagamento.estado,
         fotoPrincipal: pagamento.foto_principal,

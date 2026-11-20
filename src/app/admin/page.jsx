@@ -64,7 +64,7 @@ export default async function Admin() {
             so.data_analise_contestacao,
             -- RF069-B / UC 046 — a versão do fornecedor, quando enviada.
             so.descricao_contestacao_fornecedor, so.data_contestacao_fornecedor,
-            so.data_hora_evento, so.duracao, so.numero_convidados,
+            so.data_hora_evento, so.duracao, so.numero_convidados, so.quantidade,
             so.valor_final, so.data_registro_conclusao_fornecedor,
             s.nome AS servico,
             f.nome_exibicao AS fornecedor,

@@ -41,6 +41,8 @@ export async function buscarSolicitacoes(idUsuario, idFornecedor, { id = null } 
 
   const [linhas] = await pool.execute(
     `SELECT so.id, so.data_hora_evento, so.duracao, so.numero_convidados,
+            -- RN029 — o que multiplica o preço na cobrança por unidade.
+            so.quantidade,
             so.tema, so.nome_aniversariante, so.idade_aniversariante,
             so.observacoes, so.valor_final, so.status, so.motivo_recusa,
             so.data_solicitacao, so.data_limite_resposta_fornecedor,

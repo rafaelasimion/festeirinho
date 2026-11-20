@@ -13,6 +13,7 @@ import { BotaoAcao } from '@/componentes/acoes-solicitacao';
 import { CampoTexto } from '@/componentes/campo';
 import {
   formatarPreco,
+  textoQuantidade,
   SUFIXO_PRECO,
   ROTULO_VERIFICACAO,
   TOM_VERIFICACAO,
@@ -484,6 +485,11 @@ function ItemContestacao({ contestacao, processando, aoAnalisar }) {
           {formatarDataHora(contestacao.data_hora_evento)} · {contestacao.duracao}h
         </Fato>
         <Fato rotulo="Convidados">{contestacao.numero_convidados}</Fato>
+        {/* RN069 — numa contestação por "serviço parcial", a quantidade
+            contratada é a medida do que devia ter sido entregue. */}
+        {contestacao.quantidade !== null && (
+          <Fato rotulo="Quantidade">{textoQuantidade(contestacao.quantidade)}</Fato>
+        )}
         <Fato rotulo="Valor">
           <span className="text-base font-semibold text-festa-700">
             {formatarPreco(contestacao.valor_final)}

@@ -5,6 +5,7 @@ import CartaoSolicitacao, { AvisoCartao } from '@/componentes/cartao-solicitacao
 import { BarraAcoes, BotaoAcao } from '@/componentes/acoes-solicitacao';
 import {
   formatarPreco,
+  textoQuantidade,
   ROTULO_STATUS_SOLICITACAO,
   TOM_STATUS_SOLICITACAO,
   ROTULO_MOTIVO_RECUSA,
@@ -54,6 +55,7 @@ export default function ListaSolicitacoesRecebidas({ solicitacoes }) {
                 }
                 quando={`${formatarDataHora(solicitacao.data_hora_evento)} · ${solicitacao.duracao}h`}
                 convidados={`${solicitacao.numero_convidados} convidados`}
+                quantidade={textoQuantidade(solicitacao.quantidade)}
                 /* RN009 — na lista, só a região. O endereço completo é
                    parte do detalhe e só aparece com a contratação de pé. */
                 local={`${solicitacao.cidade}/${solicitacao.estado}`}>

@@ -7,7 +7,7 @@ import { QrCode, Barcode, CreditCard, Plus } from 'lucide-react';
 import { CampoSelecao } from '@/componentes/campo';
 import CartaoSolicitacao, { AvisoCartao } from '@/componentes/cartao-solicitacao';
 import Etiqueta from '@/componentes/etiqueta';
-import { formatarPreco, ROTULO_FORMA_PAGAMENTO } from '@/lib/solicitacao';
+import { formatarPreco, textoQuantidade, ROTULO_FORMA_PAGAMENTO } from '@/lib/solicitacao';
 import { rotuloCartao } from '@/lib/cartao';
 import { formatarDataHora } from '@/lib/datas';
 
@@ -91,6 +91,7 @@ function ResumoDaContratacao({ pagamento, etiqueta, children }) {
       etiquetas={etiqueta}
       quando={`${formatarDataHora(pagamento.dataHoraEvento)} · ${pagamento.duracao}h`}
       convidados={`${pagamento.numeroConvidados} convidados`}
+      quantidade={textoQuantidade(pagamento.quantidade)}
       local={`${pagamento.cidade}/${pagamento.estado}`}>
       {children}
     </CartaoSolicitacao>
