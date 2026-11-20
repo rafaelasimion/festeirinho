@@ -11,8 +11,9 @@ import {
 // RF058 / UC 034 / RN059 — comprovante de contratação.
 //
 // Documento NÃO FISCAL: registra a transação e as condições contratadas.
-// A nota fiscal, quando cabível, é responsabilidade do fornecedor PJ
-// perante o município dele, e a plataforma não a emite.
+// A nota fiscal, quando cabível, é responsabilidade do fornecedor perante o
+// município dele — pessoa jurídica ou física inscrita como contribuinte
+// (RN059) —, e a plataforma não a emite.
 //
 // O conteúdo reproduz o que ficou gravado no envio da solicitação (RF024) e
 // os percentuais de multa congelados no pagamento (RN050). É justamente por
@@ -295,12 +296,13 @@ function montarPdf(dados) {
   const topoRodape = Math.max(y + 18, doc.page.height - MARGEM - 46);
   fio(doc, topoRodape);
 
+  // RN059 — o mesmo texto para pessoa jurídica e física. O rodapé dizia à
+  // pessoa física que ela não emite nota fiscal, e a regra deixou de afirmar
+  // isso: o autônomo inscrito como contribuinte no município também emite.
+  // Quem sabe se é obrigado é o fornecedor, não a plataforma.
   doc.font('Helvetica').fontSize(7.5).fillColor(COR.cinza).text(
-    dados.tipo_pessoa === 'PJ'
-      ? 'A emissão de nota fiscal de serviço, quando aplicável, é de responsabilidade '
-        + 'do fornecedor perante o município em que atua.'
-      : 'Fornecedor pessoa física não emite nota fiscal de serviço; este comprovante '
-        + 'é o documento da contratação.',
+    'A emissão de nota fiscal de serviço, quando aplicável, é de responsabilidade '
+      + 'do fornecedor perante o município em que atua.',
     MARGEM, topoRodape + 9, { width: largura }
   );
   doc.text(
